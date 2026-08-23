@@ -1,0 +1,23 @@
+flowchart LR
+  %% 違反: 3(sg_0) から 5(sg_1) へレーンを跨ぐのに実線を使っている
+  subgraph sg_0 ["オーナー（人間）"]
+    direction LR
+    1(["Start"])
+    %% duration[1]: 0
+    3{"承認する?"}
+    %% duration[3]: 5
+    4(["End"])
+    %% duration[4]: 0
+  end
+  subgraph sg_1 ["エージェント"]
+    direction LR
+    2["下書きを作る"]
+    %% duration[2]: 10
+    5["差し戻しを直す"]
+    %% duration[5]: 10
+  end
+    1 -.-> 2
+    2 -.-> 3
+    3 -->|"承認"| 4
+    3 -->|"差し戻し(上限3回)"| 5
+    5 -.-> 3

@@ -1,0 +1,24 @@
+flowchart LR
+  %% 違反: task ノード 2 が decision を経ずに2本の出力を持つ
+  subgraph sg_0 ["オーナー（人間）"]
+    direction LR
+    1(["Start"])
+    %% duration[1]: 0
+    3{"承認する?"}
+    %% duration[3]: 5
+    4(["End"])
+    %% duration[4]: 0
+  end
+  subgraph sg_1 ["エージェント"]
+    direction LR
+    2["下書きを作る"]
+    %% duration[2]: 10
+    5["差し戻しを直す"]
+    %% duration[5]: 10
+  end
+    1 -.-> 2
+    2 -.->|"そのまま"| 3
+    2 --> 5
+    3 -->|"承認"| 4
+    3 -.->|"差し戻し(上限3回)"| 5
+    5 -.-> 3

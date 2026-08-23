@@ -1,0 +1,18 @@
+flowchart LR
+  %% 違反: 連結エッジ（1行に複数のエッジ）。読み落として偽の到達不能が出る形
+  subgraph sg_0 ["エージェント"]
+    direction LR
+    1(["Start"])
+    %% duration[1]: 0
+    2["下書きを作る"]
+    %% duration[2]: 10
+    3["検証する"]
+    %% duration[3]: 5
+    4["まとめる"]
+    %% duration[4]: 5
+    5(["End"])
+    %% duration[5]: 0
+  end
+    1 --> 2 --> 3
+    3 --> 4
+    4 --> 5

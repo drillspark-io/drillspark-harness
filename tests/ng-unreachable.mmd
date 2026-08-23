@@ -1,0 +1,26 @@
+flowchart LR
+  %% 違反: ノード 6 に入力エッジが無く、Start から到達できない
+  subgraph sg_0 ["オーナー（人間）"]
+    direction LR
+    1(["Start"])
+    %% duration[1]: 0
+    3{"承認する?"}
+    %% duration[3]: 5
+    4(["End"])
+    %% duration[4]: 0
+  end
+  subgraph sg_1 ["エージェント"]
+    direction LR
+    2["下書きを作る"]
+    %% duration[2]: 10
+    5["差し戻しを直す"]
+    %% duration[5]: 10
+    6["参考資料を集める"]
+    %% duration[6]: 10
+  end
+    1 -.-> 2
+    2 -.-> 3
+    3 -->|"承認"| 4
+    3 -.->|"差し戻し(上限3回)"| 5
+    5 -.-> 3
+    6 --> 5

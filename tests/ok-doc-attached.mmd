@@ -1,0 +1,26 @@
+flowchart LR
+  %% タスクに文書とデータストアをぶら下げた形。Data Association なので分岐に数えない。
+  %% 終端ラベルが日本語（開始/終了）でも Start/End と認識できること
+  subgraph sg_0 ["エージェント"]
+    direction LR
+    1(["開始"])
+    %% duration[1]: 0
+    2["下書きを作る"]
+    %% duration[2]: 10
+    3["検証する"]
+    %% duration[3]: 5
+    4["まとめる"]
+    %% duration[4]: 5
+    5(["終了"])
+    %% duration[5]: 0
+    6@{ shape: doc, label: "レポート" }
+    %% duration[6]: 0
+    7[("長期メモリ")]
+    %% duration[7]: 0
+  end
+    1 --> 2
+    2 --> 3
+    3 --> 4
+    4 --> 5
+    4 --> 6
+    4 --> 7

@@ -1,0 +1,25 @@
+{
+  "name": "drillspark-harness",
+  "version": "0.1.0",
+  "description": "Turn DrillSpark BPMN diagrams into real Claude Code configuration: skills, agents, rules, hooks and permissions, with separated review and evaluation. Skill content is written in Japanese.",
+  "license": "Apache-2.0",
+  "homepage": "https://drillspark.io/",
+  "repository": "https://github.com/jackasser/drillspark-harness",
+  "author": {
+    "name": "DrillSpark"
+  },
+  "keywords": [
+    "drillspark",
+    "bpmn",
+    "mermaid",
+    "agent-harness",
+    "workflow",
+    "code-generation",
+    "japanese"
+  ],
+  "skills": "./skills",
+  "agents": [
+    "./agents/harness-design-reviewer.md",
+    "./agents/harness-evaluator.md"
+  ]
+}
