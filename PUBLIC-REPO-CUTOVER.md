@@ -37,8 +37,14 @@ company names, project UUIDs.
 
 ## Before publishing
 
-- [ ] create the public GitHub repository
-- [ ] set the real `repository` URL in `.claude-plugin/plugin.json` (currently a placeholder)
+The repository exists at `jackasser/drillspark-harness` and is **private**.
+
+- [x] create the GitHub repository
+- [x] set the real `repository` URL in `.claude-plugin/plugin.json`
+- [ ] **strip `_internal/` from the history before flipping to public** — it holds local
+      paths and session ids. Deleting the directory is not enough; the history keeps it.
+      Rebuild the repository, or use `git filter-repo`. Going public cannot be undone
+- [ ] flip visibility to public
 - [ ] set `homepage` and a support / issue tracker URL
 - [ ] `claude plugin validate . --strict`
 - [ ] `bash tests/run.sh`
