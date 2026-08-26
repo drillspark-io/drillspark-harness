@@ -73,7 +73,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
    - ノードIDを振り直したらメタデータも新IDへ移す（放置すると備考が迷子になる）
 5. **読み戻す。** `get_diagram` で保存後の内容を確認する。
    success が返っても内容が巻き戻っていた実例がある。壊れていたら `list_versions` → `restore_version`
-6. `harness-implement` を**その図に限定して**再実行し、詳細設計のゲートを通す
+6. `harness-implement` を**その図に限定して**再実行し、〈合格条件を決める〉の凍結ゲートを通す
 
 全体を作り直さない。1枚直したら、その図に対応する成果物だけが出直すのが正しい。
 
@@ -82,7 +82,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 
 ## C. 判定の線を動かす（評価基準・合格条件）
 
-**この経路だけは単独で進めない。** 評価基準（`.claude/rules/`）と〈設計する〉で凍結した合格条件
+**この経路だけは単独で進めない。** 評価基準（`.claude/rules/`）と〈合格条件を決める〉で凍結した合格条件
 （`.claude/tests/`）は、**満たす側が書き換えられない**ことで機能している。
 改善役が無審査で直せるなら、凍結した意味が消える。
 
