@@ -2,7 +2,7 @@
 
 DrillSpark の BPMN 図を Claude Code の実設定へ落とすプラグイン。
 
-**作業を始める前に [`_internal/HANDOFF.md`](_internal/HANDOFF.md) を読む。**
+**作業を始める前に [`_internal/HANDOFF.md`](../_internal/HANDOFF.md) を読む。**
 現在の状態・未決の判断・既知の欠陥・外にある関連物が全部そこにある。
 
 ## コマンド

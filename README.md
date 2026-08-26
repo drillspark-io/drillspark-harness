@@ -56,22 +56,35 @@ skills/harness-implement/     目的を考える → … → 評価する（6工
   MAPPING.md                  図の要素 → Claude Code の構成要素。唯一の対応表
   FRONTIER.md                 図が決めていないことを潰す問いの立て方＋網羅チェックリスト11項目
 skills/harness-improve/       改善する（1工程）。3つの経路とオーナー判断の位置
+skills/harness-visualize/     可視化する（処理）。図＋設計＋実測を自己完結の HTML 1枚に
 agents/harness-design-reviewer.md   設計レビュー（Checker）。指摘だけ返す
 agents/harness-evaluator.md         評価。合格条件を走らせ、目的の達成を測る
 reference/harness-design-criteria.md  レビュー時の判定線。両エージェントが毎回読む
 reference/設計.md.template            設計書の雛形
 scripts/harness-diagram-lint.js       図の構造を決定論で検査（依存なし）
-tests/                                lint の期待挙動を固定する 10 件＋ランナー
+scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
+tests/                                lint の期待挙動を固定する 16 件＋ランナー
 ```
+
+`skills/harness-visualize/` is a **処理 (workflow), not an eighth 工程 (stage)** — it does
+not join the chain below. It takes one workflow of a harness and renders the diagram, the
+design and what actually happened into a single self-contained HTML page. It renders; it
+does not judge. Grading stays with `harness-evaluator`.
 
 ### The seven stages
 
 ```text
-目的を考える → 処理の種類を考える → 処理を作る → 設計する → 実装する → 評価する →（改善する）
+目的を考える → 処理の種類を考える → 処理を作る → 合格条件を決める → 実装する → 評価する →（改善する）
 ```
 
 Stages do not chain automatically. Each one stops and waits for the owner —
 passing an approval gate means *this stage's output is accepted*, not *start the next one*.
+
+**Approval is concentrated above the diagram.** The diagram is the contract; everything below it
+is derived from the diagram plus the frozen pass conditions. The only gate left before
+implementation is freezing those conditions. Measured on 2026-08-24, gates placed below the
+diagram filled up with information the owner could not act on, and the design review that used
+to sit there now runs inside the implementation stage — agent to agent, without stopping a human.
 
 ### The diagram lint
 
@@ -89,6 +102,21 @@ It deliberately does **not** judge what cannot be made deterministic — where a
 when it exceeds its cap, whether parent and child notes agree, whether a label is
 verb + noun. Those stay in the reviewer's MUST list.
 
+### The visualization lint
+
+A rendered page is easy to call finished because it *looks* finished. One CDN link makes
+it break offline; one absolute path or UUID makes it unpublishable. Both survive a visual
+check, so a machine looks instead:
+
+`EXTERNAL_REF` `NO_NODE` `NODE_ID` `DUPLICATE` `MISSING_SECTION` `PRIVATE_INFO`
+
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js" docs/harness/<name>/可視化/<date>.html
+```
+
+`EXTERNAL_REF` looks at **loading positions only** (`link href`, `src`, `url()`,
+`@import`) — a source URL in the body text is legitimate and passes.
+
 ## Language
 
 The skill and agent bodies are Japanese and are not translated. They carry a lot of
@@ -103,9 +131,14 @@ claude plugin validate . --strict
 bash tests/run.sh
 ```
 
-`tests/run.sh` runs the lint against 10 fixtures whose filename prefix encodes the
-expected exit code (`ok-*` → 0, `ng-*` → 2), then validates the plugin and checks that
-every shipped file is present. Any mismatch exits 1.
+`tests/run.sh` runs the two lints against 16 fixtures whose filename prefix encodes the
+expected exit code (`ok-*` → 0, `ng-*` → 2) — 10 `.mmd` for the diagram lint and 6 `.html`
+for the visualization lint — then validates the plugin and checks that every shipped file
+is present. Any mismatch exits 1.
+
+The `.html` fixtures also carry an `expect: <CODE> x<count>` line, and the runner checks
+the reported code and count, not just the exit status. An exit code alone is not a pass
+condition: a lint that returned 2 for everything would satisfy "violation sample exits 2".
 
 ## Status and known limitations
 
