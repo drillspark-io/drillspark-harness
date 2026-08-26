@@ -33,6 +33,42 @@ for f in "$DIR"/*.mmd; do
   fi
 done
 
+echo "== 可視化 HTML の lint =="
+# 終了コードだけを見る条件にしない。全部 exit 2 を返す壊れた lint も「違反サンプルで 2」を満たす。
+# 各サンプルは自分の中に `expect: <コード> x<件数>` を持ち、そこまで照合する。
+VIEW_LINT="scripts/harness-view-lint.js"
+for f in "$DIR"/*.html; do
+  base=$(basename "$f")
+  case "$base" in
+    ok-*) want=0 ;;
+    ng-*) want=2 ;;
+    *)    echo "  SKIP $f （ok- / ng- で始まっていない）"; continue ;;
+  esac
+
+  expect=$(grep -o 'expect: [A-Z_]* x[0-9]*' "$f" | head -1)
+  if [ -z "$expect" ]; then
+    echo "  FAIL $base  expect: 行が無い（期待するコードと件数をサンプル自身に書く）"
+    fail=1
+    continue
+  fi
+  want_code=$(printf '%s' "$expect" | cut -d' ' -f2)
+  want_n=$(printf '%s' "$expect" | cut -d' ' -f3 | tr -d 'x')
+
+  out=$(node "$VIEW_LINT" "$f" 2>&1)
+  got=$?
+  got_n=$(printf '%s\n' "$out" | grep -c '^  \[')
+  got_code=$(printf '%s\n' "$out" | grep -o '^  \[[A-Z_]*\]' | tr -d ' []' | sort -u | tr '\n' '+' | sed 's/+$//')
+  [ "$want_n" -eq 0 ] && want_code_cmp="" || want_code_cmp="$want_code"
+
+  if [ "$got" -eq "$want" ] && [ "$got_n" -eq "$want_n" ] && [ "$got_code" = "$want_code_cmp" ]; then
+    echo "  PASS $base  (exit $got / ${want_code} x${want_n})"
+  else
+    echo "  FAIL $base  期待 exit $want・${want_code} x${want_n} / 実際 exit $got・${got_code:-なし} x${got_n}"
+    printf '%s\n' "$out" | sed 's/^/        /'
+    fail=1
+  fi
+done
+
 echo "== プラグインの検証 =="
 if command -v claude >/dev/null 2>&1; then
   if claude plugin validate . --strict >/dev/null 2>&1; then
@@ -53,11 +89,13 @@ for p in \
   skills/harness-implement/MAPPING.md \
   skills/harness-implement/FRONTIER.md \
   skills/harness-improve/SKILL.md \
+  skills/harness-visualize/SKILL.md \
   agents/harness-design-reviewer.md \
   agents/harness-evaluator.md \
   reference/harness-design-criteria.md \
   reference/設計.md.template \
-  scripts/harness-diagram-lint.js
+  scripts/harness-diagram-lint.js \
+  scripts/harness-view-lint.js
 do
   if [ -f "$p" ]; then echo "  PASS $p"; else echo "  FAIL $p が無い"; fail=1; fi
 done

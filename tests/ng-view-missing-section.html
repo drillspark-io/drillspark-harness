@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  expect: MISSING_SECTION x1
+  違反1件: data-section="介入点" の節が無い。空欄にせず「無し」と書くのが契約
+-->
+<html lang="ja">
+<head><meta charset="utf-8"><title>可視化サンプル</title></head>
+<body>
+<section data-section="目的"><h2>目的</h2><p>—</p></section>
+<section data-section="処理一覧"><h2>処理一覧</h2><p>—</p></section>
+<section data-section="工程"><h2>工程</h2>
+  <table><tr data-node-id="1"><td>開始</td><td>通った</td></tr></table>
+</section>
+<section data-section="合格条件"><h2>合格条件</h2><p>無し</p></section>
+<section data-section="成果物"><h2>成果物</h2><p>無し</p></section>
+<section data-section="未完"><h2>未完</h2><p>無し</p></section>
+</body>
+</html>

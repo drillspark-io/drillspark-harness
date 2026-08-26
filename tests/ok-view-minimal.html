@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+  expect: OK x0
+  合格サンプル。7つの data-section・数値の data-node-id・外部読み込みゼロ・私的情報なし。
+  併せて次の2点の実例でもある:
+    - 本文中のリンク <a href="…"> は「読み込み位置」ではないので通る（出典 URL が正当に入る）
+    - 介入点で参照するノード（2_4）は、その節に対応するドリルダウン図を併記して裏を取る。
+      図に無いIDを書いてよいという意味ではない
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>ブログ執筆ハーネス — 可視化 2026-08-25</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #ccc; padding: .3rem .6rem; }
+  .badge { background: url("data:image/gif;base64,R0lGODlhAQABAAAAACw="); }
+</style>
+</head>
+<body>
+<h1>ブログ執筆ハーネス — 可視化 2026-08-25</h1>
+
+<section data-section="目的">
+  <h2>目的</h2>
+  <p>記事を繰り返し書ける形にする。成功指標は 設計.md の表を参照。</p>
+</section>
+
+<section data-section="処理一覧">
+  <h2>処理一覧</h2>
+  <ul><li>記事を書く</li></ul>
+</section>
+
+<section data-section="工程">
+  <h2>工程</h2>
+  <pre class="mermaid">flowchart TD
+  1(["開始"])
+  2["構成を作る"]
+  3(["終了"])
+  1 --> 2
+  2 --> 3</pre>
+  <table>
+    <tr><th>ノード</th><th>工程</th><th>状態</th></tr>
+    <tr data-node-id="1"><td>1</td><td>開始</td><td>通った</td></tr>
+    <tr data-node-id="2"><td>2</td><td>構成を作る</td><td>止まった</td></tr>
+    <tr data-node-id="3"><td>3</td><td>終了</td><td>設計のみ</td></tr>
+  </table>
+</section>
+
+<section data-section="介入点">
+  <h2>人間の介入点</h2>
+  <pre class="mermaid">flowchart TD
+  2_3["構成案を出す"]
+  2_4{"構成を承認するか?"}
+  2_5["本文を書く"]
+  2_3 --> 2_4
+  2_4 --> 2_5</pre>
+  <table>
+    <tr><th>種</th><th>ノード</th><th>実測</th></tr>
+    <tr data-node-id="2_4"><td>承認ゲート</td><td>2_4</td><td>止まった</td></tr>
+  </table>
+</section>
+
+<section data-section="合格条件">
+  <h2>合格条件</h2>
+  <table>
+    <tr><th>条件</th><th>結果</th></tr>
+    <tr><td>node .claude/tests/blog/check.js</td><td>実測 無し（評価レポートが渡されていない）</td></tr>
+  </table>
+</section>
+
+<section data-section="成果物">
+  <h2>成果物</h2>
+  <ul><li>docs/harness/blog/設計.md</li></ul>
+</section>
+
+<section data-section="未完">
+  <h2>未完・⚠</h2>
+  <p>無し</p>
+  <p>出典: <a href="https://drillspark.io/">DrillSpark</a></p>
+</section>
+</body>
+</html>

@@ -3,5 +3,6 @@
 *.js text eol=lf
 *.md text eol=lf
 *.mmd text eol=lf
+*.html text eol=lf
 *.json text eol=lf
 LICENSE text eol=lf
