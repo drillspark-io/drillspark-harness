@@ -55,7 +55,7 @@ skills/harness-implement/     目的を考える → … → 評価する（6工
   SKILL.md                    工程の手順そのもの
   MAPPING.md                  図の要素 → Claude Code の構成要素。唯一の対応表
   FRONTIER.md                 図が決めていないことを潰す問いの立て方＋網羅チェックリスト11項目
-skills/harness-improve/       改善する（1工程）。3つの経路とオーナー判断の位置
+skills/harness-improve/       改善する（1工程）。処理一覧 → 理想図 → 差分。実装はしない
 skills/harness-visualize/     可視化する（処理）。図＋設計＋実測を自己完結の HTML 1枚に
 agents/harness-design-reviewer.md   設計レビュー（Checker）。指摘だけ返す
 agents/harness-evaluator.md         評価。合格条件を走らせ、目的の達成を測る
@@ -70,6 +70,26 @@ tests/                                lint の期待挙動を固定する 16 件
 not join the chain below. It takes one workflow of a harness and renders the diagram, the
 design and what actually happened into a single self-contained HTML page. It renders; it
 does not judge. Grading stays with `harness-evaluator`.
+
+`skills/harness-improve/` **runs the pipeline backwards, and does not implement.** The other six
+stages start from a purpose and derive diagrams from it. Improve starts from the `.claude/` files
+that already exist and derives the diagram from *them* — that is the one direction no other stage
+covers, and it is why improve is the entry point for a harness you inherited.
+
+It works the whole harness, not one symptom. It enumerates the harness's 処理 (workflows — each
+one mobilises several skills, agents and hooks, so counting skills does not count 処理), gets that
+table approved, then grows one ideal diagram per 処理 *in conversation with the owner*: draw what
+the files currently say, talk, correct it toward the ideal in place. One diagram, not a before and
+an after — a second diagram would leave the next person unable to tell which one is the contract.
+What the files do not reveal is drawn as a node flagged **"cannot be read — needs confirming"**,
+because an unflagged guess gets approved and becomes the contract.
+
+The output is a diff, not an edit: improve never writes under `.claude/`. Diffs go to
+`harness-implement` as work orders, and a final cross-cutting pass reports what no single diagram
+can show — duplicated parts, parts no 処理 uses, and **how many times the harness stops its owner
+across the whole system**. It assumes nothing is set up: `設計.md`, `.claude/rules/`,
+`.claude/tests/` and the diagrams may all be absent, and creating that `設計.md` is often the most
+valuable thing a first improvement pass leaves behind.
 
 ### The seven stages
 
