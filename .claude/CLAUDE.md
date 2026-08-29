@@ -33,8 +33,9 @@ claude --plugin-dir . -- "…"          # セッション限定でロードし�
 ```text
 skills/harness-implement/   目的を考える → … → 評価する（6工程）
 skills/harness-improve/     改善する（1工程）
+skills/harness-visualize/   可視化する（工程ではなく処理。連鎖に入らず単独で呼べる）
 agents/                     レビュー役と評価役。生成側から分離されている
 reference/                  判定基準（両エージェントが毎回読む）と 設計.md の雛形
-scripts/                    図の構造 lint（依存なし）
-tests/                      lint の期待挙動を固定する 10 件＋ランナー
+scripts/                    図の構造 lint と 可視化 HTML の lint（どちらも依存なし）
+tests/                      lint の期待挙動を固定する 16 件（図 10 ＋ 可視化 6）＋ランナー
 ```
