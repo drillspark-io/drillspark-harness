@@ -26,14 +26,34 @@ so the useful parts are the ones a model cannot do alone. This plugin encodes tw
 |---|---|
 | Claude Code | `2.1.196` or later (skill bodies use `${CLAUDE_PLUGIN_ROOT}`) |
 | Node.js | any version with `fs` — the lint script has no dependencies |
+| DrillSpark account | required — see [Connecting DrillSpark](#connecting-drillspark) |
 | DrillSpark MCP server | connected, exposing `mcp__drillspark__*` tools |
 
-**MCP naming caveat.** The skills and agents declare `mcp__drillspark__*` in their
-`allowed-tools` / `tools` lists.
-If your DrillSpark server is connected under a different prefix (a hosted connector may
-expose it as `mcp__claude_ai_DrillSpark__*`), those entries simply do not pre-authorize
-anything — the tools still work, they just prompt. Nothing breaks; you may want to
-rename the server in your MCP config so the declaration matches.
+**DrillSpark is not optional.** The diagram is the contract every stage approves and
+derives from, so there is no degraded mode: with no diagram there is nothing to approve
+and no way to trace what the implementation came from. All three skills check the
+connection once before they produce anything, and stop with setup instructions instead
+of falling back to pasting Mermaid into the terminal.
+
+## Connecting DrillSpark
+
+1. **Create an account** at [drillspark.io](https://drillspark.io/).
+2. **Connect the MCP server** — two ways:
+   - **Claude Code** — issue an API key (`dsk_…`) from the
+     [dashboard](https://drillspark.io/dashboard) and add
+     `https://drillspark.io/api/mcp/mcp` as an `http` server with an
+     `Authorization: Bearer <key>` header.
+   - **Claude.ai Web / Claude Desktop** — link the account over OAuth from the
+     connector settings.
+3. **Name the server `drillspark`.** The skills and agents declare `mcp__drillspark__*`
+   in their `allowed-tools` / `tools` lists, and those entries pre-authorize the tools
+   only under that name. Any other prefix (a hosted connector may expose
+   `mcp__claude_ai_DrillSpark__*`) still **works** — it just prompts every time.
+4. **Verify** with `/mcp`. Connecting mid-session requires a restart.
+
+Details and the per-symptom triage the skills follow:
+[`reference/drillspark-setup.md`](reference/drillspark-setup.md) (Japanese) and
+[drillspark.io/ja/docs/mcp](https://drillspark.io/ja/docs/mcp).
 
 ## Install
 
@@ -59,6 +79,7 @@ skills/harness-improve/       改善する（1工程）。処理一覧 → 理�
 skills/harness-visualize/     可視化する（処理）。図＋設計＋実測を自己完結の HTML 1枚に
 agents/harness-design-reviewer.md   設計レビュー（Checker）。指摘だけ返す
 agents/harness-evaluator.md         評価。合格条件を走らせ、目的の達成を測る
+reference/drillspark-setup.md         接続の確認と、未登録・未接続のときの案内。3つの skill が開始時に読む
 reference/harness-design-criteria.md  レビュー時の判定線。両エージェントが毎回読む
 reference/設計.md.template            設計書の雛形
 scripts/harness-diagram-lint.js       図の構造を決定論で検査（依存なし）

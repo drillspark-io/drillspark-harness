@@ -26,8 +26,14 @@ allowed-tools: Read, Write, Grep, Glob, Bash, mcp__drillspark__get_project, mcp_
 | 入力 | 出所 | 無いとき |
 |---|---|---|
 | 設計 | `docs/harness/<ハーネス名>/設計.md` | **これが無ければ実行しない。**止めてオーナーへ報告する |
-| 図 | `設計.md` が参照する `.mmd`、または `get_project` / `get_diagram` で取った mermaid | 「図 無し」と描き、工程は設計の記述から並べる |
+| 図 | `設計.md` が参照する `.mmd`、または `get_project` / `get_diagram` で取った mermaid | 「図 無し」と描き、工程は設計の記述から並べる。**ただし下を読む** |
 | 実測 | `設計.md` の〈実装する〉の記録／評価レポート／**明示的に渡された記録ファイル** | 全工程を `設計のみ` と描き、そう明記する |
+
+**「図 無し」と「図が取れない」を混同しない。** `設計.md` が DrillSpark のプロジェクトを参照しているのに
+`mcp__drillspark__*` が使えないなら、それは**図が無いのではなく繋がっていない**。
+`設計.md` に図の参照があるときは `mcp__drillspark__list_projects()` を1回流して確かめ、
+繋がらなければ**止めて案内する** → [`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)。
+黙って「図 無し」と描くと、**在る図を無いことにした1枚**が残り、次の人はそれを現状として読む。
 
 **実測ファイルのパスを決め打ちしない。** `実行記録.md` のような名前は実行役が発明したもので、
 `reference/設計.md.template` は定義していない。渡されたものを読む。

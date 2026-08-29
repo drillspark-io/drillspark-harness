@@ -48,6 +48,12 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 > 意図が読めないものを「無駄」と判定しない。**一覧に載せてオーナーに聞く。**
 > 自分で作ったハーネスでも、**覚えている理由は根拠にならない**。表に書いて初めて根拠になる。
 
+**準備されていないものの中に、DrillSpark への接続だけは含めない。**
+2節で理想図を作るので**必須**。0節を数える前に `mcp__drillspark__list_projects()` を1回だけ流し、
+繋がらなければ**そこで止めて案内する** →
+[`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)。
+1節の承認①を通してから詰まると、処理一覧の合意が宙に浮く。
+
 ## 0. 在るものを数える
 
 一覧を作る材料であり、**どの節を書き換えてよいか**の判定でもある。

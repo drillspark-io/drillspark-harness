@@ -92,6 +92,7 @@ for p in \
   skills/harness-visualize/SKILL.md \
   agents/harness-design-reviewer.md \
   agents/harness-evaluator.md \
+  reference/drillspark-setup.md \
   reference/harness-design-criteria.md \
   reference/設計.md.template \
   scripts/harness-diagram-lint.js \
