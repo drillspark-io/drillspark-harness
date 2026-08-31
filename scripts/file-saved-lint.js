@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * process-file-lint — 指定されたパスに**実際に保存されたか**だけを決定論で検査する。
+ * file-saved-lint — 指定されたパスに**実際に保存されたか**だけを決定論で検査する。
  *
- *   node "$CLAUDE_PLUGIN_ROOT/scripts/process-file-lint.js" <保存先パス> [<パス> ...]
+ *   node "$CLAUDE_PLUGIN_ROOT/scripts/file-saved-lint.js" <保存先パス> [<パス> ...]
  *
  * 依存なし（Node 標準の fs だけ）。どのリポジトリからでも単体で動く。
  * exit 0 = 合格 / 2 = 違反あり / 1 = 実行エラー
@@ -48,7 +48,7 @@ function lint(paths) {
 function main() {
   const paths = process.argv.slice(2);
   if (paths.length === 0) {
-    console.error('保存先のパスを1つ以上渡す: node process-file-lint.js <path> [<path> ...]');
+    console.error('保存先のパスを1つ以上渡す: node file-saved-lint.js <path> [<path> ...]');
     process.exit(1);
   }
 

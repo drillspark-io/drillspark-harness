@@ -10,7 +10,7 @@
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
-LINT="scripts/harness-diagram-lint.js"
+LINT="scripts/diagram-lint.js"
 DIR="tests"
 fail=0
 
@@ -114,7 +114,7 @@ done
 
 echo "== 保存の検査 =="
 # 実在しないパスで NOT_SAVED、実在するファイルで exit 0。
-FILE_LINT="scripts/process-file-lint.js"
+FILE_LINT="scripts/file-saved-lint.js"
 out=$(node "$FILE_LINT" "$DIR/この名前のファイルは存在しない.html" 2>&1); got=$?
 got_n=$(printf '%s\n' "$out" | grep -c '^  \[')
 if [ "$got" -eq 2 ] && [ "$got_n" -eq 1 ] && printf '%s\n' "$out" | grep -q 'NOT_SAVED'; then
@@ -150,6 +150,7 @@ for p in \
   skills/harness-implement/SKILL.md \
   skills/harness-implement/MAPPING.md \
   skills/harness-implement/FRONTIER.md \
+  skills/harness-compose/SKILL.md \
   skills/harness-improve/SKILL.md \
   skills/harness-visualize/SKILL.md \
   agents/harness-design-reviewer.md \
@@ -157,7 +158,7 @@ for p in \
   reference/drillspark-setup.md \
   reference/harness-design-criteria.md \
   reference/設計.md.template \
-  scripts/harness-diagram-lint.js \
+  scripts/diagram-lint.js \
   scripts/harness-view-lint.js \
   skills/process-improve/SKILL.md \
   skills/process-improve-view/SKILL.md \
@@ -167,7 +168,7 @@ for p in \
   reference/business-improvement-tables.md \
   scripts/process-table-lint.js \
   scripts/process-plan-lint.js \
-  scripts/process-file-lint.js
+  scripts/file-saved-lint.js
 do
   if [ -f "$p" ]; then echo "  PASS $p"; else echo "  FAIL $p が無い"; fail=1; fi
 done

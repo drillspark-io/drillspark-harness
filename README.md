@@ -31,7 +31,7 @@ so the useful parts are the ones a model cannot do alone. This plugin encodes tw
 
 **DrillSpark is not optional.** The diagram is the contract every stage approves and
 derives from, so there is no degraded mode: with no diagram there is nothing to approve
-and no way to trace what the implementation came from. All three skills check the
+and no way to trace what the implementation came from. All four harness skills check the
 connection once before they produce anything, and stop with setup instructions instead
 of falling back to pasting Mermaid into the terminal.
 
@@ -71,18 +71,18 @@ claude --plugin-dir . -- "harness-implement で新しいハーネスを作りた
 ## What is included
 
 ```text
-skills/harness-implement/     目的を考える → … → 評価する（6工程）
+skills/harness-implement/     目的を考える → … → 評価する（6工程）。処理は1回の起動につき1つ
   SKILL.md                    工程の手順そのもの
   MAPPING.md                  図の要素 → Claude Code の構成要素。唯一の対応表
   FRONTIER.md                 図が決めていないことを潰す問いの立て方＋網羅チェックリスト11項目
+skills/harness-compose/       統合する（1工程）。処理を束ね、1つしかない設定をここだけで書く
 skills/harness-improve/       改善する（1工程）。処理一覧 → 理想図 → 差分。実装はしない
 skills/harness-visualize/     可視化する（処理）。図＋設計＋実測を自己完結の HTML 1枚に
 agents/harness-design-reviewer.md   設計レビュー（Checker）。指摘だけ返す
 agents/harness-evaluator.md         評価。合格条件を走らせ、目的の達成を測る
 reference/drillspark-setup.md         接続の確認と、未登録・未接続のときの案内。3つの skill が開始時に読む
 reference/harness-design-criteria.md  レビュー時の判定線。両エージェントが毎回読む
-reference/設計.md.template            設計書の雛形
-scripts/harness-diagram-lint.js       図の構造を決定論で検査（依存なし）
+reference/設計.md.template            設計ファイル一式の雛形（工程ごとに1ファイル）
 scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
 
 skills/process-improve/               業務を棚卸しして改善する（5工程）
@@ -91,10 +91,12 @@ agents/process-expert.md              専門家役。起動時に渡された役
 agents/process-improve-reviewer.md    業務改善の判定役。基準を読むだけで書き換えない
 reference/business-improvement-criteria.md  業務改善の判定線。判定役が毎回読む
 reference/business-improvement-tables.md    4つの表の列と入る値
-
 scripts/process-table-lint.js         業務改善の表を決定論で検査（依存なし）
 scripts/process-plan-lint.js          改善計画の1枚を決定論で検査（依存なし）
-scripts/process-file-lint.js          保存されたかを確かめる（依存なし）
+
+# 両系統から呼ぶ共有ツール（接頭辞を持たせない）
+scripts/diagram-lint.js               図の構造を決定論で検査（依存なし）
+scripts/file-saved-lint.js            指定パスに実際に保存されたかを確かめる（依存なし）
 tests/                                lint の期待挙動を固定する 27 件＋ランナー
 ```
 
@@ -160,14 +162,43 @@ across the whole system**. It assumes nothing is set up: `設計.md`, `.claude/r
 `.claude/tests/` and the diagrams may all be absent, and creating that `設計.md` is often the most
 valuable thing a first improvement pass leaves behind.
 
-### The seven stages
+### The eight stages
 
 ```text
-目的を考える → 処理の種類を考える → 処理を作る → 合格条件を決める → 実装する → 評価する →（改善する）
+目的を考える → 処理の種類を考える
+  →〔one 処理 at a time〕処理を作る → 合格条件を決める → 実装する
+  →（once every 処理 is done）統合する → 評価する →（改善する）
 ```
 
 Stages do not chain automatically. Each one stops and waits for the owner —
 passing an approval gate means *this stage's output is accepted*, not *start the next one*.
+
+**Every stage leaves a file.** Because each 処理 is built in its own session, the only thing that
+survives between them is what is on disk — so each stage writes its own file under
+`docs/harness/<name>/` (`設計.md` as the index, then `処理/<名>/図.md`, `合格条件.md`, `実装.md`,
+`統合.md`, `評価/<date>.md`, `改善/<date>.md`) and then runs a lint that checks the path really
+exists and is non-empty. "I wrote it out" reads the same whether or not the write happened; only
+a machine can tell. The frozen pass conditions are a file, so merging them at integration is a
+file-level operation that never opens them.
+
+**One session builds one 処理.** Drawing a second workflow in the context that just drew the
+first one leaks the first one's granularity, lane split and approval habits into it — measured
+on 2026-08-30, where two rules that are written down explicitly broke at once, and re-reading
+the rules did not fix it. Splitting the context did, on the first try.
+
+The split has to be a **session**, not a subagent: a subagent cannot talk to the owner, so the
+per-diagram approval gate stops existing, and routing the owner's answers through a parent puts
+the whole harness's context back in the seat that draws. That defect became visible only when the
+flow was drawn — the diagram had an edge from the owner's approval gate back into the subagent,
+and no such edge can exist (owner's finding, 2026-08-31).
+
+Because 処理 are built one at a time, nothing sees the whole harness — which is what
+`skills/harness-compose/` is for. `settings.json`'s hooks and permissions, `CLAUDE.md` and the
+pass-condition directory exist once per harness, so exactly one stage writes them, after every
+workflow is implemented and before evaluation. It merges frozen pass conditions **without editing
+them**, lets `deny` win over `allow`, and counts how many times the assembled harness stops its
+owner — a number no single workflow's diagram can show. What it cannot reconcile in three rounds
+it records as ⚠ and hands back.
 
 **Approval is concentrated above the diagram.** The diagram is the contract; everything below it
 is derived from the diagram plus the frozen pass conditions. The only gate left before
@@ -183,8 +214,8 @@ to sit there now runs inside the implementation stage — agent to agent, withou
 `START_END` `NODE_COUNT` `MULTI_OUTPUT` `NO_EXIT` `UNREACHABLE` `ORPHAN` `EDGE_STYLE`
 
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/harness-diagram-lint.js" diagram.mmd   # 0 / 2 / 1
-mcp-output | node "$CLAUDE_PLUGIN_ROOT/scripts/harness-diagram-lint.js" -
+node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" diagram.mmd   # 0 / 2 / 1
+mcp-output | node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" -
 ```
 
 It deliberately does **not** judge what cannot be made deterministic — where a loop goes
@@ -213,14 +244,14 @@ Three more, same shape (no dependencies, `exit 0` / `2` / `1`, one finding per v
 ```bash
 node "$CLAUDE_PLUGIN_ROOT/scripts/process-table-lint.js" 業務改善/業務一覧.md
 node "$CLAUDE_PLUGIN_ROOT/scripts/process-plan-lint.js"  業務改善/改善計画.html
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-file-lint.js"  業務改善/改善計画.html
+node "$CLAUDE_PLUGIN_ROOT/scripts/file-saved-lint.js"  業務改善/改善計画.html
 ```
 
 | lint | codes |
 |---|---|
 | `process-table-lint` | `EMPTY_CELL` `HOLD_WITHOUT_CONTACT` `TIME_WITHOUT_METHOD` `MISSING_HAS` `MISSING_APPROVAL` |
 | `process-plan-lint` | `MISSING_BLOCK` `EXTERNAL_REF` `MISSING_MARK` `PRIVATE_INFO` |
-| `process-file-lint` | `NOT_SAVED` |
+| `file-saved-lint` | `NOT_SAVED` |
 
 The table lint enforces one rule that runs through the whole design:
 
@@ -256,7 +287,7 @@ shipped file is present. Any mismatch exits 1.
 
 | fixtures | lint |
 |---|---|
-| 10 `.mmd` | `harness-diagram-lint` |
+| 10 `.mmd` | `diagram-lint` |
 | 6 `*-view-*.html` | `harness-view-lint` |
 | 5 `*-plan-*.html` | `process-plan-lint` |
 | 6 `*-table-*.md` | `process-table-lint` |

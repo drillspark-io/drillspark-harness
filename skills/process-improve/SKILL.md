@@ -123,7 +123,7 @@ B・C ランクを選んでも構いませんが、そのときは理由を書�
 保存する前に、**書いた mermaid を標準入力で構造 lint に流します。**
 
 ```bash
-printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-diagram-lint.js" -
+printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" -
 ```
 
 **ファイルに書き出しません。** 利用者のフォルダに読まないファイルが溜まります

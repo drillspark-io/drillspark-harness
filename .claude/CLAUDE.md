@@ -31,11 +31,14 @@ claude --plugin-dir . -- "…"          # セッション限定でロードし�
 ## 構成
 
 ```text
-skills/harness-implement/   目的を考える → … → 評価する（6工程）
+skills/harness-implement/   目的を考える → … → 評価する（6工程）。1回の起動＝1処理
+skills/harness-compose/     統合する（1工程）。settings.json・CLAUDE.md・合格条件をここだけで束ねる
 skills/harness-improve/     改善する（1工程）
 skills/harness-visualize/   可視化する（工程ではなく処理。連鎖に入らず単独で呼べる）
+skills/process-improve/     業務を棚卸しして改善する（5工程）
+skills/process-improve-view/  改善計画を1枚にする（処理）
 agents/                     レビュー役と評価役。生成側から分離されている
-reference/                  判定基準（両エージェントが毎回読む）と 設計.md の雛形
-scripts/                    図の構造 lint と 可視化 HTML の lint（どちらも依存なし）
-tests/                      lint の期待挙動を固定する 16 件（図 10 ＋ 可視化 6）＋ランナー
+reference/                  判定基準（各エージェントが毎回読む）と 設計.md の雛形
+scripts/                    図・可視化 HTML・業務改善の lint（どれも依存なし）
+tests/                      lint の期待挙動を固定する 27 件＋ランナー
 ```

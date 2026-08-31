@@ -105,7 +105,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/process-plan-lint.js" 業務改善/改善計
 版が並ぶと、素人には最新がどれか分かりません。
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/process-file-lint.js" <保存したパス>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" <保存したパス>
 ```
 
 **書き出したあとに実在を確かめます。** 確かめずに「保存しました」と伝えると、

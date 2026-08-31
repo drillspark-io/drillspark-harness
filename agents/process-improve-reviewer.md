@@ -37,7 +37,7 @@ ${CLAUDE_PLUGIN_ROOT}/reference/business-improvement-tables.md     ← 表の列
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/process-table-lint.js" 業務改善/業務一覧.md
 node "${CLAUDE_PLUGIN_ROOT}/scripts/process-plan-lint.js" 業務改善/改善計画.html
-node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-diagram-lint.js" <図の.mmd>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" <図の.mmd>
 ```
 
 **空欄の数・測り方の有無・H1〜H5・承認3種・作図規約は機械が見ます。**

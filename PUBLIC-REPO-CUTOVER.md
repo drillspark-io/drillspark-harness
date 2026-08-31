@@ -7,7 +7,7 @@ is done. What remains is publication.
 
 Extracted 2026-08-23 from a private workspace where the harness ran as
 `.claude/skills/harness-*`, `.claude/agents/harness-*`, `.claude/rules/`,
-`scripts/harness-diagram-lint.js` and `.claude/tests/`.
+`scripts/diagram-lint.js` and `.claude/tests/`.
 
 **Nothing syncs the two.** They were identical at extraction time apart from the
 sanitization listed below. Decide which one is canon before either drifts further.
@@ -24,7 +24,7 @@ sanitization listed below. Decide which one is canon before either drifts furthe
 | `harness-design-criteria.md` | `paths:` frontmatter dropped (plugins cannot distribute rules); moved to `reference/`, read explicitly by the agents |
 | `agents/*.md` | Criteria path switched to `${CLAUDE_PLUGIN_ROOT}/reference/`, with a Glob fallback and a refuse-to-judge rule |
 | `agents/harness-design-reviewer.md` | The 決着済み list was rebuilt: workspace-specific rulings removed, a slot added for the user's own |
-| `harness-diagram-lint.js` | Header comment paths generalized |
+| `diagram-lint.js` | Header comment paths generalized |
 | `tests/run.sh` | Rewritten to be plugin-relative |
 
 Verified absent: e-mail addresses, absolute local paths, drive letters, customer or

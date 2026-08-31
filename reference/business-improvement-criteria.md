@@ -61,7 +61,7 @@
 
 同じ DrillSpark を使うので、`harness-design-criteria.md` の作図 MUST がそのまま効く。
 機械が見るもの（数値ID・二重引用符・duration・多出力・到達性・レーンと線種・IDの重複）は
-`node scripts/harness-diagram-lint.js <file>` に任せ、**目視で数え直さない**。
+`node scripts/diagram-lint.js <file>` に任せ、**目視で数え直さない**。
 
 - **第一階層に工程だけ、第二階層に作業。** いきなり細かい作業を第一階層に置かない
 - **工程を承認してから作業を描いている。** 骨格が違うと下の階層が全部無駄になる
