@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * harness-diagram-lint — DrillSpark の図の「構造」を決定論で検査する。
+ * diagram-lint — DrillSpark の図の「構造」を決定論で検査する。
  *
- *   node "$CLAUDE_PLUGIN_ROOT/scripts/harness-diagram-lint.js" <file.mmd>
+ *   node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" <file.mmd>
  *   MCP で取得した mermaid をそのまま流す場合:
- *     ... | node "$CLAUDE_PLUGIN_ROOT/scripts/harness-diagram-lint.js" -
+ *     ... | node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" -
  *
  * 依存なし（Node 標準の fs だけ）。どのリポジトリからでも単体で動く。
  * exit 0 = 合格 / 2 = 違反あり / 1 = 実行エラー
