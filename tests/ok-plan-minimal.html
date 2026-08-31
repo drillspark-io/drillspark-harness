@@ -1,0 +1,95 @@
+<!doctype html>
+<!--
+  expect: OK x0
+  合格サンプル。8つの塊が data-block でそろい、外部読み込みゼロ、
+  本文の2種の語には data-mark が付いている。
+
+  このファイルは「既存 view-lint との違い」を固定する条件でもある:
+    - process-plan-lint.js  → exit 0（DrillSpark の URL に含まれる UUID を通す）
+    - harness-view-lint.js  → exit 2 / PRIVATE_INFO（UUID を私的情報として弾く）
+  UUID は架空の値（実在のプロジェクトIDではない）。
+  process-file-lint.js に渡す「実在するファイル」のサンプルも兼ねる。
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>改善計画 — 請求書を転記する</title>
+<style>
+  body { font-family: sans-serif; line-height: 1.7; margin: 2rem; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid #999; padding: 0.4rem 0.7rem; text-align: left; }
+  [data-mark] { background: #ffe9b0; border: 1px solid #d9a300; padding: 0 0.3rem; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>改善計画 — 請求書を転記する</h1>
+
+<section data-block="成功の形">
+  <h2>成功の形</h2>
+  <p>請求書処理が月2時間から1時間になれば成功。</p>
+</section>
+
+<section data-block="図または取れなかった経緯">
+  <h2>業務の図</h2>
+  <p><a href="https://drillspark.io/editor?id=00000000-0000-4000-8000-000000000000">DrillSpark でこの業務の図を開く</a></p>
+  <p>工程は 受け取る → 中身を読む → 表計算に入力する → 会計担当の確認を待つ → 返信する の5つ。</p>
+</section>
+
+<section data-block="改善案">
+  <h2>改善案</h2>
+  <table>
+    <tr>
+      <th>工程</th>
+      <th data-block="誰がやるか">誰がやるか</th>
+      <th data-block="優先度">優先度</th>
+      <th data-block="ECRSのどれか">ECRS</th>
+      <th>出どころ</th>
+      <th>改善案</th>
+    </tr>
+    <tr>
+      <td>3 金額を表計算に入力する</td>
+      <td>AIに任せる</td>
+      <td>1</td>
+      <td>S 簡単にする</td>
+      <td>本人の答え</td>
+      <td>PDFから金額・日付・取引先名を抜き出して表計算に書き込む</td>
+    </tr>
+    <tr>
+      <td>5 会計担当の確認を待つ</td>
+      <td>人がやる</td>
+      <td>2</td>
+      <td>R 並び替える</td>
+      <td><span data-mark="一般例">一般例</span></td>
+      <td>月末一括をやめ、届いた週に回す（同業の一般的なやり方から補ったもの。この職場の実態は聞けていない）</td>
+    </tr>
+  </table>
+</section>
+
+<section data-block="AI化依頼書">
+  <h2>AI化依頼書</h2>
+  <table>
+    <tr><th>工程</th><th>任せ方</th><th>承認が要る操作</th><th>削減見込み</th></tr>
+    <tr>
+      <td>3 金額を表計算に入力する</td>
+      <td>H2 最小限の指示</td>
+      <td>外部送信: 該当なし ／ データ更新: 承認あり（月末に一括確認）／ 金銭: 該当なし</td>
+      <td>1.5時間/月</td>
+    </tr>
+  </table>
+</section>
+
+<section data-block="保留">
+  <h2>保留</h2>
+  <table>
+    <tr><th>何が決まらなかったか</th><th>相談先</th><th>いつ</th></tr>
+    <tr>
+      <td>「週次レポートを作る」の目的が答えられない<span data-mark="未確認">未確認</span></td>
+      <td>田中さん</td>
+      <td>2026-08-31</td>
+    </tr>
+  </table>
+</section>
+
+</body>
+</html>

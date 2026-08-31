@@ -84,8 +84,56 @@ reference/harness-design-criteria.md  レビュー時の判定線。両エージ
 reference/設計.md.template            設計書の雛形
 scripts/harness-diagram-lint.js       図の構造を決定論で検査（依存なし）
 scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
-tests/                                lint の期待挙動を固定する 16 件＋ランナー
+
+skills/process-improve/               業務を棚卸しして改善する（5工程）
+skills/process-improve-view/          改善計画を1枚にする（処理）。判定はしない
+agents/process-expert.md              専門家役。起動時に渡された役割で案を出す。承認の場に出ない
+agents/process-improve-reviewer.md    業務改善の判定役。基準を読むだけで書き換えない
+reference/business-improvement-criteria.md  業務改善の判定線。判定役が毎回読む
+reference/business-improvement-tables.md    4つの表の列と入る値
+
+scripts/process-table-lint.js         業務改善の表を決定論で検査（依存なし）
+scripts/process-plan-lint.js          改善計画の1枚を決定論で検査（依存なし）
+scripts/process-file-lint.js          保存されたかを確かめる（依存なし）
+tests/                                lint の期待挙動を固定する 27 件＋ランナー
 ```
+
+### Two families, one plugin
+
+The plugin now covers **two subjects with the same method**.
+
+| | Subject | Where the current state comes from |
+|---|---|---|
+| `harness-*` | A Claude Code harness | The `.claude/` files, read by the agent |
+| `process-*` | **A human's actual work** | **Interviews.** There are no files to read |
+
+That inversion is the whole difference. `harness-improve` is built on *"finding facts is my job;
+ask the owner only for purpose."* For human work there is no `.claude/` to grep, so the facts come
+from asking too. Everything else transfers: one diagram grown in conversation rather than a
+before-and-after pair, unreadable spots drawn as flagged nodes rather than guessed, loops with a
+limit **and** a destination, and a criteria file the generating side cannot edit.
+
+`skills/process-improve/` is for **someone who has never done process improvement** — an ordinary
+employee looking at their own job. It builds a table of their work, ranks it by time using ABC
+analysis *by machine* (the user is never asked to compute a cumulative percentage), draws the one
+or two heaviest as a DrillSpark diagram, walks ECRS in order — **eliminate, combine, rearrange,
+simplify, asked one question at a time** rather than "please suggest improvements" — and ends with
+a hand-off note listing which steps to give to an AI and how far (H1–H5), which operations need a
+human approval, and how much time that would save.
+
+**It never implements anything, and it never connects saved time to anyone's performance review.**
+Both are stated as out of scope, because eliminating a step is a proposal about someone's job.
+
+Two marks travel with every diagram, and they are not the same thing:
+
+| Mark | Means |
+|---|---|
+| **未確認** | Could not be heard from the user — a gap, visible as a gap |
+| **一般例** | **The expert agent filled it in from general knowledge** |
+
+The second one is the dangerous one. A fluent, plausible-sounding proposal gets approved far more
+readily than a blank does, so the mark is attached *before* the draft is ever shown, and the
+conversation starts from the marked nodes.
 
 `skills/harness-visualize/` is a **処理 (workflow), not an eighth 工程 (stage)** — it does
 not join the chain below. It takes one workflow of a harness and renders the diagram, the
@@ -158,6 +206,36 @@ node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js" docs/harness/<name>/可�
 `EXTERNAL_REF` looks at **loading positions only** (`link href`, `src`, `url()`,
 `@import`) — a source URL in the body text is legitimate and passes.
 
+### The process-improvement lints
+
+Three more, same shape (no dependencies, `exit 0` / `2` / `1`, one finding per violation):
+
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/process-table-lint.js" 業務改善/業務一覧.md
+node "$CLAUDE_PLUGIN_ROOT/scripts/process-plan-lint.js"  業務改善/改善計画.html
+node "$CLAUDE_PLUGIN_ROOT/scripts/process-file-lint.js"  業務改善/改善計画.html
+```
+
+| lint | codes |
+|---|---|
+| `process-table-lint` | `EMPTY_CELL` `HOLD_WITHOUT_CONTACT` `TIME_WITHOUT_METHOD` `MISSING_HAS` `MISSING_APPROVAL` |
+| `process-plan-lint` | `MISSING_BLOCK` `EXTERNAL_REF` `MISSING_MARK` `PRIVATE_INFO` |
+| `process-file-lint` | `NOT_SAVED` |
+
+The table lint enforces one rule that runs through the whole design:
+
+> **"I don't know" is written as a value, never left blank. The value carries a destination
+> (who to ask). A "don't know" with no destination counts as blank. Only blank fails.**
+
+That is why `保留` (on hold) without a contact name is rejected: without it, every unanswerable
+row could be marked on-hold and the table would pass.
+
+> **`PRIVATE_INFO` means something narrower here than in `harness-view-lint`.** The visualization
+> lint rejects UUIDs; this one does not, because an improvement page carries the DrillSpark URL of
+> the diagram it describes — that link is the way back to the diagram. Same code name, deliberately
+> different scope. Running `harness-view-lint` against a `process-improve-view` page fails on
+> exactly that difference, and a frozen test pins it.
+
 ## Language
 
 The skill and agent bodies are Japanese and are not translated. They carry a lot of
@@ -172,24 +250,51 @@ claude plugin validate . --strict
 bash tests/run.sh
 ```
 
-`tests/run.sh` runs the two lints against 16 fixtures whose filename prefix encodes the
-expected exit code (`ok-*` → 0, `ng-*` → 2) — 10 `.mmd` for the diagram lint and 6 `.html`
-for the visualization lint — then validates the plugin and checks that every shipped file
-is present. Any mismatch exits 1.
+`tests/run.sh` runs the five lints against 27 fixtures whose filename prefix encodes the
+expected exit code (`ok-*` → 0, `ng-*` → 2), then validates the plugin and checks that every
+shipped file is present. Any mismatch exits 1.
 
-The `.html` fixtures also carry an `expect: <CODE> x<count>` line, and the runner checks
+| fixtures | lint |
+|---|---|
+| 10 `.mmd` | `harness-diagram-lint` |
+| 6 `*-view-*.html` | `harness-view-lint` |
+| 5 `*-plan-*.html` | `process-plan-lint` |
+| 6 `*-table-*.md` | `process-table-lint` |
+
+The `.html` and `.md` fixtures carry an `expect: <CODE> x<count>` line, and the runner checks
 the reported code and count, not just the exit status. An exit code alone is not a pass
 condition: a lint that returned 2 for everything would satisfy "violation sample exits 2".
 
+**The two `PRIVATE_INFO` scopes are not pinned against each other by any test.** The runner
+dispatches by filename — `*-view-*` to `harness-view-lint`, `*-plan-*` to `process-plan-lint` —
+so no fixture ever runs one lint's page through the other. Run by hand,
+`harness-view-lint tests/ok-plan-minimal.html` reports 9 findings, of which the UUID is one; the
+rest are structural checks that do not apply to an improvement page. **Nothing stops the two
+scopes from converging later.**
+
 ## Status and known limitations
 
-Current status: **`0.1.0` — extracted from a working private harness, not yet
+Current status: **`0.2.0` — extracted from a working private harness, not yet
 independently validated.** Stated plainly, because a harness that overstates its own
 maturity is exactly the failure mode it exists to prevent.
 
-- **This pipeline has never been produced by itself.** It was hand-written first and
-  diagrammed afterwards, in the reverse of the order it prescribes. A run in the correct
-  order was started and reached the first approval gate; the remaining stages are untried.
+- **The `process-*` family has never been run against real work.** It was built by running
+  this pipeline on itself, and the pass conditions are frozen and green — but no one has yet
+  taken an actual job through 業務一覧 → 図 → ECRS → hand-off note. Every claim about what it
+  does for a beginner is untested.
+- **`harness-*` was hand-written first and diagrammed afterwards**, in the reverse of the order
+  it prescribes. `process-*` is the first thing built in the correct order — purpose, workflow
+  list, diagrams, frozen conditions, then implementation — and **doing so exposed four defects
+  in the pipeline itself**, all now fixed:
+  - drawing a second workflow in the same context as the first silently broke two rules that
+    were written down and being followed until then
+  - the parent (the orchestrating conversation) gave instructions from memory of a diagram it
+    had discarded
+  - the parent's list of "places this change propagates to" was half the real count, and one of
+    the missed places was a **node label** carrying a number, not a note
+  - the parent miscounted the diagrams twice; counts now come from `list_diagrams`, not memory
+- The recurring shape: **the side that can only see one workflow is the side that catches the
+  side that can see all of them.** Six such catches in one build, every one a real defect.
 - **Measured against no harness at all, it has not yet shown a win.** In the one
   comparison run so far, a plain Claude Code session matched or beat it on all three
   points checked. That comparison was contaminated and is being re-taken; the honest
