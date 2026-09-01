@@ -40,5 +40,5 @@ skills/process-improve-view/  改善計画を1枚にする（処理）
 agents/                     レビュー役と評価役。生成側から分離されている
 reference/                  判定基準（各エージェントが毎回読む）と 設計.md の雛形
 scripts/                    図・可視化 HTML・業務改善の lint（どれも依存なし）
-tests/                      lint の期待挙動を固定する 27 件＋ランナー
+tests/                      lint の期待挙動を固定する 32 件（図10・HTML11・表9・保存2）＋ランナー
 ```
