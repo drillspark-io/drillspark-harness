@@ -10,7 +10,7 @@
  * exit 0 = 合格 / 2 = 違反あり / 1 = 実行エラー
  *
  * なぜ要るか:
- *   `validate_diagram` は**構文しか見ない**。実測（2026-08-22）で、decision を経ずに
+ *   `validate_diagram` は**構文しか見ない**。実測で、decision を経ずに
  *   task から2本の出力を引いた図が2回とも valid:true で通った。
  *   ファイル編集に反応する hook はリポジトリ内のファイルにしか当たらないので、
  *   MCP で取得しただけの図には効かない。数値IDの検査をこちらにも置いてあるのはそのため。
@@ -152,7 +152,7 @@ function lint(src) {
 
   const flowNodes = [...nodes.values()].filter((n) => !DATA_TYPES.has(n.type));
   // 10までは目安（DrillSpark 規約の aim）。止めるのは 15 超だけ — 分かりやすさのための
-  // 1ノード追加を上限が阻まないようにする（2026-09-01 オーナー決定）
+  // 1ノード追加を上限が阻まないようにする（オーナー決定）
   if (flowNodes.length < 5 || flowNodes.length > 15) {
     add('NODE_COUNT', '-', `process 系ノードが ${flowNodes.length} 個（5〜15に収める。10までが目安。document/database は数えない）`);
   }

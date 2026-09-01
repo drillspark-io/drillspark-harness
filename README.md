@@ -184,14 +184,14 @@ file-level operation that never opens them.
 
 **One session builds one 処理.** Drawing a second workflow in the context that just drew the
 first one leaks the first one's granularity, lane split and approval habits into it — measured
-on 2026-08-30, where two rules that are written down explicitly broke at once, and re-reading
+in practice, where two rules that are written down explicitly broke at once, and re-reading
 the rules did not fix it. Splitting the context did, on the first try.
 
 The split has to be a **session**, not a subagent: a subagent cannot talk to the owner, so the
 per-diagram approval gate stops existing, and routing the owner's answers through a parent puts
 the whole harness's context back in the seat that draws. That defect became visible only when the
 flow was drawn — the diagram had an edge from the owner's approval gate back into the subagent,
-and no such edge can exist (owner's finding, 2026-08-31).
+and no such edge can exist (owner's finding).
 
 Because 処理 are built one at a time, nothing sees the whole harness — which is what
 `skills/harness-compose/` is for. `settings.json`'s hooks and permissions, `CLAUDE.md` and the
@@ -203,7 +203,7 @@ it records as ⚠ and hands back.
 
 **Approval is concentrated above the diagram.** The diagram is the contract; everything below it
 is derived from the diagram plus the frozen pass conditions. The only gate left before
-implementation is freezing those conditions. Measured on 2026-08-24, gates placed below the
+implementation is freezing those conditions. Measured in practice, gates placed below the
 diagram filled up with information the owner could not act on, and the design review that used
 to sit there now runs inside the implementation stage — agent to agent, without stopping a human.
 
