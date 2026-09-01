@@ -1,14 +1,14 @@
 # 対応表: DrillSpark図 → Claude Code構成要素
 
-`harness-implement` と `harness-improve` が共有する唯一の対応表。
+`harness-implement`・`harness-compose`・`harness-improve` が共有する唯一の対応表。
 **推測禁止。この表に無い要素は「未マッピング」として実装のレビューへ回す。**
 
-検証: 2026-08-22。
+裏取り済み:
 - 作図規約は `get_diagram_rules()` の全文で裏取り（節番号は規約の節を指す）
 - 実データは実運用中のハーネス図2件について、全図・全ノード・全エッジ・全備考を手で通した
 - 右列の Claude Code 仕様は実物の `.claude/settings.json` / `.claude/agents/` で裏取りした
 
-> 本文の `5_3` `6_4` は、**このスキル自身を設計した DrillSpark 図のノード番号**。
+> 本文の「図6 `6_7`」のような番号は、**このスキル自身を設計した DrillSpark 図（とそのノード）の番号**。
 > その図は同梱していないので読み飛ばしてよい。残してあるのは指示の出所を追えるようにするため。
 
 ## 1. 単位のマッピング
@@ -30,7 +30,7 @@
 > だが困らない。処理どうしをつなぐ図は最初から存在せず、全体像は `設計.md` が持つ。
 > 「目的と処理一覧は文章、フローは図」という線引きがそのまま効いている。
 >
-> ドラフトの「サブプロセスノード `[[…]]` ＝ skill」は誤り。`[[…]]` はドリルダウンの存在を示す印にすぎない。
+> 「サブプロセスノード `[[…]]` ＝ skill」と読みたくなるが誤り。`[[…]]` はドリルダウンの存在を示す印にすぎない。
 
 ## 2. レーン → 担当（ドリルダウンの場合）
 
@@ -49,9 +49,8 @@
 > レーン名を機械チェックしないので通る。
 >
 > **決着済み（オーナー判断）**: 「**DrillSpark で必ずレーンを担当者にする必要はない**」。
-> レビュー役はこれを規約違反として MUST に挙げてくるが、**指摘としては正しく、判断としては却下**である。
-> 同じ指摘が毎回上がるので、レビューを頼むときは「マクロ図の工程レーンは決着済み」と先に伝えること。
-> 変更するならオーナーの再判断が要る。
+> この決着は判定基準（`reference/harness-design-criteria.md`）に「決着済み — 指摘しない」として
+> 取り込み済みで、レビュー役はもう挙げない。変更するならオーナーの再判断が要る。
 >
 > **点線の意味が変わる点に注意**（4節の決定論シグナルはドリルダウンでのみ成立する）。
 > マクロ図で「点線＝委譲」と読むと誤読になる。
@@ -65,13 +64,13 @@
 | 人間 | 備考 `lane: human`、なければレーン名に「オーナー/人間/承認」等 | 承認ゲート。`permissions.ask` か、skill 本文の停止指示 |
 | agent | 備考 `lane: agent`、なければレーン名が識別子形式（`article-writer` 等）／「〜エージェント」 | `.claude/agents/<name>.md`（frontmatter: `name` `description` `tools` `disallowedTools` `model`） |
 | システム | 備考 `lane: system`、なければレーン名に「検証/lint/CI」等 | hook（`.claude/settings.json`）または `.claude/hooks/<name>.js` |
-| **その図を回す本体** | レーン名が**その図に対応する skill 名そのもの**（`harness-implement（エージェント）` 等） | **新しい agent を作らない。** その skill の本文が担当。→ 1節「1図＝1 skill」 |
+| **その図を回す本体** | レーン名が**その図に対応する skill 名そのもの**（`harness-implement（エージェント）` 等） | **新しい agent を作らない。** その skill の本文が担当。→ 1節「1プロジェクト（＝1処理）＝1 skill」 |
 
 > **agent レーンと本体レーンの見分け**: レーン名が identifier 形式でも、
 > それが**この図自身の skill 名**なら agent ファイルは作らない。作ると
-> 「skill が同名 agent を呼ぶ」入れ子ができ、1図＝1 skill の対応が壊れる。
+> 「skill が同名 agent を呼ぶ」入れ子ができ、1処理＝1 skill の対応が壊れる。
 > **別の名前**の identifier レーン（`article-writer` / `harness-design-reviewer` 等）だけが agent。
-> 実測で、この区別が無いために対応表の行き先が2通りに読める状態だった（評価役の指摘 F）。
+> 実測で、この区別が無いために対応表の行き先が2通りに読める状態だったことがある（別インスタンスの評価で検出）。
 
 - 規約はレーン名を「責任を持つ役割・部門・システム」で付けろと定めるだけで（§5, §10）、
   **人間／agent／システムの区別は規約に無い**。名前からの推測になる。
@@ -80,7 +79,7 @@
   （例: root の `article-writer（執筆）` と子図の `article-writer（Maker）` は同一 agent）。
   正規化キー＝表示名から全角括弧の補足を除いた部分。
 - **担当が1つしかない図はレーンを省いてよい**（規約が単一アクターの場合の省略を明示的に許している）。
-  省いた場合でも 2.1 節の「人間の介入点は無し」宣言は Start か End の備考に書く。
+  省いた場合でも「人間の介入点は無し」の宣言は Start か End の備考に書く（判定基準の構造 MUST）。
   なお〈実装する〉の図は当初この形だったが、レビュー役を足した時点で担当が2つになり
   レーンを切り直した。**レビューを入れると単一担当ではなくなる**ので、省略の判断は後で覆りうる。
 
@@ -146,9 +145,11 @@
 **格上げは一方通行**: お願い → 仕組み。同じ失敗が2回起きたら注意書きではなく仕組みにする。
 逆向きに、モデルが自力でやるようになった手順は**削る**。ハーネスの部品は
 「モデルが自力でできないこと」のエンコードであって、増やすほど良くなるものではない
-（Skill が5個から100個に増えると実使用精度が 29.6% → 3.3% に落ちた実測がある）。
+（Skill が5個から100個に増えると実使用精度が 29.6% → 3.3% に落ちたという外部の実測報告がある。
+出典はこのリポジトリに残っていない — 桁感の参考にとどめる）。
 
-→ この判断は〈実装する〉の「先に自分で固める6判断」。作り終えたあと `harness-design-reviewer` が検証する。
+→ この判断は〈実装する〉の実装前判断の1つ（置き場の判断。数も一覧も正本は SKILL.md の側）。
+作り終えたあと `harness-design-reviewer` が検証する。
 
 ## 3.2 ループの止め方（構造からは取れない）
 
@@ -215,7 +216,7 @@ hook イベント（本リポジトリで実績があるもの）: `PreToolUse` 
 使うなら「実績なし」と実装のレビューに明示する。
 
 絞り込みは**2段**。`matcher` はツール名（`"Edit|Write"` `"Bash"`）、`if` は対象条件
-（`"Edit(frontend/src/**)"` `"Bash(gh pr merge *)"`）。ドラフトの「matcher:<正規表現>」だけでは不足。
+（`"Edit(frontend/src/**)"` `"Bash(gh pr merge *)"`）。`matcher` の1段だけでは不足。
 
 ```json
 { "type": "command",
@@ -232,8 +233,6 @@ hook イベント（本リポジトリで実績があるもの）: `PreToolUse` 
 ### 6.1 追加調査（公式ドキュメント 2026-08-22 取得）
 
 > 上の記述は本リポジトリの実績からの裏取り。以下は公式ドキュメントで確認した仕様で、
-> **旧記述の「frontmatter は skill が3つ・agent が5つ」は不足していた**（訂正）。
-
 **frontmatter — skill と agent で同義フィールドの綴りが違う。ここは必ず間違える。**
 
 | | skill（`SKILL.md`） | agent（`.claude/agents/*.md`） |
@@ -248,8 +247,8 @@ hook イベント（本リポジトリで実績があるもの）: `PreToolUse` 
 | その他 | `when_to_use` `argument-hint` `arguments` `disable-model-invocation` `user-invocable` `model` `effort` `context: fork` `agent` `background` `hooks` `shell` `metadata` | `model` `effort` `skills` `mcpServers` `hooks` `color` `background` |
 
 - **`permissionMode` / `tools` / `disallowedTools` / `maxTurns` で権限とループ上限を agent 単位に絞れる**
-  （`permissions.deny` はセッション全体に効くという以前の判断の**訂正**。禁止を agent 単位で掛けたいなら
-  `settings.json` ではなく agent の frontmatter を使う）
+  （`settings.json` の `permissions.deny` はセッション全体に効く。禁止を agent 単位で掛けたいなら
+  agent の frontmatter を使う）
 - **subagent は skill を自動継承しない。** `skills:` に明示した場合だけ。組み込み subagent は skill 不可
 - `description` ＋ `when_to_use` は skill 一覧で **1,536 字で打ち切られる**。要点を先頭に
 - **配布を見据えるなら6フィールドに絞る**: claude.ai アップロード・Skills API・`package_skill.py` は
@@ -280,16 +279,16 @@ hook イベント（本リポジトリで実績があるもの）: `PreToolUse` 
 
 - agent に `name` が無いと**ドキュメント扱いで黙って無視される**。`description` が無い・YAML が壊れている・
   `name` に `:` が入る場合は debug ログにしか出ない → `claude --debug`
-- skill/agent/hook はファイル監視で**再起動なしに反映される**。ただし
-  **セッション開始時に存在しなかったディレクトリを新設した場合だけは再起動が要る**
+- skill と hook はファイル監視で**再起動なしに反映される**。ただし
+  **セッション開始時に存在しなかったディレクトリを新設した場合は再起動が要る**。
+  **agent はこの限りではない（次項）**
 - **MCP ツールは `tools:` に書くだけでは呼べない（実測）**。
   agent の frontmatter に `mcp__drillspark__get_diagram` 等を列挙しても、起動時点では
   **deferred（スキーマ未ロード）のまま**で直接呼び出せない。エージェント本文で
   `ToolSearch(query="select:<名前をカンマ区切り>")` を先に走らせて初めて使える。
   → **MCP を使う agent は `tools:` に `ToolSearch` を必ず含め、本文にロード手順を書く。**
   `tools:` への列挙は「許可」であって「ロード」ではない
-- **訂正（実測）**: 上の「ファイル監視で再起動なしに反映される」は
-  **agent には当てはまらない**。
+- **新規 agent はファイル監視では反映されない（実測）**。
   既存の `.claude/agents/` に新規 `.md` を置き `claude plugin validate --strict` が exit 0 でも、
   **同一セッション内では `subagent_type` として解決されず** `Agent type '<name>' not found` になる
   （2回試行・ファイルは BOM 無し LF で既存 agent と同一構造）。
@@ -326,8 +325,10 @@ hook イベント（本リポジトリで実績があるもの）: `PreToolUse` 
 | hook の入出力 | `claude --debug` |
 | 環境全体 | `/doctor` |
 
-> `claude plugin eval` は 2026-08-22 時点の plugins-reference に**記載が無い**（early access の可能性はある）。
-> 当てにせず `claude plugin validate --strict` を使う。
+> `claude plugin eval` は **early access のコマンドとして存在する**（2026-09-01 に `claude plugin eval --help` で確認）。
+> eval ケース（`evals/**/case.yaml`、または `prompt.md`＋`graders/*.md`）をプラグインに対して走らせ、
+> 採点結果を返す。構文と同梱物の検証は従来どおり `claude plugin validate --strict` が主で、
+> 挙動の合否まで機械化したくなったら eval を検討する。
 
 **hook は5種。プログラムが書けなくても使える。**
 `command`（プログラム判定）/ `prompt`（日本語のルール文をモデルが判定）/ `agent`（実験的）/ `http` / `mcp_tool`。
