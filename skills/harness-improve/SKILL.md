@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 
 # harness-improve — ハーネス全体を改善する
 
-7つの工程のうち**〈改善する〉**。対応表は harness-implement と共有する
+工程のうち**〈改善する〉**（工程の全体は harness-implement が定義する）。対応表も harness-implement と共有する
 → [MAPPING.md](../harness-implement/MAPPING.md)
 
 ```text
