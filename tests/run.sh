@@ -153,6 +153,7 @@ for p in \
   skills/harness-compose/SKILL.md \
   skills/harness-improve/SKILL.md \
   skills/harness-visualize/SKILL.md \
+  agents/harness-asis-reviewer.md \
   agents/harness-design-reviewer.md \
   agents/harness-evaluator.md \
   reference/drillspark-setup.md \

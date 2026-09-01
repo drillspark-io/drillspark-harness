@@ -78,6 +78,7 @@ skills/harness-implement/     目的を考える → … → 評価する（6工
 skills/harness-compose/       統合する（1工程）。処理を束ね、1つしかない設定をここだけで書く
 skills/harness-improve/       改善する（1工程）。処理一覧 → 理想図 → 差分。実装はしない
 skills/harness-visualize/     可視化する（処理）。図＋設計＋実測を自己完結の HTML 1枚に
+agents/harness-asis-reviewer.md     現状図の突き合わせ（Checker）。実ファイルと照合し指摘だけ返す
 agents/harness-design-reviewer.md   設計レビュー（Checker）。指摘だけ返す
 agents/harness-evaluator.md         評価。合格条件を走らせ、目的の達成を測る
 reference/drillspark-setup.md         接続の確認と、未登録・未接続のときの案内。3つの skill が開始時に読む

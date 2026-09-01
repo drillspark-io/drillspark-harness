@@ -22,6 +22,7 @@
   ],
   "skills": "./skills",
   "agents": [
+    "./agents/harness-asis-reviewer.md",
     "./agents/harness-design-reviewer.md",
     "./agents/harness-evaluator.md",
     "./agents/process-expert.md",
