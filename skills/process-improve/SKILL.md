@@ -51,6 +51,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__
 ## 1. 業務の一覧を作る
 
 **1業務ずつ7項目をまとめて聞きます。** 目的だけ後からまとめて聞きません。
+列と入る値の正本は [`reference/business-improvement-tables.md`](../../reference/business-improvement-tables.md) です。
+聞き取った7項目のほかに、`聞いた相手` と `図の在りか` の列もこの正本のとおりに埋めます。
 
 | 聞く項目 | |
 |---|---|

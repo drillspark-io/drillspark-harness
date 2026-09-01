@@ -78,10 +78,10 @@ skills/harness-implement/     目的を考える → … → 評価する（6工
 skills/harness-compose/       統合する（1工程）。処理を束ね、1つしかない設定をここだけで書く
 skills/harness-improve/       改善する（1工程）。処理一覧 → 理想図 → 差分。実装はしない
 skills/harness-visualize/     可視化する（処理）。図＋設計＋実測を自己完結の HTML 1枚に
-agents/harness-asis-reviewer.md     現状図の突き合わせ（Checker）。実ファイルと照合し指摘だけ返す
-agents/harness-design-reviewer.md   設計レビュー（Checker）。指摘だけ返す
+agents/harness-asis-reviewer.md     現状図の突き合わせ。実ファイルと照合し指摘だけ返す
+agents/harness-design-reviewer.md   設計レビュー。指摘だけ返す
 agents/harness-evaluator.md         評価。合格条件を走らせ、目的の達成を測る
-reference/drillspark-setup.md         接続の確認と、未登録・未接続のときの案内。3つの skill が開始時に読む
+reference/drillspark-setup.md         接続の確認と、未登録・未接続のときの案内。各 skill が開始時に読む
 reference/harness-design-criteria.md  レビュー時の判定線。両エージェントが毎回読む
 reference/設計.md.template            設計ファイル一式の雛形（工程ごとに1ファイル）
 scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
@@ -191,7 +191,7 @@ The split has to be a **session**, not a subagent: a subagent cannot talk to the
 per-diagram approval gate stops existing, and routing the owner's answers through a parent puts
 the whole harness's context back in the seat that draws. That defect became visible only when the
 flow was drawn — the diagram had an edge from the owner's approval gate back into the subagent,
-and no such edge can exist (owner's finding).
+and no such edge can exist.
 
 Because 処理 are built one at a time, nothing sees the whole harness — which is what
 `skills/harness-compose/` is for. `settings.json`'s hooks and permissions, `CLAUDE.md` and the
