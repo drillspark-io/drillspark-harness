@@ -151,8 +151,10 @@ function lint(src) {
   }
 
   const flowNodes = [...nodes.values()].filter((n) => !DATA_TYPES.has(n.type));
-  if (flowNodes.length < 5 || flowNodes.length > 10) {
-    add('NODE_COUNT', '-', `process 系ノードが ${flowNodes.length} 個（5〜10に収める。document/database は数えない）`);
+  // 10までは目安（DrillSpark 規約の aim）。止めるのは 15 超だけ — 分かりやすさのための
+  // 1ノード追加を上限が阻まないようにする（2026-09-01 オーナー決定）
+  if (flowNodes.length < 5 || flowNodes.length > 15) {
+    add('NODE_COUNT', '-', `process 系ノードが ${flowNodes.length} 個（5〜15に収める。10までが目安。document/database は数えない）`);
   }
 
   // 分岐は decision から出す。ただしデータ系への線は Data Association なので分岐に数えない

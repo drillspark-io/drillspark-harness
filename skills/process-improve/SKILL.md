@@ -130,7 +130,7 @@ printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" -
 （`-` を渡すと標準入力から読みます）。
 
 `mcp__drillspark__validate_diagram` も通しますが、**こちらは構文しか見ません。**
-5〜10ノード・分岐が decision から出ているか・到達できないノードが無いかは、
+5〜15ノード（10までが目安）・分岐が decision から出ているか・到達できないノードが無いかは、
 上の構造 lint が見ます。**目視で数え直しません。**
 
 ### 【止まる②】工程の確認
