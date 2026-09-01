@@ -97,7 +97,7 @@ scripts/process-plan-lint.js          改善計画の1枚を決定論で検査�
 # 両系統から呼ぶ共有ツール（接頭辞を持たせない）
 scripts/diagram-lint.js               図の構造を決定論で検査（依存なし）
 scripts/file-saved-lint.js            指定パスに実際に保存されたかを確かめる（依存なし）
-tests/                                lint の期待挙動を固定する 27 件＋ランナー
+tests/                                lint の期待挙動を固定する 32 件＋ランナー
 ```
 
 ### Two families, one plugin
@@ -281,16 +281,17 @@ claude plugin validate . --strict
 bash tests/run.sh
 ```
 
-`tests/run.sh` runs the five lints against 27 fixtures whose filename prefix encodes the
-expected exit code (`ok-*` → 0, `ng-*` → 2), then validates the plugin and checks that every
-shipped file is present. Any mismatch exits 1.
+`tests/run.sh` runs the five lints as 32 checks — 30 fixtures whose filename prefix encodes
+the expected exit code (`ok-*` → 0, `ng-*` → 2), plus two save checks — then validates the
+plugin and checks that all 23 shipped files are present. Any mismatch exits 1.
 
-| fixtures | lint |
+| checks | lint |
 |---|---|
 | 10 `.mmd` | `diagram-lint` |
 | 6 `*-view-*.html` | `harness-view-lint` |
 | 5 `*-plan-*.html` | `process-plan-lint` |
-| 6 `*-table-*.md` | `process-table-lint` |
+| 9 `*-table-*.md` | `process-table-lint` |
+| 2 (a missing path, an existing file) | `file-saved-lint` |
 
 The `.html` and `.md` fixtures carry an `expect: <CODE> x<count>` line, and the runner checks
 the reported code and count, not just the exit status. An exit code alone is not a pass
