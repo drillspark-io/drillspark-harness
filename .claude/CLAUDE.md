@@ -39,6 +39,7 @@ skills/process-improve/     業務を棚卸しして改善する（5工程）
 skills/process-improve-view/  改善計画を1枚にする（処理）
 agents/                     レビュー役と評価役。生成側から分離されている
 reference/                  判定基準（各エージェントが毎回読む）と 設計.md の雛形
-scripts/                    図・可視化 HTML・業務改善の lint（どれも依存なし）
-tests/                      lint の期待挙動を固定する 32 件（図10・HTML11・表9・保存2）＋ランナー
+scripts/                    図・可視化 HTML・業務改善の lint と ABC 分析、書く前に効く柵2本（どれも依存なし）
+hooks/hooks.json            柵（PreToolUse）をプラグインとして配る定義
+tests/                      lint の期待挙動を固定する 40 件（図10・HTML11・表16・ABC1・保存2）＋ランナー
 ```

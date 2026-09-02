@@ -112,6 +112,20 @@ for f in "$DIR"/*.md; do
   fi
 done
 
+echo "== ABC 分析 =="
+# ok-table-abc.md（8/4/2/1/1 時間）を A x1 / B x2 / C x2 に分け、印の候補を語の一致で付ける。
+ABC="scripts/process-abc.js"
+out=$(node "$ABC" "$DIR/ok-table-abc.md" 2>&1); got=$?
+a=$(printf '%s\n' "$out" | grep -c '| A |'); b=$(printf '%s\n' "$out" | grep -c '| B |'); c=$(printf '%s\n' "$out" | grep -c '| C |')
+marks=$(printf '%s\n' "$out" | grep -c '転記（作業:')
+if [ "$got" -eq 0 ] && [ "$a" -eq 1 ] && [ "$b" -eq 2 ] && [ "$c" -eq 2 ] && [ "$marks" -eq 2 ]; then
+  echo "  PASS ok-table-abc.md  (A x1 / B x2 / C x2 / 転記の印 x2)"
+else
+  echo "  FAIL ok-table-abc.md  期待 exit 0・A x1 / B x2 / C x2 / 転記 x2 / 実際 exit $got・A x$a / B x$b / C x$c / 転記 x$marks"
+  printf '%s\n' "$out" | sed 's/^/        /'
+  fail=1
+fi
+
 echo "== 保存の検査 =="
 # 実在しないパスで NOT_SAVED、実在するファイルで exit 0。
 FILE_LINT="scripts/file-saved-lint.js"
@@ -161,6 +175,8 @@ for p in \
   reference/設計.md.template \
   scripts/diagram-lint.js \
   scripts/harness-view-lint.js \
+  scripts/harness-view-guard.js \
+  hooks/hooks.json \
   skills/process-improve/SKILL.md \
   skills/process-improve-view/SKILL.md \
   agents/process-expert.md \
@@ -169,7 +185,9 @@ for p in \
   reference/business-improvement-tables.md \
   scripts/process-table-lint.js \
   scripts/process-plan-lint.js \
-  scripts/file-saved-lint.js
+  scripts/file-saved-lint.js \
+  scripts/process-abc.js \
+  scripts/process-write-guard.js
 do
   if [ -f "$p" ]; then echo "  PASS $p"; else echo "  FAIL $p が無い"; fail=1; fi
 done

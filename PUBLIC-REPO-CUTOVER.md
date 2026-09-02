@@ -52,7 +52,7 @@ The repository exists at `jackasser/drillspark-harness` and is **private**.
 - [ ] confirm the DrillSpark MCP server name matches `mcp__drillspark__*`, or keep the
       README caveat as-is
 - [ ] decide whether the Japanese skill bodies ship untranslated (README says they do)
-- [ ] tag `v0.1.0`
+- [ ] tag the version in `.claude-plugin/plugin.json` (`v0.2.0` at the time of writing)
 - [ ] submit to the official marketplace
 
 ## Marketplace notes

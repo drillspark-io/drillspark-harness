@@ -24,8 +24,8 @@ so the useful parts are the ones a model cannot do alone. This plugin encodes tw
 
 | | |
 |---|---|
-| Claude Code | `2.1.196` or later (skill bodies use `${CLAUDE_PLUGIN_ROOT}`) |
-| Node.js | any version with `fs` — the lint script has no dependencies |
+| Claude Code | `2.1.233` or later (`claude plugin validate --strict`, which the pass criteria require; skill bodies also use `${CLAUDE_PLUGIN_ROOT}`, 2.1.196+) |
+| Node.js | any version with `fs` — the lint scripts have no dependencies |
 | DrillSpark account | required — see [Connecting DrillSpark](#connecting-drillspark) |
 | DrillSpark MCP server | connected, exposing `mcp__drillspark__*` tools |
 
@@ -85,11 +85,15 @@ reference/drillspark-setup.md         接続の確認と、未登録・未接続
 reference/harness-design-criteria.md  レビュー時の判定線。両エージェントが毎回読む
 reference/設計.md.template            設計ファイル一式の雛形（工程ごとに1ファイル）
 scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
+scripts/harness-view-guard.js         可視化 HTML を書く前に効く柵（上書き・回数欄・lint）。PreToolUse hook
+hooks/hooks.json                      guard 2本をプラグインとして配る hook 定義
 
 skills/process-improve/               業務を棚卸しして改善する（5工程）
 skills/process-improve-view/          改善計画を1枚にする（処理）。判定はしない
 agents/process-expert.md              専門家役。起動時に渡された役割で案を出す。承認の場に出ない
 agents/process-improve-reviewer.md    業務改善の判定役。基準を読むだけで書き換えない
+scripts/process-abc.js                業務一覧から ABC 分析と印の候補を決定論で出す
+scripts/process-write-guard.js        業務改善/ を書く前に効く柵（表と1枚の検査・図の書き換え先）。PreToolUse hook
 reference/business-improvement-criteria.md  業務改善の判定線。判定役が毎回読む
 reference/business-improvement-tables.md    4つの表の列と入る値
 scripts/process-table-lint.js         業務改善の表を決定論で検査（依存なし）
@@ -98,7 +102,7 @@ scripts/process-plan-lint.js          改善計画の1枚を決定論で検査�
 # 両系統から呼ぶ共有ツール（接頭辞を持たせない）
 scripts/diagram-lint.js               図の構造を決定論で検査（依存なし）
 scripts/file-saved-lint.js            指定パスに実際に保存されたかを確かめる（依存なし）
-tests/                                lint の期待挙動を固定する 32 件＋ランナー
+tests/                                lint の期待挙動を固定する 40 件＋ランナー
 ```
 
 ### Two families, one plugin
@@ -138,13 +142,13 @@ The second one is the dangerous one. A fluent, plausible-sounding proposal gets 
 readily than a blank does, so the mark is attached *before* the draft is ever shown, and the
 conversation starts from the marked nodes.
 
-`skills/harness-visualize/` is a **処理 (workflow), not an eighth 工程 (stage)** — it does
+`skills/harness-visualize/` is a **処理 (workflow), not a 工程 (stage)** — it does
 not join the chain below. It takes one workflow of a harness and renders the diagram, the
 design and what actually happened into a single self-contained HTML page. It renders; it
 does not judge. Grading stays with `harness-evaluator`.
 
-`skills/harness-improve/` **runs the pipeline backwards, and does not implement.** The other six
-stages start from a purpose and derive diagrams from it. Improve starts from the `.claude/` files
+`skills/harness-improve/` **runs the pipeline backwards, and does not implement.** Every other
+stage starts from a purpose and derives diagrams from it. Improve starts from the `.claude/` files
 that already exist and derives the diagram from *them* — that is the one direction no other stage
 covers, and it is why improve is the entry point for a harness you inherited.
 
@@ -158,8 +162,8 @@ because an unflagged guess gets approved and becomes the contract.
 
 The output is a diff, not an edit: improve never writes under `.claude/`. Diffs go to
 `harness-implement` as work orders, and a final cross-cutting pass reports what no single diagram
-can show — duplicated parts, parts no 処理 uses, and **how many times the harness stops its owner
-across the whole system**. It assumes nothing is set up: `設計.md`, `.claude/rules/`,
+can show — duplicated parts, parts that appear in no 処理's row (reported as unattributed, never
+as "unused"), and **how many times the harness stops its owner across the whole system**. It assumes nothing is set up: `設計.md`, `.claude/rules/`,
 `.claude/tests/` and the diagrams may all be absent, and creating that `設計.md` is often the most
 valuable thing a first improvement pass leaves behind.
 
@@ -232,7 +236,7 @@ check, so a machine looks instead:
 `EXTERNAL_REF` `NO_NODE` `NODE_ID` `DUPLICATE` `MISSING_SECTION` `PRIVATE_INFO`
 
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js" docs/harness/<name>/可視化/<date>.html
+node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js" docs/harness/<name>/可視化/<workflow>-<date>.html
 ```
 
 `EXTERNAL_REF` looks at **loading positions only** (`link href`, `src`, `url()`,
@@ -244,13 +248,15 @@ Three more, same shape (no dependencies, `exit 0` / `2` / `1`, one finding per v
 
 ```bash
 node "$CLAUDE_PLUGIN_ROOT/scripts/process-table-lint.js" 業務改善/業務一覧.md
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-plan-lint.js"  業務改善/改善計画.html
-node "$CLAUDE_PLUGIN_ROOT/scripts/file-saved-lint.js"  業務改善/改善計画.html
+node "$CLAUDE_PLUGIN_ROOT/scripts/process-table-lint.js" 業務改善/AI化依頼書.md --list 業務改善/業務一覧.md
+node "$CLAUDE_PLUGIN_ROOT/scripts/process-plan-lint.js"  業務改善/改善計画-<workflow>.html
+node "$CLAUDE_PLUGIN_ROOT/scripts/file-saved-lint.js"  業務改善/改善計画-<workflow>.html
+node "$CLAUDE_PLUGIN_ROOT/scripts/process-abc.js"       業務改善/業務一覧.md   # ABC ranks + waste marks, deterministic
 ```
 
 | lint | codes |
 |---|---|
-| `process-table-lint` | `EMPTY_CELL` `HOLD_WITHOUT_CONTACT` `TIME_WITHOUT_METHOD` `MISSING_HAS` `MISSING_APPROVAL` |
+| `process-table-lint` | `UNKNOWN_TABLE` `MISSING_COLUMN` `EMPTY_CELL` `HOLD_WITHOUT_CONTACT` `TIME_WITHOUT_METHOD` `MISSING_HAS` `MISSING_APPROVAL` `ENUM_VALUE` `NODE_REF` `ESTIMATE_NOT_ALLOWED` `GUESSED_IN_REQUEST` `DETAIL_MISSING` |
 | `process-plan-lint` | `MISSING_BLOCK` `EXTERNAL_REF` `MISSING_MARK` `PRIVATE_INFO` |
 | `file-saved-lint` | `NOT_SAVED` |
 
@@ -266,7 +272,8 @@ row could be marked on-hold and the table would pass.
 > lint rejects UUIDs; this one does not, because an improvement page carries the DrillSpark URL of
 > the diagram it describes — that link is the way back to the diagram. Same code name, deliberately
 > different scope. Running `harness-view-lint` against a `process-improve-view` page fails on
-> exactly that difference, and a frozen test pins it.
+> exactly that difference. **No test pins the two scopes against each other** — the runner
+> dispatches by filename (`*-view-*` / `*-plan-*`), so nothing stops them from converging later.
 
 ## Language
 
@@ -282,28 +289,24 @@ claude plugin validate . --strict
 bash tests/run.sh
 ```
 
-`tests/run.sh` runs the five lints as 32 checks — 30 fixtures whose filename prefix encodes
-the expected exit code (`ok-*` → 0, `ng-*` → 2), plus two save checks — then validates the
-plugin and checks that all 23 shipped files are present. Any mismatch exits 1.
+`tests/run.sh` runs the five lints as 40 checks — 37 fixtures whose filename prefix encodes
+the expected exit code (`ok-*` → 0, `ng-*` → 2), one ABC-analysis check and two save checks — then
+validates the plugin and checks that all 28 shipped files are present. Any mismatch exits 1.
 
 | checks | lint |
 |---|---|
 | 10 `.mmd` | `diagram-lint` |
 | 6 `*-view-*.html` | `harness-view-lint` |
 | 5 `*-plan-*.html` | `process-plan-lint` |
-| 9 `*-table-*.md` | `process-table-lint` |
+| 16 `*-table-*.md` | `process-table-lint` |
+| 1 (`ok-table-abc.md`: ranks A/B/C and marks with their source words) | `process-abc` |
 | 2 (a missing path, an existing file) | `file-saved-lint` |
 
 The `.html` and `.md` fixtures carry an `expect: <CODE> x<count>` line, and the runner checks
 the reported code and count, not just the exit status. An exit code alone is not a pass
 condition: a lint that returned 2 for everything would satisfy "violation sample exits 2".
-
-**The two `PRIVATE_INFO` scopes are not pinned against each other by any test.** The runner
-dispatches by filename — `*-view-*` to `harness-view-lint`, `*-plan-*` to `process-plan-lint` —
-so no fixture ever runs one lint's page through the other. Run by hand,
-`harness-view-lint tests/ok-plan-minimal.html` reports 9 findings, of which the UUID is one; the
-rest are structural checks that do not apply to an improvement page. **Nothing stops the two
-scopes from converging later.**
+The one thing no fixture pins is the difference between the two `PRIVATE_INFO` scopes
+(see [The process-improvement lints](#the-process-improvement-lints)).
 
 ## Status and known limitations
 
