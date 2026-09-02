@@ -81,7 +81,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" docs/harness/<ハーネ�
 
 **DrillSpark は必須。図が契約なので、図が無いと承認する対象そのものが無い。**
 
-**このスキルを起動したら、どの工程から入る回でも最初に `mcp__drillspark__list_projects()` を1回だけ流す。**
+**このスキルを起動したら、どの工程から入る回でも最初に `list_projects()`（接頭辞は `mcp__drillspark__` か `mcp__claude_ai_DrillSpark__`） を1回だけ流す。**
 繋がっていれば何も言わずに進む。
 1処理ずつ別のセッションで作るので、**工程1を通らずに〈処理を作る〉から入る回のほうが多い** —
 そこが一番 DrillSpark を使う場所なので、確認を工程1に紐づけない。

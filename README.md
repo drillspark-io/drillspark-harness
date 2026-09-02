@@ -27,7 +27,7 @@ so the useful parts are the ones a model cannot do alone. This plugin encodes tw
 | Claude Code | `2.1.233` or later (`claude plugin validate --strict`, which the pass criteria require; skill bodies also use `${CLAUDE_PLUGIN_ROOT}`, 2.1.196+) |
 | Node.js | 14 or later, **on `PATH` in every session** — the plugin's PreToolUse hooks start `node` on each `Write` / `Edit` / `Bash` call (see [Hooks](#hooks)). The scripts have no dependencies. Without `node` the guards silently do nothing |
 | DrillSpark account | required — see [Connecting DrillSpark](#connecting-drillspark) |
-| DrillSpark MCP server | connected, exposing `mcp__drillspark__*` tools |
+| DrillSpark MCP server | connected — as a server named `drillspark` (`mcp__drillspark__*`) or as the claude.ai connector (`mcp__claude_ai_DrillSpark__*`) |
 
 **DrillSpark is not optional.** The diagram is the contract every stage approves and
 derives from, so there is no degraded mode: with no diagram there is nothing to approve
@@ -82,17 +82,18 @@ claude --plugin-dir . -- "Use the process-improve skill to inventory my work"
 
 ### Hooks
 
-Installing the plugin registers two **PreToolUse hooks** in every session, in every project.
+Installing the plugin registers two guard scripts as **PreToolUse hooks** (three matchers, five
+commands) in every session, in every project.
 They are declared in `hooks/hooks.json`; nothing is written to your `settings.json`.
 
 | matcher | guard | what it stops |
 |---|---|---|
-| `Write` `Edit` `MultiEdit` `Bash` | `scripts/harness-view-guard.js` | overwriting a `docs/harness/*/可視化/*.html` page, a fix counter past 2, a page that fails the lint, a Bash write into that folder |
-| `Write` `Edit` `MultiEdit` `Bash` | `scripts/process-write-guard.js` | a table or plan under `業務改善/` that fails its lint; a Bash redirect / `tee` / `cp` / `mv` / `sed -i` into `業務改善/` |
+| `Write` `Edit` `MultiEdit` `Bash` | `scripts/harness-view-guard.js` | overwriting a `docs/harness/*/可視化/*.html` page, a fix counter past 2, a page that fails the lint, a Bash redirect / `tee` / `cp` / `mv` whose target is a `可視化/*.html` page |
+| `Write` `Edit` `MultiEdit` `Bash` | `scripts/process-write-guard.js` | a table or plan under `業務改善/` that fails its lint (the plugin's own file names are always checked; other files there are left alone unless they contain a plugin table); a Bash redirect / `tee` / `cp` / `mv` / `sed -i` into `業務改善/`, and any file redirect while the shell is inside `業務改善/` |
 | `mcp__*__update_diagram` | `scripts/process-write-guard.js` | `update_diagram` on a project that `業務改善/業務一覧.md` does not list — someone else's diagram |
 
-Everything else exits 0 immediately: the cost is one `node` start (about 100 ms) per call and
-no model context. To switch the guards off without uninstalling, set
+Everything else exits 0 immediately: the cost is one `node` start per guard — two per `Write` /
+`Edit` / `Bash` call, about 100 ms each — and no model context. To switch the guards off without uninstalling, set
 `DRILLSPARK_HARNESS_GUARDS=off`; to remove them, `claude plugin disable drillspark-harness`.
 
 ## What is included
@@ -131,8 +132,10 @@ scripts/diagram-lint.js               図の構造を決定論で検査（依存
 scripts/file-saved-lint.js            指定パスに実際に保存されたかを確かめる（依存なし）
 tests/                                lint と柵の期待挙動を固定するサンプル＋ランナー（件数は Validation 節）
 docs/harness/process-improve/         この pipeline を自分自身に適用した実例（設計・図・凍結した合格条件・実装記録）
+.claude-plugin/plugin.json            プラグインのマニフェスト（名前・版・skills の置き場）
 .claude-plugin/marketplace.json       このリポジトリを単独プラグインのマーケットプレースにする定義
 CHANGELOG.md                          版ごとの変更
+LICENSE                               Apache-2.0
 .github/workflows/tests.yml           CI — Ubuntu と Windows で bash tests/run.sh
 ```
 
@@ -249,8 +252,8 @@ to sit there now runs inside the implementation stage — agent to agent, withou
 `UNPARSED` `SKIPPED` `DUPLICATE` `UNDEFINED` `NODE_ID` `NO_DURATION` `DECISION_FORM`
 `START_END` `NODE_COUNT` `MULTI_OUTPUT` `NO_EXIT` `UNREACHABLE` `ORPHAN` `EDGE_STYLE`
 
-Every lint in this plugin also returns `SYNTAX` for input it cannot parse at all, and stops
-there — the other checks are not run on it.
+The four content lints (diagram, view, plan, table) also return `SYNTAX` for input they cannot
+parse at all; `diagram-lint` reports the unparsed lines (`UNPARSED`) first.
 
 ```bash
 node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" diagram.mmd   # 0 / 2 / 1
@@ -330,9 +333,9 @@ claude plugin validate . --strict
 bash tests/run.sh
 ```
 
-`tests/run.sh` runs the five lints as 57 checks — 54 fixtures whose filename prefix encodes
-the expected exit code (`ok-*` → 0, `ng-*` → 2), one ABC-analysis check and two save checks —
-then 49 guard checks and one hook-wiring check, validates the plugin and checks that all 33
+`tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
+the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
+then 54 guard checks and one hook-wiring check, validates the plugin and checks that all 33
 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
@@ -342,9 +345,9 @@ do not update them by hand.)
 | 8 `*-view-*.html` | `harness-view-lint` |
 | 7 `*-plan-*.html` | `process-plan-lint` |
 | 22 `*-table-*.md` | `process-table-lint` |
-| 1 (`ok-table-abc.md`: ranks A/B/C and marks with their source words) | `process-abc` |
+| 2 (`ok-table-abc.md`: ranks A/B/C and marks with their source words; `ok-table-abc-year.md`: `/週` and `/年` totals converted to a month) | `process-abc` |
 | 2 (a missing path, an existing file) | `file-saved-lint` |
-| 49 (PreToolUse JSON fed to each guard: what it stops, what it must let through, malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
+| 54 (PreToolUse JSON fed to each guard: what it stops, what it must let through, malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 
 Every fixture carries an `expect: <CODE> x<count>` line (`%% expect:` in `.mmd`), and the runner

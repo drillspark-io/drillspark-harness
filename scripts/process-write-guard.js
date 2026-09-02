@@ -10,11 +10,12 @@
  *   1. `業務改善/` 配下（サブフォルダ含む）の .md / .markdown への Write / Edit —
  *      書いたあとの中身を process-table-lint に通し、落ちれば書かせない。
  *      `業務改善/` 直下に 業務一覧.md があれば突き合わせ（--list）も掛ける。
- *      表を持たない .md（教訓.md）と、業務改善の表を1つも持たない .md（lint が SYNTAX だけを返す
- *      別件の議事録など）は対象外
+ *      プラグインの固定名（業務一覧.md・改善案.md・AI化依頼書.md・保留.md）は中身に関係なく必ず検査する。
+ *      それ以外の .md は、表を持たない（教訓.md）か、業務改善の表を1つも認識できない（lint が SYNTAX を返す
+ *      別件の議事録など。空行で切れた続きの ORPHAN_ROW が伴ってもよい）なら対象外
  *   2. `業務改善/` 配下の .html / .htm への Write / Edit — process-plan-lint に通す。
- *      上書きは止めない（1枚は上書きが設計）。`data-block=` を1つも持たない HTML は
- *      このプラグインの1枚ではないので対象外
+ *      上書きは止めない（1枚は上書きが設計）。固定名 改善計画-*.html は印が無くても必ず検査し、
+ *      それ以外で `data-block=` を1つも持たない HTML はこのプラグインの1枚ではないので対象外
  *   3. Bash — 見るのは書き込みの宛先だけ。`業務改善/` へのリダイレクト（> >> tee）、
  *      宛先が `業務改善/` の cp / mv / install と sed -i、それに cwd が 業務改善/ 配下か
  *      コマンドに `cd …業務改善` があるときのファイルへのリダイレクトを止める
@@ -42,10 +43,13 @@ const ROOT = /^(.*(?:^|[\\/])業務改善)[\\/]/;
 /** Bash: 宛先が 業務改善/ のもの。語の直後にパス区切りを必須にして「業務改善」を含むだけの commit や grep を止めない */
 const REDIRECT_TO = /(?:^|[\s;&|(])\d?>>?\s*["']?[^\s"']*業務改善[\\/]|\btee\b[^|;&]*業務改善[\\/]/;
 /** cp / mv / install は 業務改善/ の引数が最後（＝宛先）のときだけ。元ファイルが 業務改善/ の cp は止めない */
-const COPY_TO = /\b(?:cp|mv|install)\b[^|;&]*\s\S*業務改善[\\/][^\s"'|;&]*["']?\s*(?=$|[|;&]|\d?>)/;
+const COPY_TO = /\b(?:cp|mv|install)\b[^|;&]*\s\S*業務改善(?:[\\/][^\s"'|;&]*)?["']?\s*(?=$|[|;&]|\d?>)/;
 const SED_IN_PLACE = /\bsed\b[^|;&]*\s--?i[^|;&]*業務改善[\\/]/;
 /** 業務改善/ に入ってから書く形。cwd の判定は完全一致のセグメントで見る（業務改善案/ は別物） */
-const CD_INTO = /\bcd\s+[^;&|]*業務改善(?=[\\/"'\s]|$)/;
+const CD_INTO = /\bcd\s+[^;&|]*業務改善(?=[\\/"'\s;&|]|$)/;
+/** プラグイン自身の成果物の名前。中身に関係なく必ず検査に掛ける（下の免除は他人のファイルにだけ効く） */
+const OWN_MD = /^(業務一覧|改善案|AI化依頼書|保留)\.(md|markdown)$/i;
+const OWN_HTML = /^改善計画-.+\.html?$/i;
 /** ファイルへのリダイレクト。>&1 / 2>&1 は宛先が & で始まるので当たらず、/dev/null は後で除く */
 const ANY_REDIRECT = /(?:^|[\s;&|(])\d?>>?\s*["']?([^\s"'&][^\s"']*)|\btee\b(?:\s+-\S+)*\s+["']?([^\s"'-][^\s"']*)/g;
 
@@ -141,23 +145,26 @@ function main() {
   if (content === null) process.exit(0);
 
   if (isMd) {
-    // 表を持たない .md（教訓.md など）は検査の対象外。表の検査は表があるものだけに掛ける
-    if (!/^\s*\|.*\|\s*$/m.test(content)) process.exit(0);
+    const own = OWN_MD.test(path.basename(file));
+    // 表を持たない .md（教訓.md など）は検査の対象外。表の検査は表があるものだけに掛ける（固定名の表は必ず掛ける）
+    if (!own && !/^\s*\|.*\|\s*$/m.test(content)) process.exit(0);
     const root = ROOT.exec(file);
     const listPath = root ? path.join(root[1], '業務一覧.md') : null;
     const extra = path.basename(file) !== '業務一覧.md' && listPath && fs.existsSync(listPath) ? ['--list', listPath] : [];
     const r = run('process-table-lint.js', content, extra);
     if (r.status === 0) process.exit(0);
     if (r.status === 2) {
-      // 業務改善の表を1つも認識できない（SYNTAX だけ）なら、このプラグインの表ではない — 別件の議事録などを止めない
+      // 固定名でない .md で、業務改善の表を1つも認識できない（SYNTAX。空行で切れた続き ORPHAN_ROW が伴ってもよい）なら
+      // このプラグインの表ではない — 別件の議事録などを止めない。固定名（業務一覧.md など）は中身が何でも止める
       const codes = codesOf(r.out);
-      if (codes.length > 0 && codes.every((c) => c === 'SYNTAX')) process.exit(0);
+      if (!own && codes.includes('SYNTAX') && codes.every((c) => c === 'SYNTAX' || c === 'ORPHAN_ROW')) process.exit(0);
       stop(['process-write-guard: 表の検査に落ちたので書かない。指摘どおり直してから書き直す。', r.out]);
     }
     stop([`process-write-guard: 表の検査が実行エラー（exit ${r.status}）。直さずに利用者へ報告する。`, r.out]);
   }
-  // 塊の印 data-block= を1つも持たない HTML は、このプラグインの1枚ではない
-  if (!/data-block\s*=/i.test(content)) process.exit(0);
+  // 固定名でない HTML で、塊の印 data-block= を1つも持たないものは、このプラグインの1枚ではない。
+  // 改善計画-*.html は印が1つも無くても止める（印を落とした1枚を素通しにしない）
+  if (!OWN_HTML.test(path.basename(file)) && !/data-block\s*=/i.test(content)) process.exit(0);
   const r = run('process-plan-lint.js', content);
   if (r.status === 0) process.exit(0);
   if (r.status === 2) stop(['process-write-guard: 1枚の検査に落ちたので書かない。落ちた箇所だけ直してから書き直す。', r.out]);

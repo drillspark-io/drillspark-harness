@@ -40,7 +40,7 @@ allowed-tools: Read, Write, Grep, Glob, Bash, mcp__drillspark__get_project, mcp_
 
 **「図 無し」と「図が取れない」を混同しない。** `設計.md` が DrillSpark のプロジェクトを参照しているのに
 `mcp__drillspark__*` が使えないなら、それは**図が無いのではなく繋がっていない**。
-`設計.md` に図の参照があるときは `mcp__drillspark__list_projects()` を1回流して確かめ、
+`設計.md` に図の参照があるときは `list_projects()`（接頭辞は `mcp__drillspark__` か `mcp__claude_ai_DrillSpark__`） を1回流して確かめ、
 繋がらなければ**止めて案内する** → [`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)。
 黙って「図 無し」と描くと、**在る図を無いことにした1枚**が残り、次の人はそれを現状として読む。
 

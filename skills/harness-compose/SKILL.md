@@ -43,7 +43,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 
 ## 始める前に
 
-**DrillSpark に繋がるか確かめる。** `mcp__drillspark__list_projects()` を1回だけ流す。
+**DrillSpark に繋がるか確かめる。** `list_projects()`（接頭辞は `mcp__drillspark__` か `mcp__claude_ai_DrillSpark__`） を1回だけ流す。
 繋がっていれば何も言わずに進む。繋がらなければ止めて案内する
 （→ [`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)）。
 統合そのものは図を書かないが、**介入点の照合で処理ごとの図を読む**ので必要。

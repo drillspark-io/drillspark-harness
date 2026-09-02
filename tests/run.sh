@@ -142,6 +142,19 @@ else
   fail=1
 fi
 
+# ok-table-abc-year.md（8時間/月・1時間/週・24時間/年・１，２００分／年）を 週 ×52/12・年 ÷12 で月に直し、
+# A x1 / B x2 / C x1 に分ける（直す前は /月 以外が「単位不明」に落ちていた）。
+out=$(node "$ABC" "$DIR/ok-table-abc-year.md" 2>&1); got=$?
+a=$(printf '%s\n' "$out" | grep -c '| A |'); b=$(printf '%s\n' "$out" | grep -c '| B |'); c=$(printf '%s\n' "$out" | grep -c '| C |')
+unknown=$(printf '%s\n' "$out" | grep -c '単位不明')
+if [ "$got" -eq 0 ] && [ "$a" -eq 1 ] && [ "$b" -eq 2 ] && [ "$c" -eq 1 ] && [ "$unknown" -eq 0 ]; then
+  echo "  PASS ok-table-abc-year.md  (A x1 / B x2 / C x1 / 単位不明 x0)"
+else
+  echo "  FAIL ok-table-abc-year.md  期待 exit 0・A x1 / B x2 / C x1 / 単位不明 x0 / 実際 exit $got・A x$a / B x$b / C x$c / 単位不明 x$unknown"
+  printf '%s\n' "$out" | sed 's/^/        /'
+  fail=1
+fi
+
 echo "== 保存の検査 =="
 # 実在しないパスで NOT_SAVED、実在するファイルで exit 0。
 FILE_LINT="scripts/file-saved-lint.js"
@@ -242,6 +255,14 @@ printf '| 日付 | 議題 | 決めたこと |\n|---|---|---|\n| 1日 | 予算 | 
 guard_case "$PROC_GUARD" 0 "" "process: 業務改善/ の無関係な表（議事録）は通す"   Write "$T/業務改善/議事録.md" "$T/other/議事録.md"
 printf '<!doctype html>\n<html><body><p>memo</p></body></html>\n' > "$T/other/memo.html"
 guard_case "$PROC_GUARD" 0 "" "process: 業務改善/ の無関係な HTML は通す"        Write "$T/業務改善/memo.html" "$T/other/memo.html"
+# 免除は他人のファイルにだけ効く。プラグインの固定名は中身が何でも検査に掛ける
+guard_case "$PROC_GUARD" 2 "1枚の検査に落ちた" "process: 改善計画-*.html は data-block が無くても検査する" Write "$T/業務改善/改善計画-x.html" "$T/other/memo.html"
+printf '| 業務 | 担当 | 時間 |\n|---|---|---|\n| 転記 | 経理 | 2h |\n' > "$T/other/別の表.md"
+guard_case "$PROC_GUARD" 2 "表の検査に落ちた" "process: 業務一覧.md は列名が違っても検査する"      Write "$T/業務改善/業務一覧.md" "$T/other/別の表.md"
+printf '| 日付 | 議題 | 決めたこと |\n|---|---|---|\n| 1日 | 予算 | 継続 |\n\n| 2日 | 人事 | 保留 |\n' > "$T/other/議事録2.md"
+guard_case "$PROC_GUARD" 0 "" "process: 無関係な表は空行で切れていても通す"         Write "$T/業務改善/議事録.md" "$T/other/議事録2.md"
+guard_case "$PROC_GUARD" 2 "Write" "process: cd 業務改善; > も止める"                Bash - - - - "cd 業務改善; echo x > 表.md"
+guard_case "$PROC_GUARD" 2 "Write" "process: cp -r の宛先がフォルダ 業務改善 でも止める" Bash - - - - "cp -r src 業務改善"
 printf '| 業務名 | 図の在りか |\n|---|---|\n| a | https://example.test/editor?id=11111111-1111-4111-8111-111111111111 |\n' > "$T/業務改善/業務一覧.md"
 guard_case "$PROC_GUARD" 2 "書き換えない" "process: 一覧に無い図への update_diagram は止める" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
 guard_case "$PROC_GUARD" 0 "" "process: 一覧にある図への update_diagram は通す"     mcp__drillspark__update_diagram - - - "$T" - 11111111-1111-4111-8111-111111111111

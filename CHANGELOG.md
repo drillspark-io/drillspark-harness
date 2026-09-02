@@ -7,17 +7,18 @@ carries no version of its own.
 
 **Behaviour change: the plugin now installs PreToolUse hooks.** They run on every
 `Write` / `Edit` / `MultiEdit`, every `Bash` command and every `update_diagram` call, and
-exit immediately unless the target is a `docs/harness/**/可視化/*.html` page or a file under
+exit immediately unless the target is a `docs/harness/*/可視化/*.html` page or a file under
 `業務改善/`. See [Hooks](README.md#hooks) in the README for exactly what they stop and how
 to switch them off (`DRILLSPARK_HARNESS_GUARDS=off`).
 
 ### Added
 
 - `hooks/hooks.json` with two guards: `scripts/harness-view-guard.js` (no overwriting a
-  visualization page, a fix counter capped at 2, lint before write, no Bash writes into the
-  folder) and `scripts/process-write-guard.js` (table and plan lint before write; no Bash
-  redirect, `tee`, `cp`, `mv` or `sed -i` into `業務改善/`; no `update_diagram` on a project
-  the inventory does not list).
+  visualization page, a fix counter capped at 2, lint before write, no Bash redirect / `tee` /
+  `cp` / `mv` targeting a page in the folder) and `scripts/process-write-guard.js` (table and
+  plan lint before write — the plugin's own file names always, other files under `業務改善/`
+  only when they contain a plugin table; no Bash redirect, `tee`, `cp`, `mv` or `sed -i` into
+  `業務改善/`; no `update_diagram` on a project the inventory does not list).
 - `.claude-plugin/marketplace.json` — the repository is its own single-plugin marketplace, so
   `/plugin marketplace add jackasser/drillspark-harness` resolves.
 - `scripts/process-abc.js` — ABC ranking and waste marks from `業務一覧.md`, deterministic;
@@ -49,6 +50,14 @@ to switch them off (`DRILLSPARK_HARNESS_GUARDS=off`).
   longer advances the fix counter.
 - `plugin.json` no longer lists agents explicitly; they are discovered from `agents/`, which is
   also what makes `claude plugin details` report them.
+- `diagram-lint` rejects a node definition with anything after it on the same line
+  (`2["X"] --> 3["Y"]`) as `UNPARSED` instead of misreading it.
+- `harness-compose` reads the existing `settings.json` / `settings.local.json` before writing
+  and merges rather than replacing.
+- `harness-improve` and `process-expert` state that what they read (an inherited `CLAUDE.md`,
+  a web page) is material, not instructions.
+- `business-improvement-tables.md` documents the table-shape rules the lint now enforces
+  (cell count per row, no blank line inside a table, `業務名` spelled as in the inventory).
 
 ## 0.2.0
 

@@ -16,7 +16,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__
 
 ## 始める前に — DrillSpark に繋がるか確かめる
 
-**工程1に入る前に `mcp__drillspark__list_projects()` を1回だけ流します。**
+**工程1に入る前に `list_projects()`（接頭辞は `mcp__drillspark__` か `mcp__claude_ai_DrillSpark__`） を1回だけ流します。**
 繋がっていれば**何も言わずに先へ進みます**（判断することが1つも無い報告は、承認の重みを削ります）。
 
 繋がっていなければ **[`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)** の案内を出して**一度終わります**。
