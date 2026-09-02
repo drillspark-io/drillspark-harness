@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  run:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # tests/run.sh skips `claude plugin validate` when the CLI is absent, so install it
+      # to keep the manifest check in CI. Validation is local and needs no login.
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: bash tests/run.sh
+        shell: bash

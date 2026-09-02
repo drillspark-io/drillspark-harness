@@ -1,8 +1,8 @@
 ---
 name: harness-asis-reviewer
 description: 現状図（as-is）を、描いた側とは別インスタンスで実ファイルと突き合わせる。全ノード・全エッジに実ファイルの根拠か要確認印があるかだけを見て、指摘だけ返す。修正はしない。
-tools: Read, Grep, Glob, ToolSearch, mcp__drillspark__get_project, mcp__drillspark__get_diagram
-disallowedTools: Edit, Write, mcp__drillspark__update_diagram
+tools: Read, Grep, Glob, ToolSearch, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__get_diagram
+disallowedTools: Edit, Write, mcp__drillspark__update_diagram, mcp__claude_ai_DrillSpark__update_diagram
 model: inherit
 ---
 

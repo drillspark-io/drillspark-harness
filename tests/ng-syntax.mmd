@@ -1,0 +1,11 @@
+%% expect: SYNTAX x1
+graph LR
+  %% 違反: flowchart ではなく graph で始まっている（DrillSpark は graph を受け付けない）
+  1(["Start"])
+  %% duration[1]: 0
+  2["下書きを作る"]
+  %% duration[2]: 10
+  3(["End"])
+  %% duration[3]: 0
+  1 --> 2
+  2 --> 3

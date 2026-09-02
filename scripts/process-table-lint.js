@@ -31,15 +31,17 @@
  *   - `承認が要る操作` の判断の**妥当さ**（`承認なし` を選ぶのは可。決めていないのが不合格）。
  *     見るのは「3種それぞれに判断が1つ続いているか」だけで、
  *     **`<種類>: <判断>` の並び順を前提にする**（`承認あり（外部送信）` のような逆順は拾えない）
- *   - `かかる時間` が `頻度 × 所要時間 = 合計` の形か（数字が1つでもあれば「ある」と見る）
+ *   - `かかる時間` の `頻度 × 所要時間` の部分（見るのは合計 `N時間/月`（週・年でも可）が
+ *     あるかだけ。掛け算が合っているかは見ない）
  *   - `保留：`／`未確認：` の後ろが実在の人名か（日本語の固有名詞判定は決定論にならない）
+ *   - コードブロック（```）の中かどうか。表の外にある `|` 始まりの行は全部 ORPHAN_ROW になる
  *   - `優先度` の根拠が「仕事の目的」への効き方か（数字であることしか見ない）
  *   - **4つの表がそろっているか**（無い表は無いまま通る。1ファイル1表でも複数表でも動く）
  *   - **業務改善の列名を2つ以上持たない表**（別件の表と見なして触らない）
  *   - 改善案.md の「成功の形」「案が出なかった段階とその理由」の節（表ではないので対象外）
  *   - 行の `工程` が図に実在するか（図はこのファイルの外にある。先頭がノードIDの形かだけ見る）
  *   - 業務一覧が手元に無いときの突き合わせ（`--list` で渡されず、同じファイルにも無ければ
- *     GUESSED_IN_REQUEST と DETAIL_MISSING は**出ない**。無いことを咎めない）
+ *     GUESSED_IN_REQUEST・DETAIL_MISSING・UNKNOWN_WORK は**出ない**。無いことを咎めない）
  */
 
 const fs = require('fs');
@@ -97,6 +99,12 @@ const ENUMS = {
 
 /** 業務一覧で「分からない」を値として書ける列と、その書き方 */
 const UNCONFIRMED_COLUMNS = ['誰が', 'きっかけ', '作業', '使う道具', '次へ渡す先', 'かかる時間'];
+/**
+ * 「保留」「未確認」を値として書ける列。語は列で分けない —
+ * 仕事の目的に「未確認」、誰がに「保留」と入れ違えて書いても、名前が無ければ同じ逃げ道
+ */
+const HOLD_COLUMNS = ['仕事の目的', ...UNCONFIRMED_COLUMNS];
+const HOLD_WORD = /^(保留|未確認)/;
 /** 工程2で選ばれてから聞く4列。それまでは `後で聞く` と書ける（2段の業務一覧） */
 const LATER_COLUMNS = ['きっかけ', '作業', '使う道具', '次へ渡す先'];
 const LATER = '後で聞く';
@@ -113,17 +121,44 @@ const NO_ESTIMATE = /H[3-5]/;
 
 const SEPARATOR = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
 
+/** 太字やバッククォートの飾りは値ではない。定義値と照合する前に外す */
+const plain = (v) => v.replace(/\*\*|`/g, '').trim();
+
+/** セルの中の `\|`（縦線そのもの）で列を切らない。一時的に別の文字へ逃がしてから割る */
+const ESCAPED_PIPE = String.fromCharCode(0);
+
 function cells(line) {
-  let t = line.trim();
+  let t = line.trim().split('\\|').join(ESCAPED_PIPE);
   if (t.startsWith('|')) t = t.slice(1);
   if (t.endsWith('|')) t = t.slice(0, -1);
-  return t.split('|').map((c) => c.trim());
+  return t.split('|').map((c) => c.split(ESCAPED_PIPE).join('|').trim());
 }
 
-/** Markdown の表を拾う。ヘッダ行 → 区切り行 → データ行 の並びだけを表と見なす */
+/**
+ * かかる時間の「合計」を月の時間で読む（`process-abc.js` と同じ規則。片方を直したらもう片方も直す）。
+ * 全角の数字・`．＝／，` を半角にし、桁区切りのカンマを除いてから、
+ * `N(時間|h|分)/(月|週|年)` の**最後の一致**を合計と見る（`=` は無くてよい）。読めなければ null
+ */
+function hoursPerMonth(text) {
+  const t = text
+    .replace(/[０-９．＝／，]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/(?<=[0-9]),(?=[0-9]{3}(?![0-9]))/g, '');
+  const all = [...t.matchAll(/([0-9]+(?:\.[0-9]+)?)\s*(時間|h|分)\s*\/\s*(月|週|年)/g)];
+  if (all.length === 0) return null;
+  const [, num, unit, per] = all[all.length - 1];
+  const hours = unit === '分' ? Number(num) / 60 : Number(num);
+  return per === '週' ? hours * 52 / 12 : per === '年' ? hours / 12 : hours;
+}
+
+/**
+ * Markdown の表を拾う。ヘッダ行 → 区切り行 → データ行 の並びだけを表と見なす。
+ * どの表にも入らなかった `|` 始まりの行（表の途中に空行が入って切れた続き）は orphans に返す —
+ * 黙って捨てると、その行の検査だけが無かったことになる
+ */
 function parseTables(src) {
   const lines = src.split(/\r?\n/);
   const tables = [];
+  const taken = new Set();
 
   for (let i = 0; i < lines.length; i++) {
     if (!/\|/.test(lines[i])) continue;
@@ -132,10 +167,12 @@ function parseTables(src) {
     const header = cells(lines[i]);
     const rows = [];
     let j = i + 2;
+    taken.add(i).add(i + 1);
     for (; j < lines.length; j++) {
       const line = lines[j];
       if (!/\|/.test(line) || !line.trim()) break;
       rows.push({ values: cells(line), line: j + 1 });
+      taken.add(j);
     }
 
     const known = TABLES.find((t) => t.must.every((col) => header.includes(col)));
@@ -149,7 +186,10 @@ function parseTables(src) {
     i = j - 1;
   }
 
-  return tables;
+  // 判定は「行頭が `|`」に限る。文中の `| 列 |` のような引用まで拾うと説明文が違反になる
+  const orphans = [];
+  lines.forEach((line, n) => { if (!taken.has(n) && /^\s*\|/.test(line)) orphans.push(n + 1); });
+  return { tables, orphans };
 }
 
 /** 業務一覧の行を業務名で引ける形にする（突き合わせ用） */
@@ -161,8 +201,8 @@ function indexList(tables) {
       const name = (row.values[at('業務名')] ?? '').trim();
       if (!name) continue;
       map.set(name, {
-        asked: (row.values[at('聞いた相手')] ?? '').trim(),
-        later: LATER_COLUMNS.filter((c) => at(c) !== -1 && (row.values[at(c)] ?? '').trim() === LATER),
+        asked: plain(row.values[at('聞いた相手')] ?? ''),
+        later: LATER_COLUMNS.filter((c) => at(c) !== -1 && plain(row.values[at(c)] ?? '') === LATER),
       });
     }
   }
@@ -173,7 +213,7 @@ function lint(src, listSrc) {
   const findings = [];
   const add = (code, id, message) => findings.push({ code, id, message });
 
-  const tables = parseTables(src);
+  const { tables, orphans } = parseTables(src);
   const known = tables.filter((t) => t.kind);
   // 業務改善の列名を持つのに、4つの表のどれとも一致しないもの。
   // ヘッダの綴り違い・鍵になる列の欠落がここに落ちる。黙って通さない
@@ -184,13 +224,19 @@ function lint(src, listSrc) {
       `業務改善の列名（${t.shared.join('・')}）を持つが、4つの表のどれとも一致しない — 見分けに使う列が欠けているか綴りが違う（業務一覧: 業務名＋仕事の目的 ／ 改善案: ECRS＋誰がやるか ／ AI化依頼書: 任せ方＋承認が要る操作 ／ 保留: 相談先）`);
   }
 
+  // 表の途中に空行が入ると、そこから下の行はどの表にも入らず、検査されないまま消える
+  for (const line of orphans) {
+    add('ORPHAN_ROW', `${line}行目`,
+      'どの表にも入っていない行 — 表の途中に空行が入って切り離されている（空行を消して表に戻す）');
+  }
+
   if (known.length === 0 && suspicious.length === 0) {
     add('SYNTAX', '-', '業務改善の表を1つも認識できなかった（業務一覧・改善案・AI化依頼書・保留のどれかの列名を持つ表が要る）');
     return findings;
   }
 
   // 突き合わせ先の業務一覧: 同じファイルにあればそれ、無ければ --list のもの
-  const list = indexList(known.some((t) => t.kind === '業務一覧') ? known : (listSrc ? parseTables(listSrc) : []));
+  const list = indexList(known.some((t) => t.kind === '業務一覧') ? known : (listSrc ? parseTables(listSrc).tables : []));
 
   for (const table of known) {
     // 列が消えると、その列を引く検査ごと静かに消える。行を見る前に落とす
@@ -210,27 +256,23 @@ function lint(src, listSrc) {
       /** その行で既に別コードを出した列。EMPTY_CELL と二重に出さない */
       const claimed = new Set();
 
+      // 0. 列の数がヘッダと違う — セルがずれたまま検査すると、別の列の値を別の列名で咎める。この行は他を見ない
+      if (row.values.length !== table.header.length) {
+        add('ROW_WIDTH', where,
+          `${table.kind}の列の数がヘッダと違う（ヘッダ ${table.header.length} 列・この行 ${row.values.length} 列）。\`|\` の数を揃える。セルの中に縦線を書くなら \`\\|\` にする`);
+        continue;
+      }
+
       // 1. 行き先の無い「保留」「未確認」— 名前が無いと、答えられない行を全部保留にして承認を取れてしまう
-      const purpose = col(row, '仕事の目的');
-      if (purpose !== null && /^保留/.test(purpose)) {
-        claimed.add('仕事の目的');
-        const contact = purpose.replace(/^保留\s*[：:]?\s*/, '').trim();
+      for (const name of HOLD_COLUMNS) {
+        const v = col(row, name);
+        const word = v === null ? null : HOLD_WORD.exec(v);
+        if (!word) continue;
+        claimed.add(name);
+        const contact = v.replace(HOLD_WORD, '').replace(/^\s*[：:]?\s*/, '').trim();
         if (!contact) {
           add('HOLD_WITHOUT_CONTACT', where,
-            `${table.kind}「仕事の目的」が「保留」だけで相談先の名前が無い（保留：◯◯さんに聞く の形にする）`);
-        }
-      }
-      if (table.kind === '業務一覧') {
-        for (const name of UNCONFIRMED_COLUMNS) {
-          const v = col(row, name);
-          if (v !== null && /^未確認/.test(v)) {
-            claimed.add(name);
-            const contact = v.replace(/^未確認\s*[：:]?\s*/, '').trim();
-            if (!contact) {
-              add('HOLD_WITHOUT_CONTACT', where,
-                `${table.kind}「${name}」が「未確認」だけで相談先の名前が無い（未確認：◯◯さんに聞く の形にする）`);
-            }
-          }
+            `${table.kind}「${name}」が「${word[1]}」だけで相談先の名前が無い（${word[1]}：◯◯さんに聞く の形にする）`);
         }
       }
       if (table.kind === '保留') {
@@ -251,6 +293,12 @@ function lint(src, listSrc) {
         claimed.add('測り方');
         add('TIME_WITHOUT_METHOD', where,
           `${table.kind}「かかる時間」に数字（${time}）があるのに「測り方」が空（実測／実績記入／推定比率／未計測 のどれかを書く）`);
+      }
+      // 合計の無い時間 — `月30件 × 4分` だけでは月の時間に直せず、ABC 分析でその業務が順位から消える
+      if (time && !claimed.has('かかる時間') && /[0-9０-９]/.test(time) && hoursPerMonth(time) === null) {
+        claimed.add('かかる時間');
+        add('TIME_FORMAT', where,
+          `${table.kind}「かかる時間」に合計が無い（現在: "${time}"。月30件 × 4分 = 2時間/月 のように、末尾を N時間/月 で締める。週・年でもよい）`);
       }
 
       // 3. AI化依頼書 — 任せ方と、承認の3種それぞれの判断、削減見込みの置き場
@@ -305,7 +353,7 @@ function lint(src, listSrc) {
       for (const [name, spec] of Object.entries(ENUMS)) {
         const v = col(row, name);
         if (v === null || !v || claimed.has(name)) continue;
-        if (!spec.re.test(v)) {
+        if (!spec.re.test(plain(v))) {
           claimed.add(name);
           add('ENUM_VALUE', where,
             `${table.kind}「${name}」が定義に無い値（現在: "${v}"。入るのは ${spec.allowed}）`);
@@ -316,6 +364,12 @@ function lint(src, listSrc) {
       if ((table.kind === 'AI化依頼書' || table.kind === '改善案') && list.size > 0) {
         const name = col(row, '業務名');
         const hit = name ? list.get(name) : null;
+        // 綴りが一覧と違うと突き合わせが黙って外れ、AIの推測・後で聞く の検査が無かったことになる
+        if (name && !hit) {
+          claimed.add('業務名');
+          add('UNKNOWN_WORK', where,
+            `${table.kind} の「${name}」が業務一覧に無い（業務一覧の「業務名」と同じ綴りにする）`);
+        }
         if (hit) {
           if (table.kind === 'AI化依頼書' && hit.asked === 'AIの推測') {
             add('GUESSED_IN_REQUEST', where,

@@ -17,7 +17,9 @@
  *   - 図が読めるか・状態の割り当てが正しいか・説明が足りているか
  *   - `<pre class="mermaid">` があるか・表が併記されているか・状態が3値か
  *     （＝「lint を通す最小の空の枠」は通る。中身があるかは人間が見る）
- *   - インライン `<script>` の中で fetch("https://…") のように実行時に外部を取りに行くもの
+ *   - インライン `<script>` の中で fetch("https://…") や img.src = "…" のように
+ *     実行時に外部を取りに行くもの（タグの属性に書かれた読み込みだけを見る）
+ *   - `<a>` の属性値（本文リンクなので、href 以外の属性も見ない）
  */
 
 const fs = require('fs');
@@ -29,16 +31,21 @@ const REQUIRED_SECTIONS = ['目的', '処理一覧', '工程', '介入点', '合
 const NUMERIC_ID = /^[0-9]+(_[0-9]+)*$/;
 
 /**
- * 読み込み位置。ここに入ってよい値は data: と #（ページ内アンカー）だけ。
+ * 読み込み位置。<a> 以外のタグは属性値を全部見る。見る属性名を列挙する方式だと、
+ * srcset・poster・<object data>・action・formaction・xlink:href がすり抜けた。
+ *   - 読み込み属性（LOAD_ATTRS）: data: と #（ページ内アンカー）以外は全部違反
+ *   - それ以外の属性: 値が URL かパスの形（//…・https://…・/…・./…・../…）なら違反
  * 本文中のリンク <a href="https://…"> は読み込みではないので対象にしない
- * （実行記録には出典 URL が本文として正当に入る）。
+ * （実行記録には出典 URL が本文として正当に入る）。CSS の url() と @import はタグの属性でないので別に見る。
  */
-const LOAD_POSITIONS = [
-  { re: /<link\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi, what: 'link href', group: 1 },
-  // `data-src=` のような別属性に当てないよう、直前の1文字も一緒に取る（lookbehind を使わない）
-  { re: /(^|[^\w-])src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gim, what: 'src', group: 2 },
-  { re: /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\)/gi, what: 'url()', group: 1 },
-  { re: /@import\s+(?:url\(\s*)?(?:"([^"]*)"|'([^']*)'|([^\s;)]+))/gi, what: '@import', group: 1 },
+const LOAD_ATTRS = new Set(['src', 'srcset', 'href', 'poster', 'data', 'action', 'formaction', 'xlink:href']);
+const URL_SHAPED = /^(?:(?:https?:)?\/\/|\.{0,2}\/)/i;
+// 引用符の中の > で切れないよう、属性を1つずつ読む形で開始タグを取る
+const TAG = /<([A-Za-z][\w:-]*)((?:\s+[^\s"'>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/g;
+const ATTR = /([^\s"'>\/=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
+const CSS_POSITIONS = [
+  { re: /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\)/gi, what: 'url()' },
+  { re: /@import\s+(?:url\(\s*)?(?:"([^"]*)"|'([^']*)'|([^\s;)]+))/gi, what: '@import' },
 ];
 
 /** 公開できない値。テストデータに実在の値を入れないこと（規律2はテストにも効く） */
@@ -47,6 +54,8 @@ const PRIVATE_PATTERNS = [
   { re: /\/(?:Users|home)\/[A-Za-z0-9._-]+[^\s"'<>]*/g, what: '利用者のホーム配下の絶対パス' },
   { re: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, what: 'UUID（プロジェクトID・セッションID）' },
   { re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, what: 'メールアドレス' },
+  // 鍵の形（Bearer ヘッダ・DrillSpark・Anthropic・GitHub・AWS）。桁数だけのダミーでも当たる
+  { re: /\b(?:Bearer\s+[A-Za-z0-9._-]{8,}|dsk_[A-Za-z0-9_-]{8,}|sk-ant-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16})/g, what: 'API キー・トークン' },
 ];
 
 function lineOf(src, index) {
@@ -73,20 +82,42 @@ function lint(src) {
 
   // 1. 読み込み位置 — data: と # だけを通す
   const seenRef = new Set();
-  for (const pos of LOAD_POSITIONS) {
+  const isLocal = (value) => /^data:/i.test(value) || value.startsWith('#');
+  const flagRef = (index, what, value) => {
+    const line = lineOf(body, index);
+    const key = `${line}|${value}`;
+    if (seenRef.has(key)) return;
+    seenRef.add(key);
+    add('EXTERNAL_REF', `${line}行目`,
+      `${what} が外部を読んでいる: ${clip(value)} — 1ファイル完結にする（CSS/JSはインライン、画像は data: URI）`);
+  };
+  TAG.lastIndex = 0;
+  let t;
+  while ((t = TAG.exec(body)) !== null) {
+    const tag = t[1].toLowerCase();
+    if (tag === 'a') continue;
+    const attrsAt = t.index + 1 + t[1].length;
+    ATTR.lastIndex = 0;
+    let a;
+    while ((a = ATTR.exec(t[2])) !== null) {
+      const name = a[1].toLowerCase();
+      const raw = (a[2] ?? a[3] ?? a[4] ?? '').trim();
+      // srcset は「URL 幅」の候補をカンマで並べる。data: URI の中のカンマで割らないよう、
+      // 空白が続くカンマだけで割り、各候補の先頭語（URL）を見る
+      const values = name === 'srcset' ? raw.split(/,(?=\s)/).map((c) => c.trim().split(/\s+/)[0]) : [raw];
+      for (const value of values) {
+        if (!value || isLocal(value)) continue;
+        if (LOAD_ATTRS.has(name) || URL_SHAPED.test(value)) flagRef(attrsAt + a.index, `${tag} ${name}`, value);
+      }
+    }
+  }
+  for (const pos of CSS_POSITIONS) {
     pos.re.lastIndex = 0;
     let m;
     while ((m = pos.re.exec(body)) !== null) {
-      const g = pos.group;
-      const value = (m[g] ?? m[g + 1] ?? m[g + 2] ?? '').trim();
-      if (!value) continue;
-      if (/^data:/i.test(value) || value.startsWith('#')) continue;
-      const line = lineOf(body, m.index);
-      const key = `${line}|${value}`;
-      if (seenRef.has(key)) continue;
-      seenRef.add(key);
-      add('EXTERNAL_REF', `${line}行目`,
-        `${pos.what} が外部を読んでいる: ${clip(value)} — 1ファイル完結にする（CSS/JSはインライン、画像は data: URI）`);
+      const value = (m[1] ?? m[2] ?? m[3] ?? '').trim();
+      if (!value || isLocal(value)) continue;
+      flagRef(m.index, pos.what, value);
     }
   }
 

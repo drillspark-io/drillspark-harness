@@ -1,6 +1,7 @@
-%% expect: DUPLICATE x1
+%% expect: SKIPPED+UNPARSED x2
 flowchart LR
-  %% 違反: ノードID 3 を二重に定義している（先の定義が黙って消える）
+  %% 違反: ノード定義の行末にエッジを続けている。先頭の定義だけ読んで残りを捨てると、
+  %% エッジ 2→3 が消えたうえに 2 の再定義（DUPLICATE）に見える
   subgraph sg_0 ["エージェント"]
     direction LR
     1(["Start"])
@@ -9,13 +10,12 @@ flowchart LR
     %% duration[2]: 10
     3["検証する"]
     %% duration[3]: 5
-    3["別のことをする"]
     4["まとめる"]
     %% duration[4]: 5
     5(["End"])
     %% duration[5]: 0
   end
     1 --> 2
-    2 --> 3
+    2["下書きを作る"] --> 3["検証する"]
     3 --> 4
     4 --> 5

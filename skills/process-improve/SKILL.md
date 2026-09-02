@@ -1,7 +1,7 @@
 ---
 name: process-improve
 description: 自分の業務を棚卸しして改善する。業務の一覧を作り、時間のかかっている業務を選び、DrillSpark で図にして、なくす・まとめる・並び替える・簡単にする の順で改善案を出し、AIに任せられる工程を依頼書にするまで。業務改善が初めての人が、AIに質問されながら進められる。
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__drillspark__list_projects, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__drillspark__list_projects, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams
 ---
 
 # process-improve — 業務を棚卸しして改善する
@@ -63,7 +63,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__
 | 聞く項目 | いつ | |
 |---|---|---|
 | 誰が | 最初 | 担当者。**兼務なら「兼務」と書く** |
-| かかる時間 | 最初 | `頻度 × 所要時間`。**測り方**（実測／実績記入／推定比率／未計測）もセットで |
+| かかる時間 | 最初 | `頻度 × 所要時間 = 合計`。合計は `N時間/月`（年次は `/年`、週次は `/週` でもよい — ABC が月に換算する）。**測り方**（実測／実績記入／推定比率／未計測）もセットで |
 | **仕事の目的** | 最初 | 下の3つのどれか |
 | きっかけ | 選ばれてから | 何が来たら始まるか |
 | 作業 | 選ばれてから | 実際にやること |
@@ -91,7 +91,9 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__
 
 ### 【止まる①】業務一覧の確認
 
-「仕事の目的」列が全行埋まった時点で確認を取ります。**空欄を埋める作業が確認そのものです。**
+「仕事の目的」列が全行埋まった（保留を含む）時点で止まり、`AskUserQuestion` で
+「この一覧で進める／直したい行がある」を問います。**上限3往復。** 3往復で決まらない行は
+`保留：◯◯さんに聞く` にして先へ進みます。
 
 ---
 
@@ -138,6 +140,8 @@ B・C ランクを選んでも構いませんが、そのときは理由を書�
 **白紙から言わせません。** `Task` で `process-expert` を呼び、
 **業務の種類から役割を決めて**（台本作成ならライター）案を出させます。
 知識が足りなければ Web で調べさせます。
+**専門家役はファイルを読めません** — 業務一覧の該当行（業務名・きっかけ・作業・使う道具・次へ渡す先）を
+プロンプトに貼って渡します。
 
 **専門家役が一般論から補ったノードには全部「一般例」の印を付けます。**
 話し合いは**この印から始めます** — もっともらしく埋まっている分、空白より承認されやすいからです。
@@ -161,7 +165,7 @@ printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" -
 ### 【止まる②】工程の確認
 
 **上限3往復。** 骨格が違うと下の階層が全部無駄になるので、ここを固めてから作業に入ります。
-3往復で合意に至らなければ、決まらなかった点を保留にして先へ進みます。
+3往復で合意に至らなければ、決まらなかった点を `業務改善/保留.md`（何が決まらなかったか／相談先／いつ）に書いて先へ進みます。
 
 ### 3-2. 工程ごとの作業を第二階層に描く
 
@@ -170,7 +174,7 @@ printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" -
 
 ### 【止まる③】作業の確認
 
-**上限3往復。** 保留が残っていても図は完成してよいことにします。
+**上限3往復。** 決まらなかった点は `業務改善/保留.md` に書きます。保留が残っていても図は完成してよいことにします。
 
 承認された図は判定役も読みます（`get_diagram` で取る）。**mermaid をファイルに残す必要はありません。**
 
@@ -192,6 +196,8 @@ printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" -
 ### 4-2. ECRS の順に一緒に考える
 
 `Task` で `process-expert` を **業務改善コンサルの役割**で呼びます。
+承認済みの図の mermaid（`get_diagram` で取ったもの）と、ムダの印の付いた工程の一覧をプロンプトに貼って渡します
+（専門家役はファイルも図も自分では読めません）。
 
 **ムダの印は工程2で付いたものを引き継ぎます。図から拾い直しません。**
 **「未確認」の印が残ったノードは、確かめてから案を出します。確かめられないなら案を出しません。**
@@ -266,7 +272,7 @@ E（なくす）の問いは「やめたら誰が困りますか」— 困る人
 **`聞いた相手` が `AIの推測` の業務は、依頼書に載せません**（検査が `GUESSED_IN_REQUEST` で落とします）。
 確かめていない業務の削減見込みは、根拠のない数字になります。
 
-3回埋め直しても残った行は依頼書から外して保留に回し、**埋まった分だけでも依頼書として出します**。
+3回埋め直しても残った行は依頼書から外して `業務改善/保留.md` に回し、**埋まった分だけでも依頼書として出します**。
 
 **`harness-implement` が同じ環境に入っていれば、この依頼書がそのまま入力になります**（工程単位で書いてあるのはそのため）。
 
@@ -281,7 +287,14 @@ Task → process-improve-reviewer
 
 **判定役は基準を読むだけで、表も図も書き換えません。**
 指摘が出たら直すのはこのスキルの側です。**MUST の差し戻しは、対象の表や図を直したあと、
-該当のゲート（①業務一覧／②工程／③作業）を取り直します。** 取り直しも上限3回で、超えたら保留に書いて先へ進みます。
+該当のゲート（①業務一覧／②工程／③作業）を取り直します。** 取り直しも上限3回で、超えたら `業務改善/保留.md` に書いて先へ進みます。
+
+### 利用者に渡す
+
+できたもの — `業務改善/業務一覧.md`・`業務改善/改善案.md`・`業務改善/AI化依頼書.md`（保留があれば `業務改善/保留.md`）— の
+置き場と、どれから読めばよいかを1行で伝えます。実在は
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" 業務改善/AI化依頼書.md` で確かめます。
+**社内で共有する1枚が要るなら `process-improve-view` を呼びます**（業務ひとつを指定して単独で呼べます）。
 
 ---
 
@@ -305,7 +318,7 @@ Task → process-improve-reviewer
 |---|---|
 | **起動** | 利用者が呼ぶ。**自動で始まりません** |
 | **確認**（止まって可否を問う） | ①業務一覧 ②各業務の工程 ③各業務の作業 の**3つ** |
-| **人にしかできない作業**（止まらないが代行しない） | **9つ** — 仕事の目的を答える（§1）／ 改善する業務を選ぶ（§2）／<br>直したい所を言う（§3 の工程と作業）／ 成功の形に合意する（§4-1）／ 案の引っかかる所を言う（§4-3）／ 案を選ぶ（§4-3）／<br>任せ方に合意する（§5）／ **承認が要るかを決める（§5）** ／<br>**次の業務へ進むか決める**（末尾）。正本は `docs/harness/process-improve/処理/業務を改善する/合格条件.md` 5節 |
+| **人にしかできない作業**（止まらないが代行しない） | **9つ** — 仕事の目的を答える（§1）／ 改善する業務を選ぶ（§2）／<br>直したい所を言う（§3 の工程と作業）／ 成功の形に合意する（§4-1）／ 案の引っかかる所を言う（§4-3）／ 案を選ぶ（§4-3）／<br>任せ方に合意する（§5）／ **承認が要るかを決める（§5）** ／<br>**次の業務へ進むか決める**（末尾）。正本はプラグイン同梱の `${CLAUDE_PLUGIN_ROOT}/docs/harness/process-improve/処理/業務を改善する/合格条件.md` 5節 |
 | **分からないときの相手** | **詰まった時点で指名してもらう。開始時には決めさせない** |
 | **合否の線** | [`reference/business-improvement-criteria.md`](../../reference/business-improvement-criteria.md)。**利用者も AI も決めません** |
 

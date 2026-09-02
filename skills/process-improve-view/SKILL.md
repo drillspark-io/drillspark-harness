@@ -1,7 +1,7 @@
 ---
 name: process-improve-view
 description: 棚卸しした業務の改善計画を、図と表を重ねた自己完結の HTML 1枚にする。業務ひとつを指定して単独で呼べる。社内で共有できる形にするとき、いまどこまで決まっていて何が保留かを一覧したいときに使う。判定はしない。
-allowed-tools: Read, Write, Glob, Grep, Bash, AskUserQuestion, mcp__drillspark__list_projects, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams
+allowed-tools: Read, Write, Glob, Grep, Bash, AskUserQuestion, mcp__drillspark__list_projects, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams
 ---
 
 # process-improve-view — 改善計画を1枚にする

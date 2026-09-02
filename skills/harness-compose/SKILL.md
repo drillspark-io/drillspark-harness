@@ -1,7 +1,7 @@
 ---
 name: harness-compose
 description: 1つずつ作った処理を束ねて1つのハーネスにする。ハーネスに1つしかないもの（settings.json の hook と権限・CLAUDE.md・合格条件の置き場）をここだけで書き、処理どうしの衝突を潰す。全処理の実装が終わったあと、評価の前に使う。
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__list_projects, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__list_projects, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram
 ---
 
 # harness-compose — 処理を束ねて1つのハーネスにする
@@ -112,9 +112,11 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 ## 3. 1つしかないものを書く
 
 **依存順は、参照される実体が先、`settings.json` が最後。** 実体は各処理が作り終えている。
+**書く前に、既にあるものを Read する** — `settings.json` は全置換で書かない。
 
 | 何 | どう書くか |
 |---|---|
+| 既にある `settings.json` | **先に `.claude/settings.json` と `.claude/settings.local.json` を Read する。** ハーネスが所有しないキーはそのまま残して合流させる。<br>共有するもの（hook・deny）は `settings.json`、個人の環境に依るもの（絶対パス・個人の allow）は `settings.local.json` |
 | `hooks` | 各処理が作った**実体を参照するだけ**。ここで実体（`.js`）を書かない |
 | `permissions` | `deny` → `ask` → `allow` の順に見る。**`deny` は消さない** |
 | `CLAUDE.md` | 常時オンにしてよいものだけ。目次にする。30行を超える手順は skill へ |

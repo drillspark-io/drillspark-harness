@@ -1,6 +1,6 @@
 {
   "name": "drillspark-harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Turn DrillSpark BPMN diagrams into real Claude Code configuration, and audit human business processes the same way: inventory the work, pick what to improve, draw it, apply ECRS, and decide what to hand to AI. Review and evaluation stay separated from generation. Skill content is written in Japanese.",
   "license": "Apache-2.0",
   "homepage": "https://drillspark.io/",
@@ -20,12 +20,5 @@
     "ecrs",
     "japanese"
   ],
-  "skills": "./skills",
-  "agents": [
-    "./agents/harness-asis-reviewer.md",
-    "./agents/harness-design-reviewer.md",
-    "./agents/harness-evaluator.md",
-    "./agents/process-expert.md",
-    "./agents/process-improve-reviewer.md"
-  ]
+  "skills": "./skills"
 }

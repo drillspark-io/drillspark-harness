@@ -1,0 +1,23 @@
+%% expect: START_END x1
+flowchart LR
+  %% 違反: 出エッジの無い terminal（＝End）が 4 と 6 の2個ある。End は1個にする
+  subgraph sg_0 ["エージェント"]
+    direction LR
+    1(["Start"])
+    %% duration[1]: 0
+    2["下書きを作る"]
+    %% duration[2]: 10
+    3{"合格か?"}
+    %% duration[3]: 5
+    4(["End"])
+    %% duration[4]: 0
+    5["やり直しを記録する"]
+    %% duration[5]: 5
+    6(["End"])
+    %% duration[6]: 0
+  end
+    1 --> 2
+    2 --> 3
+    3 -->|"合格"| 4
+    3 -->|"不合格"| 5
+    5 --> 6

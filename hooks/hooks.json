@@ -21,13 +21,18 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/harness-view-guard.js\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/process-write-guard.js\"",
             "timeout": 10
           }
         ]
       },
       {
-        "matcher": "mcp__drillspark__update_diagram|mcp__claude_ai_DrillSpark__update_diagram",
+        "matcher": "mcp__.*__update_diagram",
         "hooks": [
           {
             "type": "command",

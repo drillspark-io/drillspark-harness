@@ -51,6 +51,13 @@ function parse(src) {
   const duplicates = [];
   const unparsed = [];
   const laneStack = [];
+  // 解析できない行は黙って捨てない。捨てると、そこに書かれていたエッジが
+  // 無いものとして扱われ、到達不能や出口なしが「事実でない指摘」として大量に出る
+  const reject = (lineNo, line, hint) => unparsed.push({
+    line: lineNo,
+    text: line.length > 60 ? line.slice(0, 60) + '…' : line,
+    hint,
+  });
 
   src.split(/\r?\n/).forEach((raw, i) => {
     const line = raw.trim();
@@ -74,25 +81,24 @@ function parse(src) {
 
     for (const shape of NODE_SHAPES) {
       const m = line.match(shape.re);
-      if (m) {
-        if (nodes.has(m[1])) duplicates.push({ id: m[1], line: lineNo, first: nodes.get(m[1]).line });
-        nodes.set(m[1], {
-          id: m[1], type: shape.type, label: m[2],
-          lane: laneStack.length ? laneStack[laneStack.length - 1] : null,
-          line: lineNo,
-        });
+      if (!m) continue;
+      // シェイプの後ろに何か残っている行（`2["X"] --> 3["Y"]`）は、定義としてもエッジとしても
+      // 読めていない。先頭だけ取って残りを捨てると、エッジが消えたうえに再定義（DUPLICATE）に見える
+      if (line.slice(m[0].length).trim()) {
+        reject(lineNo, line, '1行に1つの定義。エッジは別行に分ける');
         return;
       }
+      if (nodes.has(m[1])) duplicates.push({ id: m[1], line: lineNo, first: nodes.get(m[1]).line });
+      nodes.set(m[1], {
+        id: m[1], type: shape.type, label: m[2],
+        lane: laneStack.length ? laneStack[laneStack.length - 1] : null,
+        line: lineNo,
+      });
+      return;
     }
 
-    // ここへ来た行は解析できていない。黙って捨てると、そこに書かれていたエッジが
-    // 無いものとして扱われ、到達不能や出口なしが「事実でない指摘」として大量に出る。
     const arrows = (line.match(ARROW) || []).length;
-    unparsed.push({
-      line: lineNo,
-      text: line.length > 60 ? line.slice(0, 60) + '…' : line,
-      hint: arrows > 1 ? '連結エッジは1行1エッジに分ける' : (arrows === 1 ? 'エッジの書式が読めない' : 'ラベルは二重引用符で囲む'),
-    });
+    reject(lineNo, line, arrows > 1 ? '連結エッジは1行1エッジに分ける' : (arrows === 1 ? 'エッジの書式が読めない' : 'ラベルは二重引用符で囲む'));
   });
 
   return { nodes, edges, durations, duplicates, unparsed };
@@ -108,12 +114,14 @@ function lint(src) {
   }
 
   const { nodes, edges, durations, duplicates, unparsed } = parse(src);
+  // 1つも認識できなかった回でも、読めなかった行は先に出す。全行が `1["X"] --> 2["Y"]` の
+  // 連結書きだと、ここで止めたときに「二重引用符で囲む」だけが残って直す場所を誤る
+  for (const u of unparsed) add('UNPARSED', `${u.line}行目`, `解析できない: ${u.text} — ${u.hint}`);
   if (nodes.size === 0) {
     add('SYNTAX', '-', 'ノード定義を1つも認識できなかった。ラベルは二重引用符で囲む');
     return findings;
   }
 
-  for (const u of unparsed) add('UNPARSED', `${u.line}行目`, `解析できない: ${u.text} — ${u.hint}`);
   for (const d of duplicates) add('DUPLICATE', d.id, `${d.first}行目で定義済みのIDを ${d.line}行目で再定義している（先の定義が消える）`);
 
   const out = new Map();

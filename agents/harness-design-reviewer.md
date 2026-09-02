@@ -1,8 +1,8 @@
 ---
 name: harness-design-reviewer
 description: 実装したハーネスとDrillSparkの図を、作った側とは別インスタンスで検証する。判定基準に照らしてMUST/NICEで指摘だけ返す。修正はしない。
-tools: Read, Grep, Glob, ToolSearch, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__drillspark__get_diagram_rules
-disallowedTools: Edit, Write, mcp__drillspark__update_diagram
+tools: Read, Grep, Glob, ToolSearch, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__drillspark__get_diagram_rules, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__get_diagram_rules
+disallowedTools: Edit, Write, mcp__drillspark__update_diagram, mcp__claude_ai_DrillSpark__update_diagram
 model: inherit
 ---
 

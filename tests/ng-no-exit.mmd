@@ -1,21 +1,23 @@
-%% expect: DECISION_FORM x1
+%% expect: NO_EXIT x1
 flowchart LR
-  %% 違反: decision のラベルが疑問形になっていない
+  %% 違反: decision の不合格側が task 6 で止まり、6 から先に出力エッジが無い（End にも戻り先にも繋いでいない）
   subgraph sg_0 ["エージェント"]
     direction LR
     1(["Start"])
     %% duration[1]: 0
     2["下書きを作る"]
     %% duration[2]: 10
-    3{"検証の結果"}
+    3{"合格か?"}
     %% duration[3]: 5
     4["まとめる"]
     %% duration[4]: 5
     5(["End"])
     %% duration[5]: 0
+    6["不合格の理由を記録する"]
+    %% duration[6]: 5
   end
     1 --> 2
     2 --> 3
     3 -->|"合格"| 4
-    3 -->|"不合格"| 2
+    3 -->|"不合格"| 6
     4 --> 5

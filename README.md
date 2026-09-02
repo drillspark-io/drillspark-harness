@@ -25,7 +25,7 @@ so the useful parts are the ones a model cannot do alone. This plugin encodes tw
 | | |
 |---|---|
 | Claude Code | `2.1.233` or later (`claude plugin validate --strict`, which the pass criteria require; skill bodies also use `${CLAUDE_PLUGIN_ROOT}`, 2.1.196+) |
-| Node.js | any version with `fs` — the lint scripts have no dependencies |
+| Node.js | 14 or later, **on `PATH` in every session** — the plugin's PreToolUse hooks start `node` on each `Write` / `Edit` / `Bash` call (see [Hooks](#hooks)). The scripts have no dependencies. Without `node` the guards silently do nothing |
 | DrillSpark account | required — see [Connecting DrillSpark](#connecting-drillspark) |
 | DrillSpark MCP server | connected, exposing `mcp__drillspark__*` tools |
 
@@ -45,10 +45,11 @@ of falling back to pasting Mermaid into the terminal.
      `Authorization: Bearer <key>` header.
    - **Claude.ai Web / Claude Desktop** — link the account over OAuth from the
      connector settings.
-3. **Name the server `drillspark`.** The skills and agents declare `mcp__drillspark__*`
-   in their `allowed-tools` / `tools` lists, and those entries pre-authorize the tools
-   only under that name. Any other prefix (a hosted connector may expose
-   `mcp__claude_ai_DrillSpark__*`) still **works** — it just prompts every time.
+3. **Name the server `drillspark`.** The skills and agents declare both `mcp__drillspark__*`
+   (a server you named yourself) and `mcp__claude_ai_DrillSpark__*` (the claude.ai connector)
+   in their `allowed-tools` / `tools` lists. Any *other* prefix still works for the skills —
+   they just prompt every time — but an agent's `tools` list is an allowlist, so under a
+   third name the reviewers and the evaluator cannot read a diagram at all.
 4. **Verify** with `/mcp`. Connecting mid-session requires a restart.
 
 Details and the per-symptom triage the skills follow:
@@ -57,16 +58,42 @@ Details and the per-symptom triage the skills follow:
 
 ## Install
 
+The repository is its own single-plugin marketplace (`.claude-plugin/marketplace.json`):
+
 ```bash
 /plugin marketplace add jackasser/drillspark-harness
-/plugin install drillspark-harness
+/plugin install drillspark-harness@drillspark-harness
 ```
 
-Session-only trial, from the plugin directory:
+From a local clone, the same two steps take a path:
+
+```bash
+git clone https://github.com/jackasser/drillspark-harness
+/plugin marketplace add ./drillspark-harness
+/plugin install drillspark-harness@drillspark-harness
+```
+
+Session-only trial, from the plugin directory (skills register as `drillspark-harness:<skill>`):
 
 ```bash
 claude --plugin-dir . -- "harness-implement で新しいハーネスを作りたい"
+claude --plugin-dir . -- "Use the process-improve skill to inventory my work"
 ```
+
+### Hooks
+
+Installing the plugin registers two **PreToolUse hooks** in every session, in every project.
+They are declared in `hooks/hooks.json`; nothing is written to your `settings.json`.
+
+| matcher | guard | what it stops |
+|---|---|---|
+| `Write` `Edit` `MultiEdit` `Bash` | `scripts/harness-view-guard.js` | overwriting a `docs/harness/*/可視化/*.html` page, a fix counter past 2, a page that fails the lint, a Bash write into that folder |
+| `Write` `Edit` `MultiEdit` `Bash` | `scripts/process-write-guard.js` | a table or plan under `業務改善/` that fails its lint; a Bash redirect / `tee` / `cp` / `mv` / `sed -i` into `業務改善/` |
+| `mcp__*__update_diagram` | `scripts/process-write-guard.js` | `update_diagram` on a project that `業務改善/業務一覧.md` does not list — someone else's diagram |
+
+Everything else exits 0 immediately: the cost is one `node` start (about 100 ms) per call and
+no model context. To switch the guards off without uninstalling, set
+`DRILLSPARK_HARNESS_GUARDS=off`; to remove them, `claude plugin disable drillspark-harness`.
 
 ## What is included
 
@@ -102,7 +129,11 @@ scripts/process-plan-lint.js          改善計画の1枚を決定論で検査�
 # 両系統から呼ぶ共有ツール（接頭辞を持たせない）
 scripts/diagram-lint.js               図の構造を決定論で検査（依存なし）
 scripts/file-saved-lint.js            指定パスに実際に保存されたかを確かめる（依存なし）
-tests/                                lint の期待挙動を固定する 40 件＋ランナー
+tests/                                lint と柵の期待挙動を固定するサンプル＋ランナー（件数は Validation 節）
+docs/harness/process-improve/         この pipeline を自分自身に適用した実例（設計・図・凍結した合格条件・実装記録）
+.claude-plugin/marketplace.json       このリポジトリを単独プラグインのマーケットプレースにする定義
+CHANGELOG.md                          版ごとの変更
+.github/workflows/tests.yml           CI — Ubuntu と Windows で bash tests/run.sh
 ```
 
 ### Two families, one plugin
@@ -215,13 +246,19 @@ to sit there now runs inside the implementation stage — agent to agent, withou
 
 `validate_diagram` checks syntax only. This lint checks structure, deterministically:
 
-`UNPARSED` `DUPLICATE` `UNDEFINED` `NODE_ID` `NO_DURATION` `DECISION_FORM`
+`UNPARSED` `SKIPPED` `DUPLICATE` `UNDEFINED` `NODE_ID` `NO_DURATION` `DECISION_FORM`
 `START_END` `NODE_COUNT` `MULTI_OUTPUT` `NO_EXIT` `UNREACHABLE` `ORPHAN` `EDGE_STYLE`
+
+Every lint in this plugin also returns `SYNTAX` for input it cannot parse at all, and stops
+there — the other checks are not run on it.
 
 ```bash
 node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" diagram.mmd   # 0 / 2 / 1
 mcp-output | node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js" -
 ```
+
+`$CLAUDE_PLUGIN_ROOT` is expanded inside a Claude Code session. From a clone, run the same
+scripts as `node scripts/diagram-lint.js …`.
 
 It deliberately does **not** judge what cannot be made deterministic — where a loop goes
 when it exceeds its cap, whether parent and child notes agree, whether a label is
@@ -239,8 +276,11 @@ check, so a machine looks instead:
 node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js" docs/harness/<name>/可視化/<workflow>-<date>.html
 ```
 
-`EXTERNAL_REF` looks at **loading positions only** (`link href`, `src`, `url()`,
-`@import`) — a source URL in the body text is legitimate and passes.
+`EXTERNAL_REF` looks at **loading positions only** — any attribute of a tag other than `<a>`
+(`src`, `srcset`, `poster`, `data`, `action`, `link href` …), plus `url()` and `@import` — so a
+source URL in the body text, `<a href="https://…">`, is legitimate and passes.
+`PRIVATE_INFO` rejects home-directory paths, e-mail addresses, UUIDs and the shapes of API keys
+and tokens (`Bearer …`, `dsk_…`, `sk-ant-…`, `ghp_…`, `AKIA…`).
 
 ### The process-improvement lints
 
@@ -256,7 +296,7 @@ node "$CLAUDE_PLUGIN_ROOT/scripts/process-abc.js"       業務改善/業務一�
 
 | lint | codes |
 |---|---|
-| `process-table-lint` | `UNKNOWN_TABLE` `MISSING_COLUMN` `EMPTY_CELL` `HOLD_WITHOUT_CONTACT` `TIME_WITHOUT_METHOD` `MISSING_HAS` `MISSING_APPROVAL` `ENUM_VALUE` `NODE_REF` `ESTIMATE_NOT_ALLOWED` `GUESSED_IN_REQUEST` `DETAIL_MISSING` |
+| `process-table-lint` | `UNKNOWN_TABLE` `MISSING_COLUMN` `ORPHAN_ROW` `ROW_WIDTH` `EMPTY_CELL` `HOLD_WITHOUT_CONTACT` `TIME_WITHOUT_METHOD` `TIME_FORMAT` `MISSING_HAS` `MISSING_APPROVAL` `ENUM_VALUE` `NODE_REF` `ESTIMATE_NOT_ALLOWED` `GUESSED_IN_REQUEST` `DETAIL_MISSING` `UNKNOWN_WORK` |
 | `process-plan-lint` | `MISSING_BLOCK` `EXTERNAL_REF` `MISSING_MARK` `PRIVATE_INFO` |
 | `file-saved-lint` | `NOT_SAVED` |
 
@@ -280,7 +320,8 @@ row could be marked on-hold and the table would pass.
 The skill and agent bodies are Japanese and are not translated. They carry a lot of
 measured detail — recorded failures, counts, and the reasons behind each rule — and a
 machine translation would quietly drop the parts that matter. If you need an English
-edition, open an issue; a translation is a real piece of work, not a build step.
+edition, open an [issue](https://github.com/jackasser/drillspark-harness/issues); a translation
+is a real piece of work, not a build step.
 
 ## Validation
 
@@ -289,28 +330,32 @@ claude plugin validate . --strict
 bash tests/run.sh
 ```
 
-`tests/run.sh` runs the five lints as 40 checks — 37 fixtures whose filename prefix encodes
-the expected exit code (`ok-*` → 0, `ng-*` → 2), one ABC-analysis check and two save checks — then
-validates the plugin and checks that all 28 shipped files are present. Any mismatch exits 1.
+`tests/run.sh` runs the five lints as 57 checks — 54 fixtures whose filename prefix encodes
+the expected exit code (`ok-*` → 0, `ng-*` → 2), one ABC-analysis check and two save checks —
+then 49 guard checks and one hook-wiring check, validates the plugin and checks that all 33
+shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+do not update them by hand.)
 
-| checks | lint |
+| checks | what |
 |---|---|
-| 10 `.mmd` | `diagram-lint` |
-| 6 `*-view-*.html` | `harness-view-lint` |
-| 5 `*-plan-*.html` | `process-plan-lint` |
-| 16 `*-table-*.md` | `process-table-lint` |
+| 17 `.mmd` | `diagram-lint` |
+| 8 `*-view-*.html` | `harness-view-lint` |
+| 7 `*-plan-*.html` | `process-plan-lint` |
+| 22 `*-table-*.md` | `process-table-lint` |
 | 1 (`ok-table-abc.md`: ranks A/B/C and marks with their source words) | `process-abc` |
 | 2 (a missing path, an existing file) | `file-saved-lint` |
+| 49 (PreToolUse JSON fed to each guard: what it stops, what it must let through, malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
+| 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 
-The `.html` and `.md` fixtures carry an `expect: <CODE> x<count>` line, and the runner checks
-the reported code and count, not just the exit status. An exit code alone is not a pass
+Every fixture carries an `expect: <CODE> x<count>` line (`%% expect:` in `.mmd`), and the runner
+checks the reported code and count, not just the exit status. An exit code alone is not a pass
 condition: a lint that returned 2 for everything would satisfy "violation sample exits 2".
 The one thing no fixture pins is the difference between the two `PRIVATE_INFO` scopes
 (see [The process-improvement lints](#the-process-improvement-lints)).
 
 ## Status and known limitations
 
-Current status: **`0.2.0` — extracted from a working private harness, not yet
+Current status: **`0.3.0` — extracted from a working private harness, not yet
 independently validated.** Stated plainly, because a harness that overstates its own
 maturity is exactly the failure mode it exists to prevent.
 

@@ -41,5 +41,6 @@ agents/                     レビュー役と評価役。生成側から分離�
 reference/                  判定基準（各エージェントが毎回読む）と 設計.md の雛形
 scripts/                    図・可視化 HTML・業務改善の lint と ABC 分析、書く前に効く柵2本（どれも依存なし）
 hooks/hooks.json            柵（PreToolUse）をプラグインとして配る定義
-tests/                      lint の期待挙動を固定する 40 件（図10・HTML11・表16・ABC1・保存2）＋ランナー
+tests/                      lint と柵の期待挙動を固定するサンプル＋ランナー（件数は run.sh の出力から取る。手で数えない）
+.claude-plugin/             plugin.json と marketplace.json（このリポジトリ自身が単独プラグインのマーケットプレース）
 ```

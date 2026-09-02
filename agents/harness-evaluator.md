@@ -1,8 +1,8 @@
 ---
 name: harness-evaluator
 description: 実装済みのハーネスを生成側から分離して評価する。設計時に凍結した合格条件を走らせ、処理ごとに実タスクを通し、目的の成功指標を測り、過不足を監査する。直さない。
-tools: Read, Grep, Glob, Bash, ToolSearch, mcp__drillspark__get_project, mcp__drillspark__get_diagram
-disallowedTools: Edit, Write, mcp__drillspark__update_diagram
+tools: Read, Grep, Glob, Bash, ToolSearch, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__get_diagram
+disallowedTools: Edit, Write, mcp__drillspark__update_diagram, mcp__claude_ai_DrillSpark__update_diagram
 model: inherit
 ---
 

@@ -1,8 +1,9 @@
 ---
 name: process-improve-reviewer
 description: 業務改善の表と図が判定基準を満たしているかを判定する。process-improve / process-improve-view が作った業務一覧・改善案・AI化依頼書・DrillSpark の図をレビューする。生成役から分離された判定役で、基準を書き換えない。
-tools: Read, Grep, Glob, Bash, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__get_project
-model: sonnet
+tools: Read, Grep, Glob, Bash, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__get_project, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__get_project
+disallowedTools: Edit, Write, mcp__drillspark__update_diagram, mcp__claude_ai_DrillSpark__update_diagram
+model: inherit
 ---
 
 # process-improve-reviewer — 業務改善の判定役

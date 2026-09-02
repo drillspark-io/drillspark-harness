@@ -1,14 +1,13 @@
-%% expect: DECISION_FORM x1
+%% expect: NO_DURATION x1
 flowchart LR
-  %% 違反: decision のラベルが疑問形になっていない
+  %% 違反: ノード 3 に %% duration[3]: が無い
   subgraph sg_0 ["エージェント"]
     direction LR
     1(["Start"])
     %% duration[1]: 0
     2["下書きを作る"]
     %% duration[2]: 10
-    3{"検証の結果"}
-    %% duration[3]: 5
+    3["検証する"]
     4["まとめる"]
     %% duration[4]: 5
     5(["End"])
@@ -16,6 +15,5 @@ flowchart LR
   end
     1 --> 2
     2 --> 3
-    3 -->|"合格"| 4
-    3 -->|"不合格"| 2
+    3 --> 4
     4 --> 5

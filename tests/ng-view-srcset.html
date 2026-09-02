@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  expect: EXTERNAL_REF x1
+  違反1件: img の srcset が外部の画像を読んでいる。src は data: URI なので通り、srcset だけが出る
+  （src と link href だけを見る方式では、この1件がすり抜けた）。
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>可視化サンプル</title>
+</head>
+<body>
+<section data-section="目的"><h2>目的</h2><p>—</p></section>
+<section data-section="処理一覧"><h2>処理一覧</h2><p>—</p></section>
+<section data-section="工程"><h2>工程</h2>
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" srcset="https://cdn.example.com/flow-2x.png 2x" alt="工程図">
+  <table><tr data-node-id="1"><td>開始</td><td>通った</td></tr></table>
+</section>
+<section data-section="介入点"><h2>介入点</h2><p>無し</p></section>
+<section data-section="合格条件"><h2>合格条件</h2><p>無し</p></section>
+<section data-section="成果物"><h2>成果物</h2><p>無し</p></section>
+<section data-section="未完"><h2>未完</h2><p>無し</p></section>
+</body>
+</html>

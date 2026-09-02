@@ -1,0 +1,17 @@
+{
+  "name": "drillspark-harness",
+  "description": "DrillSpark BPMN diagrams to Claude Code configuration, and process improvement for human work. Single-plugin marketplace.",
+  "owner": {
+    "name": "DrillSpark",
+    "url": "https://drillspark.io/"
+  },
+  "plugins": [
+    {
+      "name": "drillspark-harness",
+      "source": "./",
+      "description": "Turn DrillSpark BPMN diagrams into real Claude Code configuration, and audit human business processes the same way. Skill content is written in Japanese.",
+      "category": "productivity",
+      "tags": ["drillspark", "bpmn", "agent-harness", "process-improvement", "japanese"]
+    }
+  ]
+}

@@ -16,8 +16,12 @@
  * 出力（Markdown の表。そのまま利用者に見せられる）:
  *   | 順 | 業務名 | 時間/月 | 累積% | ランク | 印の候補（根拠の語） |
  *
+ * 時間の読み方（`process-table-lint.js` の TIME_FORMAT と同じ規則。片方を直したらもう片方も直す）:
+ *   全角の数字・`．＝／，` を半角にし、桁区切りのカンマを除いてから、`N(時間|h|分)/(月|週|年)` の
+ *   最後の一致を合計と見る（`=` は無くてよい）。週は ×52÷12、年は ÷12 で月に直す。
+ *
  * 見ないもの:
- *   - 時間の単位の換算。`= <数字>時間/月` の形だけを読む。読めない行は `単位不明` として末尾に出し、
+ *   - 上の形で読めない行（`月30件 × 4分` だけ、`2時間` だけ）。`単位不明` として末尾に出し、
  *     ランクの計算からは外す（外したことを隠さない）
  *   - 印の妥当さ。語の一致だけで、その業務が本当にムダかは利用者と現場が決める
  */
@@ -33,11 +37,14 @@ const MARKS = [
   { mark: '目的が薄い', words: ['不要', '保留', '慣例', '昔から', 'なんとなく'], columns: ['仕事の目的'] },
 ];
 
+/** セルの中の `\|`（縦線そのもの）で列を切らない。一時的に別の文字へ逃がしてから割る */
+const ESCAPED_PIPE = String.fromCharCode(0);
+
 function cells(line) {
-  let t = line.trim();
+  let t = line.trim().split('\\|').join(ESCAPED_PIPE);
   if (t.startsWith('|')) t = t.slice(1);
   if (t.endsWith('|')) t = t.slice(0, -1);
-  return t.split('|').map((c) => c.trim());
+  return t.split('|').map((c) => c.split(ESCAPED_PIPE).join('|').trim());
 }
 
 function findList(src) {
@@ -56,13 +63,19 @@ function findList(src) {
   return null;
 }
 
-/** `月30件 × 4分 = 2時間/月` → 2。`= 90分/月` → 1.5。読めなければ null */
+/**
+ * `月30件 × 4分 = 2時間/月` → 2。`90分/月` → 1.5。`24時間/年` → 2。`１，２００分／年` → 1.67。読めなければ null
+ * （`process-table-lint.js` の hoursPerMonth と同じ規則。片方を直したらもう片方も直す）
+ */
 function hoursPerMonth(text) {
-  const t = text.replace(/[０-９．]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-  const m = /=\s*([0-9]+(?:\.[0-9]+)?)\s*(時間|h|分)\s*\/?\s*月/.exec(t);
-  if (!m) return null;
-  const n = Number(m[1]);
-  return m[2] === '分' ? n / 60 : n;
+  const t = text
+    .replace(/[０-９．＝／，]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/(?<=[0-9]),(?=[0-9]{3}(?![0-9]))/g, '');
+  const all = [...t.matchAll(/([0-9]+(?:\.[0-9]+)?)\s*(時間|h|分)\s*\/\s*(月|週|年)/g)];
+  if (all.length === 0) return null;
+  const [, num, unit, per] = all[all.length - 1];
+  const hours = unit === '分' ? Number(num) / 60 : Number(num);
+  return per === '週' ? hours * 52 / 12 : per === '年' ? hours / 12 : hours;
 }
 
 function main() {
@@ -100,10 +113,12 @@ function main() {
     }
     if (hours === null) unknown.push({ name, marks }); else items.push({ name, hours, marks });
   }
-  if (items.length === 0) { console.error('「かかる時間」が `= <数字>時間/月` の形で読める行が1件も無い'); process.exit(1); }
+  if (items.length === 0) { console.error('「かかる時間」が N時間/月（週・年でも可）の形で読める行が1件も無い — 業務一覧の「かかる時間」を埋めてから'); process.exit(1); }
 
   items.sort((a, b) => b.hours - a.hours);
   const total = items.reduce((s, x) => s + x.hours, 0);
+  // 合計 0 で割ると全行が NaN% になり、順位に見えて順位ではない表が出る
+  if (total <= 0) { console.error('「かかる時間」の合計が 0 時間で順位が出せない — 業務一覧の「かかる時間」を埋めてから'); process.exit(1); }
   let cum = 0;
   const out = ['| 順 | 業務名 | 時間/月 | 累積% | ランク | 印の候補（根拠の語） |', '|---|---|---|---|---|---|'];
   items.forEach((x, i) => {

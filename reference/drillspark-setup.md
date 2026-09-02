@@ -34,7 +34,8 @@ mcp__drillspark__list_projects()
 |---|---|---|
 | `mcp__drillspark__*` が1つも無い／ツールが見つからない | 未接続。アカウントが無いこともある | 下の**案内**を出して止まる |
 | `401` / `403` / `unauthorized` | 接続はあるが API キーが無効か期限切れ | キーの再発行を頼んで止まる |
-| 接頭辞が違う（`mcp__claude_ai_DrillSpark__*` など） | **繋がっている。**事前許可が効かず毎回確認が出るだけ | **止めない。**そのまま進める。確認を減らしたいならサーバ名を `drillspark` に揃えるよう伝える |
+| 接頭辞が `mcp__claude_ai_DrillSpark__*`（claude.ai コネクタ） | **繋がっている。**skill も agent もこの名前を宣言しているので、そのまま使える | **止めない。**そのまま進める |
+| それ以外の接頭辞（自分で別名を付けたサーバ） | **繋がっている。**skill は事前許可が効かず毎回確認が出るだけ。**agent の `tools` は許可リストなので、この名前では agent が図を読めない** | 止めない。ただしレビュー役・評価役・判定役を呼ぶ前にサーバ名を `drillspark` に揃えるよう伝える |
 | 特定のプロジェクトだけ `404` | 権限違いか ID 違い。**接続の問題ではない** | ID を確かめる。**接続の案内を出さない** |
 
 **接続の問題と、それ以外を混ぜない。** 何でも「繋ぎ直してください」と返すと、
@@ -51,8 +52,9 @@ mcp__drillspark__list_projects()
      MCP サーバ `https://drillspark.io/api/mcp/mcp` を `type: http` で追加して
      `Authorization: Bearer <キー>` を付ける
    - **Claude.ai Web / Claude Desktop** — 設定のコネクタから OAuth で連携する
-3. **サーバ名は `drillspark`。** skill と agent は `mcp__drillspark__*` で事前許可を宣言しているので、
-   この名前のときだけ許可が効く。違う名前でも**動く**（毎回確認が出るだけ）
+3. **サーバ名は `drillspark`。** Claude.ai コネクタ経由なら `claude_ai_DrillSpark` になり、こちらも宣言済み。
+   skill と agent はこの2つの名前で宣言している。それ以外の名前だと skill は毎回確認が出るだけで動くが、
+   **agent（レビュー役・評価役・判定役）は `tools` が許可リストなので図を読めない**
 4. **確認** — `/mcp` に出るかを見る。セッションの途中で繋いだ場合は**再起動が要る**
 
 出典: https://drillspark.io/ja/docs/mcp

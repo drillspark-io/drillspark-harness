@@ -1,5 +1,8 @@
 # Release Checklist
 
+> Maintainer checklist. Users of the plugin do not need to read this file; it lives outside
+> `_internal/` because it has to survive the history rewrite described below.
+
 This repository already has the target layout — the cutover from the private workspace
 is done. What remains is publication.
 
@@ -35,6 +38,10 @@ company names, project UUIDs.
 - `_internal/` — working notes and handoff, not part of the plugin
 - anything copied back from the private workspace's `docs/harness/**`
 
+A marketplace install copies the **whole repository** into the user's plugin cache — there is
+no ignore file. Anything tracked in git ships, `_internal/` included. That is why the history
+rewrite below has to happen before the first install by anyone else.
+
 ## Before publishing
 
 The repository exists at `jackasser/drillspark-harness` and is **private**.
@@ -49,10 +56,12 @@ The repository exists at `jackasser/drillspark-harness` and is **private**.
 - [ ] `claude plugin validate . --strict`
 - [ ] `bash tests/run.sh`
 - [ ] clean-environment install test — a machine that has never seen the private workspace
-- [ ] confirm the DrillSpark MCP server name matches `mcp__drillspark__*`, or keep the
-      README caveat as-is
+- [x] declare both DrillSpark tool prefixes (`mcp__drillspark__*` and
+      `mcp__claude_ai_DrillSpark__*`) in every skill and agent — agents' `tools` is an allowlist
+- [x] `.claude-plugin/marketplace.json` so `/plugin marketplace add jackasser/drillspark-harness`
+      resolves — verified with a local `marketplace add` → `install` → `uninstall` round trip
 - [ ] decide whether the Japanese skill bodies ship untranslated (README says they do)
-- [ ] tag the version in `.claude-plugin/plugin.json` (`v0.2.0` at the time of writing)
+- [ ] tag the version in `.claude-plugin/plugin.json` (`v0.3.0` at the time of writing)
 - [ ] submit to the official marketplace
 
 ## Marketplace notes
