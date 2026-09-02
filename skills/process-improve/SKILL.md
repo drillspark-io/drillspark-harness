@@ -30,7 +30,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, mcp__
 2. **現在地を出す。** `[2/5 改善する業務を選ぶ]` のように
 3. **利用者の言葉で書く。** 下の言い換え表を使う
 4. **内部IDを利用者向けの文面に出さない。** ゲートは工程名で名乗る
-5. **質問は `AskUserQuestion` で出す。** テキストで番号付きの質問を並べない
+5. **質問は `AskUserQuestion` で出す。** テキストで番号付きの質問を並べない。
+   `AskUserQuestion` が無い環境（`claude -p` などの非対話実行）では、散文で問いを1つ出して止まり、先へ進まない
 6. **CLI に mermaid を貼らない。** 図は DrillSpark のリンクに任せ、
    CLI にはレーンごとの箇条書きで「どの順に何をするか」だけ出す
 

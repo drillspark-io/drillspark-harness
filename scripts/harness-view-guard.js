@@ -47,6 +47,11 @@ function countOf(html) {
   return m ? Number(m[1]) : null;
 }
 
+function lintOf(html) {
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'harness-view-lint.js'), '-'], { input: html, encoding: 'utf8' });
+  return { status: r.status, out: ((r.stdout || '') + (r.stderr || '')).trim() };
+}
+
 function main() {
   if (process.env.DRILLSPARK_HARNESS_GUARDS === 'off') process.exit(0);
   let input;
@@ -80,10 +85,14 @@ function main() {
   const content = String(ti.content || '');
   const next = countOf(content);
   if (next === null) {
+    // 回数欄が無いときも lint は先に流し、指摘をまとめて返す（1つずつ返すと往復が増える）
+    const r = lintOf(content);
     stop([
       'harness-view-guard: 先頭に回数欄が無い。<!doctype html> の直後に <!-- 直し: 0/2 --> を置く',
-      '（初回は 0。lint や読み戻しで直すたびに 1、2 と進める）。',
-    ]);
+      '（初回は 0。書けた1枚を読み戻して直すたびに 1、2 と進める。止められた回は進めない）。',
+      r.status === 2 ? 'あわせて view-lint の指摘も直してから Write する:' : '',
+      r.status === 2 ? r.out : '',
+    ].filter(Boolean));
   }
 
   const exists = fs.existsSync(file);
