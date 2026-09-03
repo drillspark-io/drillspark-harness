@@ -35,6 +35,11 @@ carries no version of its own.
   request-sheet summary and any holds in the CLI instead of pointing at files. The criteria file's
   "one diagram, not two" line now reads: grow one as-is diagram, then compare it with a separate
   to-be project.
+- `harness-implement` starts from `業務改善/AI化依頼書.md` when it exists: purpose, success
+  criterion, exclusions and the candidate processes (one per request-sheet row, with its H-level
+  and approvals) come from the process-improve outputs and are not asked again; the to-be
+  diagram's AI lane is the draft for the process diagram. `process-improve` ends by handing over
+  the exact line to paste into a new session.
 - `process-expert` searches the web only when it lacks knowledge of the work (the design
   diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
