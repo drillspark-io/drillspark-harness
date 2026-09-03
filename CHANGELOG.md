@@ -23,8 +23,11 @@ carries no version of its own.
 - `scripts/process-coverage.js` — counts, from a `get_project` response, which first-level
   stages have a second-level (task) diagram. In a real run the model drew one of seven stages and
   moved on to the success criterion; stage 3-2 of `process-improve` now loops over every stage
-  and must get exit 0 from this script before the task-confirmation stop and before stage 4. Two
-  checks in `tests/run.sh`.
+  and must get exit 0 from this script before stage 4. Two checks in `tests/run.sh`.
+- Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
+  lines with their 一般例／未確認 marks), ask, then move to the next. Drawing every stage first and
+  presenting 35 lines at the end was more than a person can review; the task-confirmation stop is
+  that per-stage question, and the end of stage 3 is a one-line close with the diagram link.
 - `業務改善/進行.md` — a resume ledger. `process-improve` appends one line each time one of its
   three stops is passed (which stop, when, the user's own words), and reads it first when invoked
   again so it can continue after context compaction or on another day without re-asking. It is
