@@ -104,8 +104,10 @@
   button.small.quiet:hover { color: var(--warn); border-color: var(--warn); }
   button.small.danger { color: var(--warn); background: var(--warn-soft); }
 
-  .time { display: grid; grid-template-columns: 1.2fr 12px 1fr 12px 0.7fr 1.3fr; gap: 4px; align-items: center; }
+  .time { display: grid; grid-template-columns: 0.8fr 1fr 12px 0.8fr 0.9fr 12px 0.8fr auto; gap: 4px; align-items: center; }
   .time .op { text-align: center; color: var(--muted); }
+  .time .unit { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  input[readonly] { background: var(--accent-soft); border-color: transparent; color: var(--ink); text-align: right; }
 
   .rowstate { font-size: 11px; color: var(--muted); text-align: right; padding-top: 8px; white-space: nowrap; }
   .rowstate.ok { color: var(--ok); }
@@ -160,7 +162,7 @@
 
   <section class="ledger" aria-label="業務一覧">
     <div class="head">
-      <span>#</span><span>業務名</span><span>誰が</span><span>かかる時間（頻度 × 所要時間 = 合計）</span><span>測り方（測った？ 見積もり？）</span><span>仕事の目的</span><span></span>
+      <span>#</span><span>業務名</span><span>誰が</span><span>かかる時間（何回 × 1回の時間 = 月の合計）</span><span>測り方（測った？ 見積もり？）</span><span>仕事の目的</span><span></span>
     </div>
     <div id="rows"></div>
   </section>
@@ -173,7 +175,8 @@
   <section class="legend">
     <dl>
       <dt>業務名</dt><dd>動詞＋名詞で。「請求書を転記する」のように。「経理」のような状態の名前は避けます</dd>
-      <dt>かかる時間</dt><dd><code>月30件</code> × <code>4分</code> = <code>2</code> 時間/月 のように。合計の単位は 月・週・年 のどれでも構いません</dd>
+      <dt>かかる時間</dt><dd>何回やるか（<code>30</code> 回/月）と、1回にかかる時間（<code>4</code> 分）を入れると、月の合計時間は自動で出ます。
+        週・日・年の回数でも構いません（日は月20日として換算）</dd>
       <dt>測り方</dt><dd>「かかる時間」の数字は実際の時間か、当て推量か。時計で測った・日報や記録から出した → <strong>測った</strong> ／
         「1日の何割くらい」で見積もった・感覚の数字 → <strong>見積もり</strong>。<strong>見積もりで構いません</strong>（正直な印のほうが後で測り直せます）</dd>
       <dt>分からない</dt><dd>空欄にせず「分からない」を押し、<strong>誰に聞けば分かるか</strong>の名前を入れます。名前の無い「未確認」は空欄と同じ扱いです</dd>
@@ -191,9 +194,11 @@
     '実測': '測った（その場の時計でも、日報や記録からでも）',
     '未計測': '見積もり（「1日の何割くらい」や感覚の数字）'
   };
-  var UNITS = ['時間/月', '時間/週', '時間/年'];
+  var FREQ_UNITS = ['回/月', '回/週', '回/日', '回/年'];   // 頻度の単位。月に換算する倍率は PER_MONTH
+  var PER_MONTH = { '回/月': 1, '回/週': 52 / 12, '回/日': 20, '回/年': 1 / 12 };   // 回/日 は月20日として
+  var FREQ_PREFIX = { '回/月': '月', '回/週': '週', '回/日': '日', '回/年': '年' };
+  var DUR_UNITS = ['分', '時間'];
   var COLLECTION = 'works';
-  var TEXT_FIELDS = ['name', 'who', 'freq', 'dur', 'total', 'purpose', 'trigger', 'work', 'tools', 'next'];
   var DETAIL_FIELDS = [
     ['trigger', 'きっかけ', '何が来たら始まるか（例: 取引先からPDF請求書がメールで届く）'],
     ['work', '作業', '実際にやること（例: 金額・日付・取引先名を表計算に手入力）'],
@@ -213,8 +218,19 @@
   var $conn = document.getElementById('stat-conn');
 
   function blank(order) {
-    return { order: order, name: '', who: '', freq: '', dur: '', total: '', unit: UNITS[0], method: '',
+    return { order: order, name: '', who: '', freq: '', freqUnit: FREQ_UNITS[0], dur: '', durUnit: DUR_UNITS[0],
+             total: '', timeText: '', method: '',
              purpose: '', selected: false, trigger: '', work: '', tools: '', next: '', updatedAt: '' };
+  }
+  /** 頻度 × 所要時間 から 合計（時間/月）と、業務一覧の「かかる時間」に写す文字列を組む。素人に掛け算をさせない */
+  function computeTime(d) {
+    var f = parseFloat(String(d.freq).replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }));
+    var u = parseFloat(String(d.dur).replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }));
+    if (!(f > 0) || !(u > 0)) { d.total = ''; d.timeText = ''; return; }
+    var hours = f * (PER_MONTH[d.freqUnit] || 1) * (d.durUnit === '時間' ? u : u / 60);
+    var total = Math.round(hours * 10) / 10;
+    d.total = String(total);
+    d.timeText = FREQ_PREFIX[d.freqUnit] + f + '回 × ' + u + d.durUnit + ' = ' + total + '時間/月';
   }
   function newId() {
     return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -239,8 +255,8 @@
     if (!d.name.trim()) p.name = '業務名が空です';
     if (!d.who.trim()) p.who = '誰がやるかが空です';
     else if (holdProblem(d.who)) p.who = holdProblem(d.who);
-    if (!d.freq.trim() || !d.dur.trim() || !d.total.trim()) p.time = '頻度・所要時間・合計の3つとも要ります';
-    else if (!/^[0-9０-９]+([.．][0-9０-９]+)?$/.test(d.total.trim())) p.time = '合計は数字だけ（単位は右で選ぶ）';
+    if (!String(d.freq).trim() || !String(d.dur).trim()) p.time = '頻度と所要時間を数字で（合計は自動で出ます）';
+    else if (!d.total) p.time = '頻度と所要時間は 0 より大きい数字で（単位は右で選ぶ）';
     if (!d.method) p.method = '測った数字か見積もりかを選んでください';
     if (!d.purpose.trim()) p.purpose = '仕事の目的が空です（要らないなら「不要」）';
     else if (holdProblem(d.purpose)) p.purpose = holdProblem(d.purpose);
@@ -300,19 +316,22 @@
 
     // かかる時間
     var time = el('div', 'field');
-    var tlab = el('label', null, 'かかる時間（頻度 × 所要時間 = 合計）'); time.appendChild(tlab);
+    var tlab = el('label', null, 'かかる時間（何回 × 1回の時間 = 月の合計）'); time.appendChild(tlab);
     var grid = el('div', 'time');
-    var freq = el('input'); freq.type = 'text'; freq.placeholder = '月30件'; freq.dataset.key = 'freq'; freq.setAttribute('aria-label', '頻度');
-    var dur = el('input'); dur.type = 'text'; dur.placeholder = '4分'; dur.dataset.key = 'dur'; dur.setAttribute('aria-label', '所要時間');
-    var total = el('input'); total.type = 'text'; total.placeholder = '2'; total.dataset.key = 'total'; total.inputMode = 'decimal'; total.setAttribute('aria-label', '合計');
-    var unit = el('select'); unit.dataset.key = 'unit'; unit.setAttribute('aria-label', '合計の単位');
-    UNITS.forEach(function (u) { var o = el('option', null, u); o.value = u; unit.appendChild(o); });
-    [freq, dur, total, unit].forEach(function (i) {
+    var freq = el('input'); freq.type = 'text'; freq.placeholder = '30'; freq.dataset.key = 'freq'; freq.inputMode = 'decimal'; freq.setAttribute('aria-label', '頻度');
+    var freqUnit = el('select'); freqUnit.dataset.key = 'freqUnit'; freqUnit.setAttribute('aria-label', '頻度の単位');
+    FREQ_UNITS.forEach(function (u) { var o = el('option', null, u); o.value = u; freqUnit.appendChild(o); });
+    var dur = el('input'); dur.type = 'text'; dur.placeholder = '4'; dur.dataset.key = 'dur'; dur.inputMode = 'decimal'; dur.setAttribute('aria-label', '1回の所要時間');
+    var durUnit = el('select'); durUnit.dataset.key = 'durUnit'; durUnit.setAttribute('aria-label', '所要時間の単位');
+    DUR_UNITS.forEach(function (u) { var o = el('option', null, u); o.value = u; durUnit.appendChild(o); });
+    var total = el('input'); total.type = 'text'; total.readOnly = true; total.tabIndex = -1; total.placeholder = '自動'; total.dataset.key = 'total'; total.setAttribute('aria-label', '合計（時間/月）');
+    [freq, freqUnit, dur, durUnit].forEach(function (i) {
       i.addEventListener('input', function () { onEdit(id, i.dataset.key, i.value); });
       i.addEventListener('change', function () { onEdit(id, i.dataset.key, i.value); });
     });
-    grid.appendChild(freq); grid.appendChild(el('span', 'op', '×')); grid.appendChild(dur);
-    grid.appendChild(el('span', 'op', '=')); grid.appendChild(total); grid.appendChild(unit);
+    grid.appendChild(freq); grid.appendChild(freqUnit); grid.appendChild(el('span', 'op', '×'));
+    grid.appendChild(dur); grid.appendChild(durUnit); grid.appendChild(el('span', 'op', '='));
+    grid.appendChild(total); grid.appendChild(el('span', 'unit', '時間/月'));
     time.appendChild(grid);
     var thint = el('div', 'hint'); thint.dataset.hintFor = 'time'; time.appendChild(thint);
     main.appendChild(time);
@@ -401,9 +420,10 @@
       var inp = row.querySelector('[data-key="' + k + '"]');
       if (inp) inp.classList.toggle('is-empty', !!problems[k]);
     });
-    ['freq', 'dur', 'total'].forEach(function (k) {
+    ['freq', 'dur'].forEach(function (k) {
       row.querySelector('[data-key="' + k + '"]').classList.toggle('is-empty', !!problems.time);
     });
+    row.querySelector('[data-key="total"]').value = d.total || '';   // 合計は常に計算結果（編集中でも）
     row.dataset.problems = Object.keys(problems).length;
   }
 
@@ -433,6 +453,7 @@
   // ---- 編集と保存 ----
   function onEdit(id, key, value) {
     rows[id][key] = value;
+    computeTime(rows[id]);
     paint(id);
     paintStats();
     setState(id, db ? '保存中' : '未保存（claude.ai の中で開くと保存されます）', false);
@@ -496,6 +517,7 @@
         var d = doc.data(); if (!d) return;
         var merged = blank(0);
         Object.keys(merged).forEach(function (k) { if (d[k] != null) merged[k] = d[k]; });
+        computeTime(merged);
         seen[doc.id] = true;
         if (els[doc.id] && isEditing(els[doc.id])) return;  // 手元の編集を上書きしない
         rows[doc.id] = merged;

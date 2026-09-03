@@ -320,7 +320,7 @@ check(!/<!doctype|<html[\s>]|<body[\s>]|<head[\s>]/i.test(html), "断片とし�
 check(/window\.claude/.test(html) && /use\(['"]db['"]\)/.test(html), "claude.use(\"db\") で保存先に繋ぎ、無いときも表示できる");
 const lintMethods = (/'測り方': \{ re: \/\^\(([^)]*)\)\$\//.exec(lint) || [, ""])[1].split("|");
 check(list("METHODS").join("|") === lintMethods.join("|"), "測り方の選択肢が process-table-lint と一致する（" + lintMethods.join("／") + "）");
-check(list("UNITS").join("|") === "時間/月|時間/週|時間/年", "合計の単位が 時間/月・時間/週・時間/年（ABC が月に換算できる3つ）");
+check(list("FREQ_UNITS").join("|") === "回/月|回/週|回/日|回/年" && /= ' \+ total \+ '時間\/月'/.test(html), "頻度の単位が 回/月・回/週・回/日・回/年 で、合計は必ず 時間/月 で組む（ABC がそのまま読める）");
 const urls = (html.match(/https?:\/\/[^\s"'<>)]+/g) || []).filter((u) => !/^https:\/\/fonts\.(googleapis|gstatic)\.com/.test(u));
 check(urls.length === 0, "外部資源は Google Fonts だけ" + (urls.length ? "（他: " + urls.join(" ") + "）" : ""));
 check(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Za-z]:\\|\/Users\/|[\w.+-]+@[\w-]+\.[\w.]+/i.test(html), "私的情報が無い（UUID・絶対パス・メール）");
