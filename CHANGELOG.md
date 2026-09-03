@@ -26,8 +26,9 @@ carries no version of its own.
   and must get exit 0 from this script before stage 4. Two checks in `tests/run.sh`.
 - Stage 4-3 no longer asks the user to pick from a list of proposals. It draws the **proposed flow
   as a new DrillSpark project** (`<部門> / <業務>（改善後）`: the ECRS proposals applied to the
-  approved as-is diagram — every stage on the first level, plus the second level of any stage
-  whose tasks a proposal touches; AI-delegated stages and tasks in an "AI" lane), prints the change list and both
+  approved as-is diagram — a complete copy, first and second level for every stage, with the
+  proposals applied where they land; AI-delegated stages and tasks in an "AI" lane; coverage
+  checked with `process-coverage.js` like the as-is diagram), prints the change list and both
   links in the CLI so the user compares as-is and to-be, and revises the to-be diagram on
   objections. The as-is diagram is left untouched; both URLs go in 図の在りか (`現状 ／ 改善後: URL`).
   The hand-over prints the success criterion, both links with the adopted changes, the
