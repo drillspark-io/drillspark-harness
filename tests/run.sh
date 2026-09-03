@@ -278,6 +278,33 @@ for g in "$VIEW_GUARD" "$PROC_GUARD"; do
 done
 rm -rf "$T"
 
+echo "== 1枚の生成 =="
+# harness-view-build が map.json ＋ diagrams.json から1枚を組み立て、書く前に柵（回数欄・上書き・view-lint）を通すこと。
+# 出力は map と同じフォルダに出るので、一時フォルダへ写してから走らせる。回数欄は 0 → 1 → 2 と進み、3回目は上限で止まる。
+BUILD="scripts/harness-view-build.js"
+T=$(mktemp -d); mkdir -p "$T/docs/harness/demo/可視化"   # 契約どおりの置き場にして、柵（harness-view-guard）が効く経路で検査する
+cp "$DIR/ok-build-minimal.map.json" "$T/docs/harness/demo/可視化/記事を書く-2026-01-01.map.json"
+cp "$DIR/ok-build-minimal.diagrams.json" "$T/docs/harness/demo/可視化/記事を書く-2026-01-01.diagrams.json"
+for want_n in 0 1 2; do
+  out=$(node "$BUILD" "$T/docs/harness/demo/可視化/記事を書く-2026-01-01.map.json" 2>&1); got=$?
+  head=$(head -2 "$T/docs/harness/demo/可視化/記事を書く-2026-01-01.html" 2>/dev/null | grep -o '直し: [0-9]*/2')
+  if [ "$got" -eq 0 ] && [ "$head" = "直し: $want_n/2" ] && node "scripts/harness-view-lint.js" "$T/docs/harness/demo/可視化/記事を書く-2026-01-01.html" >/dev/null 2>&1; then
+    echo "  PASS ok-build-minimal  (exit 0 / 回数欄 $want_n/2 / view-lint 0)"
+  else
+    echo "  FAIL ok-build-minimal  期待 exit 0・回数欄 $want_n/2 / 実際 exit $got・${head:-回数欄なし}"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1
+  fi
+done
+out=$(node "$BUILD" "$T/docs/harness/demo/可視化/記事を書く-2026-01-01.map.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '上限'; then echo "  PASS ok-build-minimal  4回目は上限で止まる (exit 2 / 「上限」)"; else echo "  FAIL ok-build-minimal  4回目が止まらない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+cp "$DIR/ng-build-no-purpose.map.json" "$T/docs/harness/demo/可視化/欠け-2026-01-01.map.json"
+cp "$DIR/ok-build-minimal.diagrams.json" "$T/docs/harness/demo/可視化/欠け-2026-01-01.diagrams.json"
+out=$(node "$BUILD" "$T/docs/harness/demo/可視化/欠け-2026-01-01.map.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '必須の項目' && [ ! -e "$T/docs/harness/demo/可視化/欠け-2026-01-01.html" ]; then echo "  PASS ng-build-no-purpose  (exit 2 / 「必須の項目」 / 書かない)"; else echo "  FAIL ng-build-no-purpose  期待 exit 2・書かない / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+cp "$DIR/ok-build-minimal.map.json" "$T/docs/harness/demo/可視化/図なし-2026-01-01.map.json"
+out=$(node "$BUILD" "$T/docs/harness/demo/可視化/図なし-2026-01-01.map.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '図の JSON が無い'; then echo "  PASS 図の JSON が無いときは書かない  (exit 2)"; else echo "  FAIL 図の JSON が無いのに止まらない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+rm -rf "$T"
+
 echo "== hook の配線 =="
 # hooks.json が読めること、要る matcher が揃っていること、command が指すスクリプトが実在すること。
 # （validate は JSON の文法しか見ない。パスだけ壊れた hook は validate を通る — 実測）
@@ -337,6 +364,7 @@ for p in \
   scripts/diagram-lint.js \
   scripts/harness-view-lint.js \
   scripts/harness-view-guard.js \
+  scripts/harness-view-build.js \
   skills/process-improve/SKILL.md \
   skills/process-improve-view/SKILL.md \
   agents/process-expert.md \

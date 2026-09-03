@@ -1,0 +1,7 @@
+{
+  "_comment": "expect: 必須の項目 x1 — purpose が無い map.json は書かずに exit 2。tests/run.sh が ok-build-minimal.diagrams.json と組で走らせる",
+  "harness": "demo",
+  "process": "記事を書く",
+  "date": "2026-01-01",
+  "nodes": { "1": { "what": "skill の起動", "mech": "plea", "file": "x", "where": "y", "src": "z", "status": "d" } }
+}

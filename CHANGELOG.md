@@ -13,6 +13,12 @@ to switch them off (`DRILLSPARK_HARNESS_GUARDS=off`).
 
 ### Added
 
+- `scripts/harness-view-build.js` — `harness-visualize` no longer asks the model to write the
+  100 KB+ page in one `Write` (it never finished headless in four attempts). The model writes a
+  small `map.json` (node → file / mechanism / status, gates, tests, products, excerpts) and
+  copies the DrillSpark diagrams into `diagrams.json`; the script parses the diagrams, draws the
+  root SVG, builds every table, embeds the excerpts and the design system, and runs the guard
+  (fix counter, no overwrite, lint) before writing.
 - `hooks/hooks.json` with two guards: `scripts/harness-view-guard.js` (no overwriting a
   visualization page, a fix counter capped at 2, lint before write, no Bash redirect / `tee` /
   `cp` / `mv` targeting a page in the folder) and `scripts/process-write-guard.js` (table and

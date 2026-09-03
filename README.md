@@ -112,6 +112,7 @@ agents/harness-evaluator.md         評価。合格条件を走らせ、目的�
 reference/drillspark-setup.md         接続の確認と、未登録・未接続のときの案内。各 skill が開始時に読む
 reference/harness-design-criteria.md  レビュー時の判定線。両エージェントが毎回読む
 reference/設計.md.template            設計ファイル一式の雛形（工程ごとに1ファイル）
+scripts/harness-view-build.js         可視化の1枚を map.json ＋ diagrams.json から組み立てる（書く前に柵を通す。依存なし）
 scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
 scripts/harness-view-guard.js         可視化 HTML を書く前に効く柵（上書き・回数欄・lint）。PreToolUse hook
 hooks/hooks.json                      guard 2本をプラグインとして配る hook 定義
@@ -179,7 +180,11 @@ conversation starts from the marked nodes.
 `skills/harness-visualize/` is a **処理 (workflow), not a 工程 (stage)** — it does
 not join the chain below. It takes one workflow of a harness and renders the diagram, the
 design and what actually happened into a single self-contained HTML page. It renders; it
-does not judge. Grading stays with `harness-evaluator`.
+does not judge. Grading stays with `harness-evaluator`. The model does not write the page:
+it writes a `map.json` (which node became which file, mechanism and status; gates; pass
+conditions; excerpts) and copies the DrillSpark diagrams into `diagrams.json`, and
+`scripts/harness-view-build.js` builds the page deterministically and runs the guard before
+writing it.
 
 `skills/harness-improve/` **runs the pipeline backwards, and does not implement.** Every other
 stage starts from a purpose and derives diagrams from it. Improve starts from the `.claude/` files
@@ -335,8 +340,8 @@ bash tests/run.sh
 
 `tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
 the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
-then 54 guard checks and one hook-wiring check, validates the plugin and checks that all 33
-shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+then six page-build checks, 54 guard checks and one hook-wiring check, validates the plugin and
+checks that all 34 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
 | checks | what |
@@ -347,6 +352,7 @@ do not update them by hand.)
 | 22 `*-table-*.md` | `process-table-lint` |
 | 2 (`ok-table-abc.md`: ranks A/B/C and marks with their source words; `ok-table-abc-year.md`: `/週` and `/年` totals converted to a month) | `process-abc` |
 | 2 (a missing path, an existing file) | `file-saved-lint` |
+| 6 (`ok-build-minimal.*.json` builds a page whose fix counter goes 0 → 1 → 2 and is refused on the fourth run; a map without `purpose` and a map without its diagrams are refused without writing) | `harness-view-build` |
 | 54 (PreToolUse JSON fed to each guard: what it stops, what it must let through, malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 
@@ -396,12 +402,11 @@ maturity is exactly the failure mode it exists to prevent.
   read-only). Five of the six reached their first approval gate or wrote their file with the
   guards passing. **`harness-visualize` did not produce its page in four attempts**: gathering
   the inputs takes about a minute, but writing a 60–120 KB page (hand-drawn SVG, eight tables,
-  file excerpts, inline JS) in a single `Write` did not complete within 15–45 minutes. Built by
-  hand in the maintainer's own session — a small script doing the deterministic parts (diagram →
-  tables, Mermaid source, excerpts, and the CSS reused from an internal design sample that is not
-  shipped) and the model writing only the node-to-file mapping — the same page took a few
-  minutes and passed the lint and the guard. Until that script
-  ships, run this skill interactively and expect it to be slow. Two more things the sandbox showed: headless mode has no
+  file excerpts, inline JS) in a single `Write` did not complete within 15–45 minutes. That is
+  why the page is now generated: the model writes only the mapping (`map.json`) and copies the
+  diagrams, and `scripts/harness-view-build.js` does the rest and runs the guard before writing.
+  Built that way in the maintainer's own session, the same page took a few minutes and passed
+  the lint and the guard; the generated flow has not yet been run headless end to end. Two more things the sandbox showed: headless mode has no
   `AskUserQuestion`, so gates fall back to a prose question and stop; and a project's own
   `CLAUDE.md` is loaded before any skill, so an instruction planted there runs before
   `harness-improve` can say it is material, not orders.

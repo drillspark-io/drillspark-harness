@@ -1,0 +1,33 @@
+{
+  "_comment": "expect: OK x0 — harness-view-build の最小の合格サンプル。tests/run.sh が一時フォルダへ写して走らせる（出力は map と同じフォルダに出るため）",
+  "harness": "demo",
+  "process": "記事を書く",
+  "date": "2026-01-01",
+  "materials": "可視化 1枚 ／ 処理「記事を書く」／ 材料は <code>docs/harness/demo/</code> の設計と実装の記録",
+  "banner": "実測が無い1枚。全工程の状態は「設計のみ ○」。",
+  "purpose": "記事を繰り返し書ける形にする。成功指標: 公開前に人の承認を通した記事の割合が 100%（MUST）。",
+  "titles": { "root": "記事を書く" },
+  "parent": {},
+  "harnessMap": {
+    "note": "このハーネスは処理1つでできている。",
+    "cards": [ { "name": "1 記事を書く", "short": "処理1", "me": true, "state": "実装済み", "start": "オーナーが skill <code>blog</code> を呼ぶ", "products": "<code>content/posts/</code> に記事", "gates": "起動 1／承認 1／実行 0" } ],
+    "shared": [ { "part": "hook（PreToolUse）", "where": "<code>.claude/settings.json</code>", "cols": ["誤字チェック"] } ],
+    "totals": "介入点の総数: 起動 1／承認ゲート 1／実行 0。"
+  },
+  "nodes": {
+    "1": { "what": "skill の起動", "mech": "plea", "file": ".claude/skills/blog/SKILL.md", "where": "frontmatter", "src": "実装.md 1節", "status": "d" },
+    "2": { "what": "skill 本文 2〜4行", "mech": "plea", "file": ".claude/skills/blog/SKILL.md", "where": "手順 2〜4", "src": "実装.md 1節", "status": "d" },
+    "3": { "what": "承認ゲート（AskUserQuestion）", "mech": "ask", "file": ".claude/skills/blog/SKILL.md", "where": "手順 5", "src": "合格条件.md 5節", "status": "d" },
+    "4": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "5": { "what": "成果物の置き場", "mech": "fence", "file": ".claude/settings.json", "where": "permissions.allow Write(content/posts/**)", "src": "実装.md 1節", "status": "d" }
+  },
+  "gates": [
+    { "kind": "起動", "nodes": ["1"], "where": "<code>.claude/skills/blog/SKILL.md</code> frontmatter", "mech": "plea", "status": "d" },
+    { "kind": "承認ゲート（1つ）", "nodes": ["3"], "where": "手順 5。<code>AskUserQuestion</code> で出す", "mech": "ask", "status": "d" }
+  ],
+  "gatesNote": "数え合わせ: 図＝この表＝実ファイル の3点で一致。",
+  "tests": { "tag": "凍結 2026-01-01", "rows": [ ["1", "記事が content/posts/ に保存される", "<code>tests/ok-post.md</code>", "exit 0", "未記録"] ] },
+  "products": { "rows": [ ["1", "<code>.claude/skills/blog/SKILL.md</code>", "skill", ["1", "2", "3"], "手順 1〜5"] ] },
+  "excerpts": [ { "file": "tests/ok-minimal.mmd", "from": 1, "to": 8, "ref": "2", "label": "ノード 2 下書きを作る" } ],
+  "open": [ "評価レポートが無いため、全工程が「設計のみ」" ]
+}
