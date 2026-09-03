@@ -2,8 +2,9 @@
 
 DrillSpark の BPMN 図を Claude Code の実設定へ落とすプラグイン。
 
-**作業を始める前に [`_internal/HANDOFF.md`](../_internal/HANDOFF.md) を読む。**
+**作業を始める前に `_internal/HANDOFF.md` を読む**（git 管理外。オーナーの手元にだけある）。
 現在の状態・未決の判断・既知の欠陥・外にある関連物が全部そこにある。
+無い環境（clone した先）では `README.md` の Status と `CHANGELOG.md` から始める。
 
 ## コマンド
 
@@ -18,7 +19,8 @@ claude --plugin-dir . -- "…"          # セッション限定でロードし�
 
 ## 規律
 
-1. **`_internal/` は公開コピーに含めない。** 作業記録と引き継ぎだけが入る
+1. **`_internal/` は git に入れない**（`.gitignore`。2026-09-03 に履歴からも除去した）。作業記録と引き継ぎだけが入る。
+   マーケットプレース経由のインストールはリポジトリ丸ごとをコピーするので、追跡した瞬間に配布物へ乗る
 2. **私的情報を持ち込まない** — 絶対パス・メール・DrillSpark のプロジェクトUUID・顧客名・社名。
    追加・編集のたびに grep で確認する
 3. **既存の DrillSpark プロジェクトを更新しない。** `update_diagram` は全置換で、

@@ -1,3 +1,5 @@
+# 引き継ぎ・作業記録・図の写し。オーナーの手元にだけ置き、git にも配布物にも入れない
+_internal/
 node_modules/
 .DS_Store
 Thumbs.db

@@ -48,9 +48,9 @@ The repository exists at `jackasser/drillspark-harness` and is **private**.
 
 - [x] create the GitHub repository
 - [x] set the real `repository` URL in `.claude-plugin/plugin.json`
-- [ ] **strip `_internal/` from the history before flipping to public** — it holds local
-      paths and session ids. Deleting the directory is not enough; the history keeps it.
-      Rebuild the repository, or use `git filter-repo`. Going public cannot be undone
+- [x] **strip `_internal/` from the history** — done 2026-09-03 with `git filter-branch`
+      (every branch), `_internal/` added to `.gitignore`, `main` force-pushed. The directory
+      still exists on the maintainer's machine, untracked. Going public cannot be undone
 - [ ] flip visibility to public
 - [ ] set `homepage` and a support / issue tracker URL
 - [ ] `claude plugin validate . --strict`
