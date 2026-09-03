@@ -25,6 +25,12 @@ carries no version of its own.
   moved on to the success criterion; stage 3-2 of `process-improve` now loops over every stage
   and must get exit 0 from this script before the task-confirmation stop and before stage 4. Two
   checks in `tests/run.sh`.
+- `業務改善/進行.md` — a resume ledger. `process-improve` appends one line each time one of its
+  three stops is passed (which stop, when, the user's own words), and reads it first when invoked
+  again so it can continue after context compaction or on another day without re-asking. It is
+  deliberately unguarded: a self-reported ledger cannot be verified by a hook, so the hard gates
+  stay on facts a script can check (diagram coverage, table cross-references). One guard check
+  pins that the ledger passes the write guard.
 
 ### Changed
 

@@ -236,6 +236,7 @@ guard_case "$VIEW_GUARD" 0 ""              "view: 可視化/ を読むだけの 
 
 guard_case "$PROC_GUARD" 0 "" "process: 無関係な Write は通す"                 Write "$T/other/改善案.md" "$DIR/ng-table-blank.md"
 guard_case "$PROC_GUARD" 0 "" "process: 表を持たない 業務改善/教訓.md は通す"    Write "$T/業務改善/教訓.md" "$DIR/run.sh"
+guard_case "$PROC_GUARD" 0 "" "process: 再開用の 業務改善/進行.md は通す"        Write "$T/業務改善/進行.md" "$DIR/ok-progress.md"
 guard_case "$PROC_GUARD" 2 "表の検査に落ちた" "process: 表 lint に落ちる内容は書かせない" Write "$T/業務改善/業務一覧.md" "$DIR/ng-table-blank.md"
 guard_case "$PROC_GUARD" 0 "" "process: 表 lint 合格は通す"                    Write "$T/業務改善/業務一覧.md" "$DIR/ok-table-minimal.md"
 guard_case "$PROC_GUARD" 2 "1枚の検査に落ちた" "process: 1枚 lint に落ちる内容は書かせない" Write "$T/業務改善/改善計画-x.html" "$DIR/ng-plan-external.html"
