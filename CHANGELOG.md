@@ -24,6 +24,15 @@ carries no version of its own.
   stages have a second-level (task) diagram. In a real run the model drew one of seven stages and
   moved on to the success criterion; stage 3-2 of `process-improve` now loops over every stage
   and must get exit 0 from this script before stage 4. Two checks in `tests/run.sh`.
+- Stage 4-3 no longer asks the user to pick from a list of proposals. It draws the **proposed flow
+  as a new DrillSpark project** (`<部門> / <業務>（改善後）`: the ECRS proposals applied to the
+  approved as-is first level, AI-delegated stages in an "AI" lane), prints the change list and both
+  links in the CLI so the user compares as-is and to-be, and revises the to-be diagram on
+  objections. The as-is diagram is left untouched; both URLs go in 図の在りか (`現状 ／ 改善後: URL`).
+  The hand-over prints the success criterion, both links with the adopted changes, the
+  request-sheet summary and any holds in the CLI instead of pointing at files. The criteria file's
+  "one diagram, not two" line now reads: grow one as-is diagram, then compare it with a separate
+  to-be project.
 - `process-expert` searches the web only when it lacks knowledge of the work (the design
   diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
