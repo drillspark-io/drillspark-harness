@@ -542,6 +542,7 @@
         var d = doc.data(); if (!d) return;
         var merged = blank(0);
         Object.keys(merged).forEach(function (k) { if (d[k] != null) merged[k] = d[k]; });
+        absorbUnits(merged, 'freq'); absorbUnits(merged, 'dur');   // 古い版で「月10」「2時間」と保存された行も同じ扱いに
         computeTime(merged);
         seen[doc.id] = true;
         if (els[doc.id] && isEditing(els[doc.id])) return;  // 手元の編集を上書きしない
