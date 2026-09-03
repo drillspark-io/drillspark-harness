@@ -3,6 +3,29 @@
 The version is the `version` field in `.claude-plugin/plugin.json`; the marketplace entry
 carries no version of its own.
 
+## 0.4.0
+
+### Added
+
+- `skills/process-improve/assets/棚卸しシート.html` — an inventory sheet for stage 1 of
+  `process-improve`. Where the `Artifact` tool is available, the skill publishes this page with the
+  `db` capability, the user fills one row per task in the browser (auto-saved; empty cells and a
+  「未確認」 without a name are shown in red before anything reaches the lint), and the skill reads
+  the rows back with `read_db` and writes `業務改善/業務一覧.md` through the existing hook. Stage 2
+  marks the chosen rows with `write_db` (`selected: true`), which reveals the four detail fields on
+  the page. Without `Artifact` (or in `claude -p`, where the user cannot open a page) the skill
+  interviews in chat as before. The page uses the smallest `db` surface (`collection`, `doc`, `set`,
+  `delete`, `onSnapshot`) against the runtime current at release; the artifact is
+  organization-internal and cannot be shared publicly.
+- `tests/run.sh` — six checks on the sheet (fragment, `claude.use("db")`, 測り方 options identical
+  to `process-table-lint`, three total units, Google Fonts as the only external resource, no
+  private information). The shipped-file check now covers 35 files.
+
+### Changed
+
+- `skills/process-improve/SKILL.md` — `allowed-tools` gains `Artifact` and `Skill`; stage 1 and
+  stage 2 describe the sheet path and the chat fallback.
+
 ## 0.3.0
 
 **Behaviour change: the plugin now installs PreToolUse hooks.** They run on every

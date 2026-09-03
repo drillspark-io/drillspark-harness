@@ -156,8 +156,11 @@ before-and-after pair, unreadable spots drawn as flagged nodes rather than guess
 limit **and** a destination, and a criteria file the generating side cannot edit.
 
 `skills/process-improve/` is for **someone who has never done process improvement** — an ordinary
-employee looking at their own job. It builds a table of their work, ranks it by time using ABC
-analysis *by machine* (the user is never asked to compute a cumulative percentage), draws the one
+employee looking at their own job. It builds a table of their work — where the `Artifact` tool is
+available it publishes a small inventory sheet (`skills/process-improve/assets/棚卸しシート.html`,
+one row per task, auto-saved to the artifact's database) and reads the rows back instead of
+interviewing for 10–30 tasks one question at a time; without it, the interview remains — ranks it by
+time using ABC analysis *by machine* (the user is never asked to compute a cumulative percentage), draws the one
 or two heaviest as a DrillSpark diagram, walks ECRS in order — **eliminate, combine, rearrange,
 simplify, asked one question at a time** rather than "please suggest improvements" — and ends with
 a hand-off note listing which steps to give to an AI and how far (H1–H5), which operations need a
@@ -340,8 +343,8 @@ bash tests/run.sh
 
 `tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
 the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
-then six page-build checks, 54 guard checks and one hook-wiring check, validates the plugin and
-checks that all 34 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+then six page-build checks, six inventory-sheet checks, 54 guard checks and one hook-wiring check,
+validates the plugin and checks that all 35 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
 | checks | what |
@@ -353,6 +356,7 @@ do not update them by hand.)
 | 2 (`ok-table-abc.md`: ranks A/B/C and marks with their source words; `ok-table-abc-year.md`: `/週` and `/年` totals converted to a month) | `process-abc` |
 | 2 (a missing path, an existing file) | `file-saved-lint` |
 | 6 (`ok-build-minimal.*.json` builds a page whose fix counter goes 0 → 1 → 2 and is refused on the fourth run; a map without `purpose` and a map without its diagrams are refused without writing) | `harness-view-build` |
+| 6 (`skills/process-improve/assets/棚卸しシート.html`: written as a fragment, connects through `claude.use("db")`, its 測り方 options match `process-table-lint`, three total units, Google Fonts is the only external resource, no private information) | inventory sheet |
 | 54 (PreToolUse JSON fed to each guard: what it stops, what it must let through, malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 
@@ -364,7 +368,7 @@ The one thing no fixture pins is the difference between the two `PRIVATE_INFO` s
 
 ## Status and known limitations
 
-Current status: **`0.3.0` — extracted from a working private harness, not yet
+Current status: **`0.4.0` — extracted from a working private harness, not yet
 independently validated.** Stated plainly, because a harness that overstates its own
 maturity is exactly the failure mode it exists to prevent.
 

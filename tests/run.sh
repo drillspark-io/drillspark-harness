@@ -305,6 +305,31 @@ out=$(node "$BUILD" "$T/docs/harness/demo/可視化/図なし-2026-01-01.map.jso
 if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '図の JSON が無い'; then echo "  PASS 図の JSON が無いときは書かない  (exit 2)"; else echo "  FAIL 図の JSON が無いのに止まらない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 rm -rf "$T"
 
+echo "== 入力画面 =="
+# process-improve の棚卸しシート（Artifact の db に保存する1枚）。選択肢の文字列が表の lint と食い違うと、画面で選べた値が
+# 業務一覧で落ちる。外部資源は Google Fonts だけ（Artifact の CSP は他を黙って落とす）。公開時に包まれるので断片で書く。
+SHEET="skills/process-improve/assets/棚卸しシート.html"
+out=$(node - "$SHEET" <<'EOF'
+const fs = require("fs");
+const html = fs.readFileSync(process.argv[2], "utf8");
+const lint = fs.readFileSync("scripts/process-table-lint.js", "utf8");
+let bad = 0;
+const check = (ok, label) => { console.log((ok ? "  PASS " : "  FAIL ") + label); if (!ok) bad++; };
+const list = (name) => { const m = new RegExp("var " + name + " = \\[([^\\]]*)\\]").exec(html); return m ? (m[1].match(/'([^']*)'/g) || []).map((s) => s.slice(1, -1)) : []; };
+check(!/<!doctype|<html[\s>]|<body[\s>]|<head[\s>]/i.test(html), "断片として書かれている（doctype / html / head / body を持たない）");
+check(/window\.claude/.test(html) && /use\(['"]db['"]\)/.test(html), "claude.use(\"db\") で保存先に繋ぎ、無いときも表示できる");
+const lintMethods = (/'測り方': \{ re: \/\^\(([^)]*)\)\$\//.exec(lint) || [, ""])[1].split("|");
+check(list("METHODS").join("|") === lintMethods.join("|"), "測り方の選択肢が process-table-lint と一致する（" + lintMethods.join("／") + "）");
+check(list("UNITS").join("|") === "時間/月|時間/週|時間/年", "合計の単位が 時間/月・時間/週・時間/年（ABC が月に換算できる3つ）");
+const urls = (html.match(/https?:\/\/[^\s"'<>)]+/g) || []).filter((u) => !/^https:\/\/fonts\.(googleapis|gstatic)\.com/.test(u));
+check(urls.length === 0, "外部資源は Google Fonts だけ" + (urls.length ? "（他: " + urls.join(" ") + "）" : ""));
+check(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Za-z]:\\|\/Users\/|[\w.+-]+@[\w-]+\.[\w.]+/i.test(html), "私的情報が無い（UUID・絶対パス・メール）");
+process.exit(bad ? 1 : 0);
+EOF
+); got=$?
+printf '%s\n' "$out"
+if [ "$got" -ne 0 ]; then fail=1; fi
+
 echo "== hook の配線 =="
 # hooks.json が読めること、要る matcher が揃っていること、command が指すスクリプトが実在すること。
 # （validate は JSON の文法しか見ない。パスだけ壊れた hook は validate を通る — 実測）
@@ -366,6 +391,7 @@ for p in \
   scripts/harness-view-guard.js \
   scripts/harness-view-build.js \
   skills/process-improve/SKILL.md \
+  skills/process-improve/assets/棚卸しシート.html \
   skills/process-improve-view/SKILL.md \
   agents/process-expert.md \
   agents/process-improve-reviewer.md \

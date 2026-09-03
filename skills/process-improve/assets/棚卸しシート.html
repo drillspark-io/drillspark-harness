@@ -1,0 +1,520 @@
+<title>業務の棚卸しシート</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho:wght@600&display=swap">
+<style>
+  /* process-improve 工程1・2 の入力画面。
+     保存先は Artifact の db（collection "works"、1業務 = 1文書）。
+     列と値の正本は reference/business-improvement-tables.md — 選択肢の文字列はそこと一致させる。 */
+  :root {
+    --ground: #F6F7F4;
+    --surface: #FFFFFF;
+    --ink: #1E2622;
+    --muted: #6A736E;
+    --rule: #D5DBD6;
+    --rule-strong: #B9C2BC;
+    --accent: #2E4B7E;
+    --accent-soft: #E6ECF6;
+    --warn: #B25A22;
+    --warn-soft: #F8EBE2;
+    --ok: #3C7B5A;
+    --font-body: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    --font-title: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #151917;
+      --surface: #1D2320;
+      --ink: #E4E8E3;
+      --muted: #98A39C;
+      --rule: #2F3733;
+      --rule-strong: #46514B;
+      --accent: #93ADE0;
+      --accent-soft: #232D3E;
+      --warn: #E08A55;
+      --warn-soft: #3A2A20;
+      --ok: #7DBB98;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #151917;
+    --surface: #1D2320;
+    --ink: #E4E8E3;
+    --muted: #98A39C;
+    --rule: #2F3733;
+    --rule-strong: #46514B;
+    --accent: #93ADE0;
+    --accent-soft: #232D3E;
+    --warn: #E08A55;
+    --warn-soft: #3A2A20;
+    --ok: #7DBB98;
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+  }
+  .page { max-width: 1240px; margin: 0 auto; padding: 32px 24px 96px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; padding-bottom: 20px; border-bottom: 2px solid var(--ink); }
+  h1 { font-family: var(--font-title); font-weight: 600; font-size: 28px; letter-spacing: 0.04em; margin: 0 0 4px; text-wrap: balance; }
+  .lead { margin: 0; max-width: 40em; color: var(--muted); }
+  .lead strong { color: var(--ink); font-weight: 700; }
+  .stats { display: flex; gap: 24px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .stats b { font-size: 20px; font-weight: 700; color: var(--ink); margin-right: 2px; }
+  .stats .warn b { color: var(--warn); }
+
+  .notice { margin: 20px 0 0; padding: 12px 16px; border: 1px solid var(--rule-strong); background: var(--surface); font-size: 14px; }
+  .notice[hidden] { display: none; }
+
+  .ledger { margin-top: 24px; border-top: 1px solid var(--rule-strong); }
+  .head { display: grid; grid-template-columns: 36px 1.7fr 1fr 3fr 1fr 1.8fr 56px; gap: 0 12px; padding: 8px 0 6px; font-size: 12px; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--rule); }
+  .head span:first-child { text-align: right; }
+
+  .row { border-bottom: 1px solid var(--rule); background: var(--ground); }
+  .row.selected { background: var(--surface); border-left: 3px solid var(--accent); margin-left: -3px; }
+  .main { display: grid; grid-template-columns: 36px 1.7fr 1fr 3fr 1fr 1.8fr 56px; gap: 0 12px; align-items: start; padding: 10px 0 8px; }
+  .num { text-align: right; padding-top: 7px; font-size: 13px; color: var(--muted); }
+
+  .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .field label { display: none; font-size: 12px; color: var(--muted); }
+  .control { display: flex; align-items: stretch; min-width: 0; }
+  input[type="text"], select, textarea {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--rule-strong); border-radius: 0; padding: 5px 8px; min-width: 0; width: 100%; box-sizing: border-box;
+  }
+  textarea { resize: vertical; min-height: 4.2em; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.75; }
+  .is-empty { border-color: var(--warn); background: var(--warn-soft); }
+
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .hint.bad { color: var(--warn); }
+
+  .aside { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
+  button.small {
+    font: inherit; font-size: 12px; line-height: 1; padding: 4px 7px; cursor: pointer;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid transparent; border-radius: 2px;
+  }
+  button.small:hover { border-color: var(--accent); }
+  button.small.quiet { color: var(--muted); background: transparent; border-color: var(--rule); }
+  button.small.quiet:hover { color: var(--warn); border-color: var(--warn); }
+  button.small.danger { color: var(--warn); background: var(--warn-soft); }
+
+  .time { display: grid; grid-template-columns: 1.2fr 12px 1fr 12px 0.7fr 1.3fr; gap: 4px; align-items: center; }
+  .time .op { text-align: center; color: var(--muted); }
+
+  .rowstate { font-size: 11px; color: var(--muted); text-align: right; padding-top: 8px; white-space: nowrap; }
+  .rowstate.ok { color: var(--ok); }
+
+  .main > * { min-width: 0; }
+  .detail { display: grid; grid-template-columns: 36px 1fr 56px; gap: 0 12px; padding: 4px 0 14px; }
+  .detail .badge { font-size: 12px; color: var(--accent); margin-bottom: 6px; }
+  .detail .fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 12px; }
+  .detail .field label { display: block; }
+
+  .foot { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+  button.add {
+    font: inherit; font-weight: 700; padding: 10px 18px; cursor: pointer;
+    color: var(--surface); background: var(--accent); border: 0; border-radius: 2px;
+  }
+  button.add:hover { filter: brightness(1.08); }
+  .legend { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); max-width: 60em; }
+  .legend dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0 0; }
+  .legend dt { font-weight: 700; color: var(--ink); }
+  .legend dd { margin: 0; }
+  code { font-family: inherit; background: var(--accent-soft); padding: 0 4px; }
+
+  @media (max-width: 960px) {
+    .head { display: none; }
+    .main, .detail, .detail .fields { grid-template-columns: 1fr; gap: 10px 0; padding: 14px 0; }
+    .detail .fields { padding: 0; }
+    .num { text-align: left; padding-top: 0; }
+    .field label { display: block; }
+    .rowstate { text-align: left; padding-top: 0; }
+    .row.selected { padding-left: 8px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .row { transition: background-color 200ms; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div>
+      <h1>業務の棚卸しシート</h1>
+      <p class="lead">まずは全部の業務について <strong>4つだけ</strong>（業務名・誰が・かかる時間・仕事の目的）。
+        これはあなた自身の棚卸しで、上司への提出物ではありません。<strong>要らないと思う仕事は「不要」で構いません。</strong></p>
+    </div>
+    <div class="stats">
+      <span><b id="stat-count">0</b>件</span>
+      <span class="warn"><b id="stat-empty">0</b>空欄</span>
+      <span id="stat-conn">接続を確認中</span>
+    </div>
+  </header>
+
+  <p class="notice" id="notice" hidden></p>
+
+  <section class="ledger" aria-label="業務一覧">
+    <div class="head">
+      <span>#</span><span>業務名</span><span>誰が</span><span>かかる時間（頻度 × 所要時間 = 合計）</span><span>測り方</span><span>仕事の目的</span><span></span>
+    </div>
+    <div id="rows"></div>
+  </section>
+
+  <div class="foot">
+    <button class="add" id="add" type="button">行を足す</button>
+    <span class="hint">入力は自動で保存されます。全部書けたら Claude に「入力した」と伝えてください。</span>
+  </div>
+
+  <section class="legend">
+    <dl>
+      <dt>業務名</dt><dd>動詞＋名詞で。「請求書を転記する」のように。「経理」のような状態の名前は避けます</dd>
+      <dt>かかる時間</dt><dd><code>月30件</code> × <code>4分</code> = <code>2</code> 時間/月 のように。合計の単位は 月・週・年 のどれでも構いません</dd>
+      <dt>測り方</dt><dd>実測（測った）／ 実績記入（記録から）／ 推定比率（全体の何割くらいか、で見積もった）／ 未計測</dd>
+      <dt>分からない</dt><dd>空欄にせず「分からない」を押し、<strong>誰に聞けば分かるか</strong>の名前を入れます。名前の無い「未確認」は空欄と同じ扱いです</dd>
+      <dt>仕事の目的</dt><dd>何のためにやっているか1行。要らないなら「不要」。3回考えても出なければ「保留」と、聞く相手の名前</dd>
+    </dl>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var METHODS = ['実測', '実績記入', '推定比率', '未計測'];
+  var UNITS = ['時間/月', '時間/週', '時間/年'];
+  var COLLECTION = 'works';
+  var TEXT_FIELDS = ['name', 'who', 'freq', 'dur', 'total', 'purpose', 'trigger', 'work', 'tools', 'next'];
+  var DETAIL_FIELDS = [
+    ['trigger', 'きっかけ', '何が来たら始まるか（例: 取引先からPDF請求書がメールで届く）'],
+    ['work', '作業', '実際にやること（例: 金額・日付・取引先名を表計算に手入力）'],
+    ['tools', '使う道具', 'ツール・帳票の実名（例: メールソフト、請求管理の表計算）'],
+    ['next', '次へ渡す先', '出来上がるものと渡し先（例: 入力済みの表 → 月末に会計担当へ）']
+  ];
+  var HOLD = /^(未確認|保留)[：:]\s*(.*)$/;
+
+  var rows = {};        // id -> data
+  var els = {};         // id -> row element
+  var timers = {};      // id -> debounce timer
+  var local = {};       // まだ一度も保存していない行（手元にだけある）
+  var db = null;
+
+  var $rows = document.getElementById('rows');
+  var $notice = document.getElementById('notice');
+  var $conn = document.getElementById('stat-conn');
+
+  function blank(order) {
+    return { order: order, name: '', who: '', freq: '', dur: '', total: '', unit: UNITS[0], method: '',
+             purpose: '', selected: false, trigger: '', work: '', tools: '', next: '', updatedAt: '' };
+  }
+  function newId() {
+    return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+  function nextOrder() {
+    var max = 0;
+    Object.keys(rows).forEach(function (id) { if (rows[id].order > max) max = rows[id].order; });
+    return max + 1;
+  }
+  function sorted() {
+    return Object.keys(rows).sort(function (a, b) { return (rows[a].order - rows[b].order) || (a < b ? -1 : 1); });
+  }
+
+  // ---- 検査（lint と同じ線だけ。空欄・名前の無い未確認／保留・合計の数字） ----
+  function holdProblem(v) {
+    var m = HOLD.exec(v);
+    if (!m) return null;
+    return m[2].trim() ? null : '「' + m[1] + '」だけでは空欄と同じです。誰に聞くかの名前を続けてください';
+  }
+  function check(d) {
+    var p = {};
+    if (!d.name.trim()) p.name = '業務名が空です';
+    if (!d.who.trim()) p.who = '誰がやるかが空です';
+    else if (holdProblem(d.who)) p.who = holdProblem(d.who);
+    if (!d.freq.trim() || !d.dur.trim() || !d.total.trim()) p.time = '頻度・所要時間・合計の3つとも要ります';
+    else if (!/^[0-9０-９]+([.．][0-9０-９]+)?$/.test(d.total.trim())) p.time = '合計は数字だけ（単位は右で選ぶ）';
+    if (!d.method) p.method = '測り方を選んでください';
+    if (!d.purpose.trim()) p.purpose = '仕事の目的が空です（要らないなら「不要」）';
+    else if (holdProblem(d.purpose)) p.purpose = holdProblem(d.purpose);
+    if (d.selected) {
+      DETAIL_FIELDS.forEach(function (f) {
+        var v = d[f[0]];
+        if (!v.trim()) p[f[0]] = f[1] + 'が空です';
+        else if (holdProblem(v)) p[f[0]] = holdProblem(v);
+      });
+    }
+    return p;
+  }
+
+  // ---- 描画 ----
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function textInput(id, key, placeholder, label) {
+    var field = el('div', 'field');
+    var lab = el('label', null, label); lab.htmlFor = id + '-' + key; field.appendChild(lab);
+    var inp = el('input'); inp.type = 'text'; inp.id = id + '-' + key; inp.placeholder = placeholder; inp.dataset.key = key;
+    inp.setAttribute('aria-label', label);
+    inp.addEventListener('input', function () { onEdit(id, key, inp.value); });
+    field.appendChild(inp);
+    var hint = el('div', 'hint'); hint.dataset.hintFor = key; field.appendChild(hint);
+    return field;
+  }
+  function unknownButton(id, key, inputSel) {
+    var b = el('button', 'small quiet', '分からない'); b.type = 'button';
+    b.addEventListener('click', function () { setAndFocus(id, key, '未確認：さんに聞く', 4); });
+    return b;
+  }
+  function setAndFocus(id, key, value, caret) {
+    var inp = els[id].querySelector('[data-key="' + key + '"]');
+    inp.value = value; onEdit(id, key, value);
+    inp.focus(); inp.setSelectionRange(caret, caret);
+  }
+
+  function buildRow(id) {
+    var d = rows[id];
+    var row = el('article', 'row'); row.dataset.id = id;
+    var main = el('div', 'main');
+    main.appendChild(el('div', 'num', ''));
+
+    // 業務名
+    var name = textInput(id, 'name', '請求書を転記する', '業務名');
+    main.appendChild(name);
+
+    // 誰が
+    var who = textInput(id, 'who', '経理担当（兼務なら「兼務」）', '誰が');
+    var whoAside = el('div', 'aside'); whoAside.appendChild(unknownButton(id, 'who'));
+    who.insertBefore(whoAside, who.lastChild);
+    main.appendChild(who);
+
+    // かかる時間
+    var time = el('div', 'field');
+    var tlab = el('label', null, 'かかる時間（頻度 × 所要時間 = 合計）'); time.appendChild(tlab);
+    var grid = el('div', 'time');
+    var freq = el('input'); freq.type = 'text'; freq.placeholder = '月30件'; freq.dataset.key = 'freq'; freq.setAttribute('aria-label', '頻度');
+    var dur = el('input'); dur.type = 'text'; dur.placeholder = '4分'; dur.dataset.key = 'dur'; dur.setAttribute('aria-label', '所要時間');
+    var total = el('input'); total.type = 'text'; total.placeholder = '2'; total.dataset.key = 'total'; total.inputMode = 'decimal'; total.setAttribute('aria-label', '合計');
+    var unit = el('select'); unit.dataset.key = 'unit'; unit.setAttribute('aria-label', '合計の単位');
+    UNITS.forEach(function (u) { var o = el('option', null, u); o.value = u; unit.appendChild(o); });
+    [freq, dur, total, unit].forEach(function (i) {
+      i.addEventListener('input', function () { onEdit(id, i.dataset.key, i.value); });
+      i.addEventListener('change', function () { onEdit(id, i.dataset.key, i.value); });
+    });
+    grid.appendChild(freq); grid.appendChild(el('span', 'op', '×')); grid.appendChild(dur);
+    grid.appendChild(el('span', 'op', '=')); grid.appendChild(total); grid.appendChild(unit);
+    time.appendChild(grid);
+    var thint = el('div', 'hint'); thint.dataset.hintFor = 'time'; time.appendChild(thint);
+    main.appendChild(time);
+
+    // 測り方
+    var method = el('div', 'field');
+    var mlab = el('label', null, '測り方'); mlab.htmlFor = id + '-method'; method.appendChild(mlab);
+    var msel = el('select'); msel.id = id + '-method'; msel.dataset.key = 'method'; msel.setAttribute('aria-label', '測り方');
+    var o0 = el('option', null, '— 選ぶ —'); o0.value = ''; msel.appendChild(o0);
+    METHODS.forEach(function (m) { var o = el('option', null, m); o.value = m; msel.appendChild(o); });
+    msel.addEventListener('change', function () { onEdit(id, 'method', msel.value); });
+    method.appendChild(msel);
+    var mhint = el('div', 'hint'); mhint.dataset.hintFor = 'method'; method.appendChild(mhint);
+    main.appendChild(method);
+
+    // 仕事の目的
+    var purpose = textInput(id, 'purpose', '支払いの記録を会計ソフトに残すため', '仕事の目的');
+    var pAside = el('div', 'aside');
+    var bNo = el('button', 'small', '不要'); bNo.type = 'button';
+    bNo.addEventListener('click', function () { setAndFocus(id, 'purpose', '不要', 2); });
+    var bHold = el('button', 'small quiet', '保留'); bHold.type = 'button';
+    bHold.addEventListener('click', function () { setAndFocus(id, 'purpose', '保留：さんに聞く', 3); });
+    pAside.appendChild(bNo); pAside.appendChild(bHold);
+    purpose.insertBefore(pAside, purpose.lastChild);
+    main.appendChild(purpose);
+
+    // 右端: 保存状態と削除
+    var side = el('div', 'rowstate', '');
+    var del = el('button', 'small quiet', '消す'); del.type = 'button'; del.style.marginTop = '6px';
+    del.addEventListener('click', function () {
+      if (del.dataset.armed === '1') { removeRow(id); return; }
+      del.dataset.armed = '1'; del.textContent = '本当に消す'; del.className = 'small danger';
+      setTimeout(function () { del.dataset.armed = ''; del.textContent = '消す'; del.className = 'small quiet'; }, 4000);
+    });
+    var sideWrap = el('div'); sideWrap.appendChild(side); sideWrap.appendChild(del);
+    main.appendChild(sideWrap);
+    row.appendChild(main);
+
+    // 工程2で選ばれた行だけの詳細
+    var detail = el('div', 'detail'); detail.hidden = true;
+    detail.appendChild(el('div'));
+    var inner = el('div');
+    inner.appendChild(el('div', 'badge', '改善する業務に選ばれました。この4つも埋めてください'));
+    var fields = el('div', 'fields'); inner.appendChild(fields);
+    detail.appendChild(inner);
+    DETAIL_FIELDS.forEach(function (f) {
+      var field = el('div', 'field');
+      var lab = el('label', null, f[1]); lab.htmlFor = id + '-' + f[0]; field.appendChild(lab);
+      var ta = el('textarea'); ta.id = id + '-' + f[0]; ta.placeholder = f[2]; ta.dataset.key = f[0]; ta.rows = 3;
+      ta.addEventListener('input', function () { onEdit(id, f[0], ta.value); });
+      field.appendChild(ta);
+      var aside = el('div', 'aside'); aside.appendChild(unknownButton(id, f[0])); field.appendChild(aside);
+      var hint = el('div', 'hint'); hint.dataset.hintFor = f[0]; field.appendChild(hint);
+      fields.appendChild(field);
+    });
+    detail.appendChild(el('div'));
+    row.appendChild(detail);
+
+    els[id] = row;
+    return row;
+  }
+
+  function isEditing(row) {
+    return row.contains(document.activeElement);
+  }
+
+  function paint(id) {
+    var d = rows[id], row = els[id];
+    if (!row) return;
+    var editing = isEditing(row);
+    row.querySelectorAll('[data-key]').forEach(function (inp) {
+      var v = d[inp.dataset.key];
+      if (v == null) v = '';
+      if (!editing && inp.value !== String(v)) inp.value = v;
+    });
+    row.classList.toggle('selected', !!d.selected);
+    row.querySelector('.detail').hidden = !d.selected;
+
+    var problems = check(d);
+    row.querySelectorAll('[data-hint-for]').forEach(function (h) {
+      var key = h.dataset.hintFor, msg = problems[key];
+      h.textContent = msg || '';
+      h.classList.toggle('bad', !!msg);
+    });
+    ['name', 'who', 'purpose', 'method', 'trigger', 'work', 'tools', 'next'].forEach(function (k) {
+      var inp = row.querySelector('[data-key="' + k + '"]');
+      if (inp) inp.classList.toggle('is-empty', !!problems[k]);
+    });
+    ['freq', 'dur', 'total'].forEach(function (k) {
+      row.querySelector('[data-key="' + k + '"]').classList.toggle('is-empty', !!problems.time);
+    });
+    row.dataset.problems = Object.keys(problems).length;
+  }
+
+  function paintAll() {
+    var ids = sorted();
+    ids.forEach(function (id, i) {
+      var row = els[id] || buildRow(id);
+      if (row.parentNode !== $rows || $rows.children[i] !== row) $rows.insertBefore(row, $rows.children[i] || null);
+      row.querySelector('.num').textContent = String(i + 1);
+      paint(id);
+    });
+    Object.keys(els).forEach(function (id) {
+      if (!rows[id]) { els[id].remove(); delete els[id]; }
+    });
+    var empties = 0;
+    ids.forEach(function (id) { empties += Number(els[id].dataset.problems || 0); });
+    document.getElementById('stat-count').textContent = String(ids.length);
+    document.getElementById('stat-empty').textContent = String(empties);
+  }
+
+  function setState(id, text, ok) {
+    var s = els[id] && els[id].querySelector('.rowstate');
+    if (!s) return;
+    s.textContent = text; s.classList.toggle('ok', !!ok);
+  }
+
+  // ---- 編集と保存 ----
+  function onEdit(id, key, value) {
+    rows[id][key] = value;
+    paint(id);
+    paintStats();
+    setState(id, db ? '保存中' : '未保存（claude.ai の中で開くと保存されます）', false);
+    clearTimeout(timers[id]);
+    timers[id] = setTimeout(function () { save(id); }, 600);
+  }
+  function paintStats() {
+    var ids = sorted(), empties = 0;
+    ids.forEach(function (id) { empties += Number(els[id].dataset.problems || 0); });
+    document.getElementById('stat-empty').textContent = String(empties);
+  }
+  function save(id) {
+    timers[id] = null;
+    if (!db || !rows[id]) return;
+    var d = {};
+    Object.keys(rows[id]).forEach(function (k) { d[k] = rows[id][k]; });
+    d.updatedAt = new Date().toISOString();
+    db.collection(COLLECTION).doc(id).set(d).then(function () {
+      delete local[id];
+      setState(id, '保存済み', true);
+    }, function (e) {
+      setState(id, '保存できません: ' + (e && e.code ? e.code : '不明'), false);
+    });
+  }
+  function addRow() {
+    var id = newId();
+    rows[id] = blank(nextOrder());
+    local[id] = true;   // 何か書かれるまで保存しない（開いただけで空行が増えないように）
+    paintAll();
+    els[id].querySelector('[data-key="name"]').focus();
+  }
+  function removeRow(id) {
+    var wasLocal = !!local[id];
+    delete rows[id]; delete local[id]; clearTimeout(timers[id]); timers[id] = null;
+    paintAll();
+    if (db && !wasLocal) db.collection(COLLECTION).doc(id).delete().catch(function () {});
+  }
+
+  document.getElementById('add').addEventListener('click', addRow);
+
+  // ---- db に繋ぐ。無ければ「保存されない」ことを見せて、入力自体はできるままにする ----
+  function notice(text) {
+    $notice.textContent = text; $notice.hidden = !text;
+  }
+
+  addRow();  // 空の1行から始める（何か書かれるまで保存しない）
+
+  var usePromise = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('db') : Promise.resolve(null);
+  usePromise.then(function (ns) {
+    if (!ns) {
+      $conn.textContent = '保存されません';
+      notice('この画面は claude.ai の中で開いたときだけ保存されます。ここでの入力は残りません。');
+      return;
+    }
+    db = ns;
+    $conn.textContent = '保存されます';
+    var first = true;
+    db.collection(COLLECTION).onSnapshot(function (snap) {
+      var seen = {};
+      snap.docs.forEach(function (doc) {
+        var d = doc.data(); if (!d) return;
+        var merged = blank(0);
+        Object.keys(merged).forEach(function (k) { if (d[k] != null) merged[k] = d[k]; });
+        seen[doc.id] = true;
+        if (els[doc.id] && isEditing(els[doc.id])) return;  // 手元の編集を上書きしない
+        rows[doc.id] = merged;
+      });
+      if (first) {
+        first = false;
+        // 起動時に置いた空行は、保存済みの行があれば引っ込める
+        if (Object.keys(seen).length) {
+          Object.keys(rows).forEach(function (id) {
+            if (local[id] && !rows[id].name && !rows[id].who && !rows[id].purpose) { delete rows[id]; delete local[id]; }
+          });
+        }
+      } else {
+        // 他所で消された行を引っ込める。手元だけの行・編集中・保存待ちの行は残す
+        Object.keys(rows).forEach(function (id) {
+          if (!seen[id] && !local[id] && !(els[id] && isEditing(els[id])) && !timers[id]) delete rows[id];
+        });
+      }
+      paintAll();
+      Object.keys(seen).forEach(function (id) { if (!timers[id]) setState(id, '保存済み', true); });
+    }, function (e) {
+      $conn.textContent = '接続が切れました';
+      notice('保存先との接続が切れました（' + (e && e.code ? e.code : '不明') + '）。ページを開き直してください。');
+    });
+  });
+})();
+</script>

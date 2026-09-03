@@ -61,7 +61,7 @@ The repository exists at `jackasser/drillspark-harness` and is **private**.
 - [x] `.claude-plugin/marketplace.json` so `/plugin marketplace add jackasser/drillspark-harness`
       resolves — verified with a local `marketplace add` → `install` → `uninstall` round trip
 - [ ] decide whether the Japanese skill bodies ship untranslated (README says they do)
-- [ ] tag the version in `.claude-plugin/plugin.json` (`v0.3.0` at the time of writing)
+- [ ] tag the version in `.claude-plugin/plugin.json` (`v0.4.0` at the time of writing)
 - [ ] submit to the official marketplace
 
 ## Marketplace notes
