@@ -77,8 +77,10 @@ function main() {
 
   console.log('| # | 工程 | 第二階層 |');
   console.log('|---|---|---|');
-  for (const r of rows) console.log(`| ${r.id} | ${r.label} | ${r.has ? `あり（${r.works} 作業）` : '**なし**'} |`);
+  for (const r of rows) console.log(`| ${r.id} | ${r.label} | ${r.has ? `あり（${r.works} 作業）${r.works <= 1 ? ' — 作業が1つ。工程ではなく作業では？ 隣とまとめる' : ''}` : '**なし**'} |`);
   console.log('');
+  const thin = rows.filter((r) => r.has && r.works <= 1);
+  if (thin.length) console.log(`作業が1つしか無い工程: ${thin.map((r) => r.id).join(', ')}（第一階層が作業の羅列になっていないか、【止まる③】の前に見直す）`);
   if (missing.length) {
     console.log(`第二階層: ${done.length}/${rows.length}。描いていない工程: ${missing.map((r) => r.id).join(', ')} → §3-2 に戻る。全部描くまで §4（改善案）に進まない`);
     process.exit(2);

@@ -313,7 +313,7 @@ COV="scripts/process-coverage.js"
 out=$(node "$COV" "$DIR/ok-coverage.json" 2>&1); got=$?
 if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q '2/2'; then echo "  PASS ok-coverage.json  (exit 0 / 2/2)"; else echo "  FAIL ok-coverage.json  期待 exit 0・2/2 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 out=$(node "$COV" - < "$DIR/ng-coverage-missing.json" 2>&1); got=$?
-if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '描いていない工程: 3, 4'; then echo "  PASS ng-coverage-missing.json  (exit 2 / 描いていない工程: 3, 4 / 標準入力)"; else echo "  FAIL ng-coverage-missing.json  期待 exit 2・「描いていない工程: 3, 4」 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '描いていない工程: 3, 4' && printf '%s' "$out" | grep -q '作業が1つしか無い工程: 2'; then echo "  PASS ng-coverage-missing.json  (exit 2 / 描いていない工程: 3, 4 / 作業が1つしか無い工程: 2 / 標準入力)"; else echo "  FAIL ng-coverage-missing.json  期待 exit 2・「描いていない工程: 3, 4」・「作業が1つしか無い工程: 2」 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 
 echo "== 入力画面 =="
 # process-improve の棚卸しシート（Artifact の db に保存する1枚）。選択肢の文字列が表の lint と食い違うと、画面で選べた値が

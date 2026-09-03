@@ -36,6 +36,12 @@ carries no version of its own.
   still `後で聞く`); the text now says so, asks the user once whether any task feels heavy on
   copying or waiting, and re-runs `process-abc` after the chosen tasks' details are filled so the
   remaining marks reach stage 4 with their source words.
+- `process-expert` now has a section for the stage-proposal role: what a stage is versus a task
+  (a chapter of the work versus one sitting; 5–10 stages, at least two tasks each, first stage
+  receives the trigger, last hands over), and it must return a stage → task assignment table
+  rather than a list of stages — in a real run the user's fine-grained 作業 text was copied
+  straight into the first level. Stage 3-1 asks for that table and 3-2 draws from it;
+  `process-coverage` flags stages with a single task.
 
 ### Changed
 
