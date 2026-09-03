@@ -47,7 +47,10 @@ to switch them off (`DRILLSPARK_HARNESS_GUARDS=off`).
   it never used.
 - `harness-visualize` pages use a semantic design system (status glyphs, mechanism chips,
   solid = control / dotted = data, breadcrumb and depth badge). A write the guard stops no
-  longer advances the fix counter.
+  longer advances the fix counter. The page is smaller by contract: only the workflow's root
+  diagram is drawn as SVG (child diagrams stay as tables plus Mermaid source), and the
+  `実ファイル` section embeds excerpts (at most 40 lines per file) instead of whole files —
+  a run in a sandbox showed that the full-size page could not be produced in one write.
 - `plugin.json` no longer lists agents explicitly; they are discovered from `agents/`, which is
   also what makes `claude plugin details` report them.
 - `diagram-lint` rejects a node definition with anything after it on the same line
