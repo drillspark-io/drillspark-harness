@@ -24,6 +24,8 @@ carries no version of its own.
   stages have a second-level (task) diagram. In a real run the model drew one of seven stages and
   moved on to the success criterion; stage 3-2 of `process-improve` now loops over every stage
   and must get exit 0 from this script before stage 4. Two checks in `tests/run.sh`.
+- `process-expert` searches the web only when it lacks knowledge of the work (the design
+  diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
   lines with their 一般例／未確認 marks), ask, then move to the next. Drawing every stage first and
   presenting 35 lines at the end was more than a person can review; the task-confirmation stop is
