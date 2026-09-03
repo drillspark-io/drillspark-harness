@@ -89,7 +89,7 @@ const EMPTY_OK = new Set(['図の在りか']);
  * `聞いた相手` の `◯◯さん` は名前が入るので「さん」で終わることだけ見る
  */
 const ENUMS = {
-  '測り方': { re: /^(実測|実績記入|推定比率|未計測)$/, allowed: '実測／実績記入／推定比率／未計測' },
+  '測り方': { re: /^(実測|未計測)$/, allowed: '実測／未計測' },
   'ECRS': { re: /^(E\s*なくす|C\s*まとめる|R\s*並び替える|S\s*簡単にする)/, allowed: 'E なくす／C まとめる／R 並び替える／S 簡単にする' },
   '誰がやるか': { re: /^(人がやる|AIに任せる)$/, allowed: '人がやる／AIに任せる' },
   '出どころ': { re: /^(本人の答え|一般例)$/, allowed: '本人の答え／一般例' },
@@ -292,7 +292,7 @@ function lint(src, listSrc) {
       if (method !== null && !method && time && /[0-9０-９]/.test(time)) {
         claimed.add('測り方');
         add('TIME_WITHOUT_METHOD', where,
-          `${table.kind}「かかる時間」に数字（${time}）があるのに「測り方」が空（実測／実績記入／推定比率／未計測 のどれかを書く）`);
+          `${table.kind}「かかる時間」に数字（${time}）があるのに「測り方」が空（実測＝実際にかかった時間 ／ 未計測＝見積もりや感覚の数字 のどちらかを書く）`);
       }
       // 合計の無い時間 — `月30件 × 4分` だけでは月の時間に直せず、ABC 分析でその業務が順位から消える
       if (time && !claimed.has('かかる時間') && /[0-9０-９]/.test(time) && hoursPerMonth(time) === null) {

@@ -160,7 +160,7 @@
 
   <section class="ledger" aria-label="業務一覧">
     <div class="head">
-      <span>#</span><span>業務名</span><span>誰が</span><span>かかる時間（頻度 × 所要時間 = 合計）</span><span>測り方（その時間はどう出した？）</span><span>仕事の目的</span><span></span>
+      <span>#</span><span>業務名</span><span>誰が</span><span>かかる時間（頻度 × 所要時間 = 合計）</span><span>測り方（測った？ 見積もり？）</span><span>仕事の目的</span><span></span>
     </div>
     <div id="rows"></div>
   </section>
@@ -174,9 +174,8 @@
     <dl>
       <dt>業務名</dt><dd>動詞＋名詞で。「請求書を転記する」のように。「経理」のような状態の名前は避けます</dd>
       <dt>かかる時間</dt><dd><code>月30件</code> × <code>4分</code> = <code>2</code> 時間/月 のように。合計の単位は 月・週・年 のどれでも構いません</dd>
-      <dt>測り方</dt><dd>「かかる時間」の数字をどう出したか。その場で測った → 実測 ／ あとから日報などに書いた自己申告 → 実績記入 ／
-        測っていないが「1日の何割くらい」で見積もった → 推定比率 ／ 感覚の数字 → 未計測。
-        実測と実績記入の違いは<strong>その場で測ったか、あとから思い出して書いたか</strong>（自己申告は実際より短く出やすい）。<strong>未計測でも構いません</strong>（正直な印のほうが後で測り直せます）</dd>
+      <dt>測り方</dt><dd>「かかる時間」の数字は実際の時間か、当て推量か。時計で測った・日報や記録から出した → <strong>測った</strong> ／
+        「1日の何割くらい」で見積もった・感覚の数字 → <strong>見積もり</strong>。<strong>見積もりで構いません</strong>（正直な印のほうが後で測り直せます）</dd>
       <dt>分からない</dt><dd>空欄にせず「分からない」を押し、<strong>誰に聞けば分かるか</strong>の名前を入れます。名前の無い「未確認」は空欄と同じ扱いです</dd>
       <dt>仕事の目的</dt><dd>何のためにやっているか1行。要らないなら「不要」。3回考えても出なければ「保留」と、聞く相手の名前</dd>
     </dl>
@@ -187,12 +186,10 @@
 (function () {
   'use strict';
 
-  var METHODS = ['実測', '実績記入', '推定比率', '未計測'];   // 保存する値（表の lint と同じ4語）
-  var METHOD_LABELS = {                                          // 選ぶときに見せる文言。「どうやってその時間を出したか」で選ぶ
-    '実測': 'その場で時計やツールで測った（実測）',
-    '実績記入': 'あとから日報や記録に書いた自己申告（実績記入）',
-    '推定比率': '測っていないが「1日の何割くらい」で見積もった（推定比率）',
-    '未計測': '測っても見積もってもいない。感覚の数字（未計測）'
+  var METHODS = ['実測', '未計測'];   // 保存する値（表の lint と同じ2語）
+  var METHOD_LABELS = {                // 選ぶときに見せる文言。問いは「その数字は実際の時間か、当て推量か」の1つだけ
+    '実測': '測った（その場の時計でも、日報や記録からでも）',
+    '未計測': '見積もり（「1日の何割くらい」や感覚の数字）'
   };
   var UNITS = ['時間/月', '時間/週', '時間/年'];
   var COLLECTION = 'works';
@@ -244,7 +241,7 @@
     else if (holdProblem(d.who)) p.who = holdProblem(d.who);
     if (!d.freq.trim() || !d.dur.trim() || !d.total.trim()) p.time = '頻度・所要時間・合計の3つとも要ります';
     else if (!/^[0-9０-９]+([.．][0-9０-９]+)?$/.test(d.total.trim())) p.time = '合計は数字だけ（単位は右で選ぶ）';
-    if (!d.method) p.method = 'その時間をどう出したかを選んでください（測っていなければ「未計測」）';
+    if (!d.method) p.method = '測った数字か見積もりかを選んでください';
     if (!d.purpose.trim()) p.purpose = '仕事の目的が空です（要らないなら「不要」）';
     else if (holdProblem(d.purpose)) p.purpose = holdProblem(d.purpose);
     if (d.selected) {
@@ -324,7 +321,7 @@
     var method = el('div', 'field');
     var mlab = el('label', null, '測り方'); mlab.htmlFor = id + '-method'; method.appendChild(mlab);
     var msel = el('select'); msel.id = id + '-method'; msel.dataset.key = 'method'; msel.setAttribute('aria-label', '測り方');
-    var o0 = el('option', null, '— その時間はどう出した？ —'); o0.value = ''; msel.appendChild(o0);
+    var o0 = el('option', null, '— 測った？ 見積もり？ —'); o0.value = ''; msel.appendChild(o0);
     METHODS.forEach(function (m) { var o = el('option', null, METHOD_LABELS[m]); o.value = m; msel.appendChild(o); });
     msel.addEventListener('change', function () { onEdit(id, 'method', msel.value); });
     method.appendChild(msel);

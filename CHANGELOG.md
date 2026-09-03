@@ -25,6 +25,11 @@ carries no version of its own.
 
 - `skills/process-improve/SKILL.md` — `allowed-tools` gains `Artifact` and `Skill`; stage 1 and
   stage 2 describe the sheet path and the chat fallback.
+- **測り方 has two values instead of four.** `実測` (the actual time, whether timed on the spot or
+  taken from a daily report) and `未計測` (an estimate — "about a third of the day" — or a gut
+  figure). `実績記入` and `推定比率` are no longer accepted by `process-table-lint`; the only
+  question left is "is this number real or a guess?". Existing tables that use the old values
+  fail the lint until edited. The criteria file is unchanged (it names only `未計測`).
 
 ## 0.3.0
 
