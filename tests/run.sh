@@ -305,6 +305,15 @@ out=$(node "$BUILD" "$T/docs/harness/demo/可視化/図なし-2026-01-01.map.jso
 if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '図の JSON が無い'; then echo "  PASS 図の JSON が無いときは書かない  (exit 2)"; else echo "  FAIL 図の JSON が無いのに止まらない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 rm -rf "$T"
 
+echo "== 第二階層の網羅 =="
+# process-coverage が get_project の JSON から「全工程に第二階層があるか」を数えること。
+# 1つ描いたところで §4 に進む事故（実測）を、記憶でなく機械で止めるための1本。
+COV="scripts/process-coverage.js"
+out=$(node "$COV" "$DIR/ok-coverage.json" 2>&1); got=$?
+if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q '2/2'; then echo "  PASS ok-coverage.json  (exit 0 / 2/2)"; else echo "  FAIL ok-coverage.json  期待 exit 0・2/2 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+out=$(node "$COV" - < "$DIR/ng-coverage-missing.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '描いていない工程: 3, 4'; then echo "  PASS ng-coverage-missing.json  (exit 2 / 描いていない工程: 3, 4 / 標準入力)"; else echo "  FAIL ng-coverage-missing.json  期待 exit 2・「描いていない工程: 3, 4」 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+
 echo "== 入力画面 =="
 # process-improve の棚卸しシート（Artifact の db に保存する1枚）。選択肢の文字列が表の lint と食い違うと、画面で選べた値が
 # 業務一覧で落ちる。外部資源は Google Fonts だけ（Artifact の CSP は他を黙って落とす）。公開時に包まれるので断片で書く。
@@ -401,6 +410,7 @@ for p in \
   scripts/process-plan-lint.js \
   scripts/file-saved-lint.js \
   scripts/process-abc.js \
+  scripts/process-coverage.js \
   scripts/process-write-guard.js
 do
   if [ -f "$p" ]; then echo "  PASS $p"; else echo "  FAIL $p が無い"; fail=1; fi

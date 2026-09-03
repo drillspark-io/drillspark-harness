@@ -18,8 +18,13 @@ carries no version of its own.
   `delete`, `onSnapshot`) against the runtime current at release; the artifact is
   organization-internal and cannot be shared publicly.
 - `tests/run.sh` — six checks on the sheet (fragment, `claude.use("db")`, 測り方 options identical
-  to `process-table-lint`, three total units, Google Fonts as the only external resource, no
-  private information). The shipped-file check now covers 35 files.
+  to `process-table-lint`, frequency units, Google Fonts as the only external resource, no
+  private information). The shipped-file check now covers 36 files.
+- `scripts/process-coverage.js` — counts, from a `get_project` response, which first-level
+  stages have a second-level (task) diagram. In a real run the model drew one of seven stages and
+  moved on to the success criterion; stage 3-2 of `process-improve` now loops over every stage
+  and must get exit 0 from this script before the task-confirmation stop and before stage 4. Two
+  checks in `tests/run.sh`.
 
 ### Changed
 

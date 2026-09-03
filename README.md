@@ -122,6 +122,7 @@ skills/process-improve-view/          改善計画を1枚にする（処理）�
 agents/process-expert.md              専門家役。起動時に渡された役割で案を出す。承認の場に出ない
 agents/process-improve-reviewer.md    業務改善の判定役。基準を読むだけで書き換えない
 scripts/process-abc.js                業務一覧から ABC 分析と印の候補を決定論で出す
+scripts/process-coverage.js           get_project の結果から、全工程に第二階層があるかを数える（§4 に入る前の条件）
 scripts/process-write-guard.js        業務改善/ を書く前に効く柵（表と1枚の検査・図の書き換え先）。PreToolUse hook
 reference/business-improvement-criteria.md  業務改善の判定線。判定役が毎回読む
 reference/business-improvement-tables.md    4つの表の列と入る値
@@ -343,8 +344,8 @@ bash tests/run.sh
 
 `tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
 the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
-then six page-build checks, six inventory-sheet checks, 54 guard checks and one hook-wiring check,
-validates the plugin and checks that all 35 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+then six page-build checks, two stage-coverage checks, six inventory-sheet checks, 54 guard checks
+and one hook-wiring check, validates the plugin and checks that all 36 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
 | checks | what |
@@ -356,7 +357,8 @@ do not update them by hand.)
 | 2 (`ok-table-abc.md`: ranks A/B/C and marks with their source words; `ok-table-abc-year.md`: `/週` and `/年` totals converted to a month) | `process-abc` |
 | 2 (a missing path, an existing file) | `file-saved-lint` |
 | 6 (`ok-build-minimal.*.json` builds a page whose fix counter goes 0 → 1 → 2 and is refused on the fourth run; a map without `purpose` and a map without its diagrams are refused without writing) | `harness-view-build` |
-| 6 (`skills/process-improve/assets/棚卸しシート.html`: written as a fragment, connects through `claude.use("db")`, its 測り方 options match `process-table-lint`, three total units, Google Fonts is the only external resource, no private information) | inventory sheet |
+| 2 (`ok-coverage.json`: every stage has a second level; `ng-coverage-missing.json`: stages 3 and 4 are named as missing, read from stdin) | `process-coverage` |
+| 6 (`skills/process-improve/assets/棚卸しシート.html`: written as a fragment, connects through `claude.use("db")`, its 測り方 options match `process-table-lint`, frequency units, Google Fonts is the only external resource, no private information) | inventory sheet |
 | 54 (PreToolUse JSON fed to each guard: what it stops, what it must let through, malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 
