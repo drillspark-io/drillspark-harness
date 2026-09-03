@@ -71,12 +71,12 @@
   .notice[hidden] { display: none; }
 
   .ledger { margin-top: 24px; border-top: 1px solid var(--rule-strong); }
-  .head { display: grid; grid-template-columns: 36px 1.6fr 1fr minmax(24em, 2.6fr) 1.1fr 1.7fr 56px; gap: 0 12px; padding: 8px 0 6px; font-size: 12px; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--rule); }
+  .head { display: grid; grid-template-columns: 36px 1.6fr 1fr minmax(26em, 2.6fr) 1.1fr 1.7fr 56px; gap: 0 12px; padding: 8px 0 6px; font-size: 12px; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--rule); }
   .head span:first-child { text-align: right; }
 
   .row { border-bottom: 1px solid var(--rule); background: var(--ground); }
   .row.selected { background: var(--surface); border-left: 3px solid var(--accent); margin-left: -3px; }
-  .main { display: grid; grid-template-columns: 36px 1.6fr 1fr minmax(24em, 2.6fr) 1.1fr 1.7fr 56px; gap: 0 12px; align-items: start; padding: 10px 0 8px; }
+  .main { display: grid; grid-template-columns: 36px 1.6fr 1fr minmax(26em, 2.6fr) 1.1fr 1.7fr 56px; gap: 0 12px; align-items: start; padding: 10px 0 8px; }
   .num { text-align: right; padding-top: 7px; font-size: 13px; color: var(--muted); }
 
   .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -104,11 +104,10 @@
   button.small.quiet:hover { color: var(--warn); border-color: var(--warn); }
   button.small.danger { color: var(--warn); background: var(--warn-soft); }
 
-  .time { display: grid; grid-template-columns: 3.4em 4.8em 12px 3.4em 4em 12px 3.6em auto; gap: 4px; align-items: center; }
+  .time { display: grid; grid-template-columns: 3.4em 4.8em 12px 3.4em 4em 12px 6.2em; gap: 4px; align-items: center; }
   .time select { padding-left: 4px; padding-right: 2px; font-size: 13px; }
   .time .op { text-align: center; color: var(--muted); }
-  .time .unit { font-size: 12px; color: var(--muted); white-space: nowrap; }
-  input[readonly] { background: var(--accent-soft); border-color: transparent; color: var(--ink); text-align: right; }
+  input[readonly] { background: var(--accent-soft); border-color: transparent; color: var(--ink); text-align: right; font-size: 13px; padding-left: 4px; padding-right: 4px; }
 
   .rowstate { font-size: 11px; color: var(--muted); text-align: right; padding-top: 8px; white-space: nowrap; }
   .rowstate.ok { color: var(--ok); }
@@ -349,7 +348,7 @@
     });
     grid.appendChild(freq); grid.appendChild(freqUnit); grid.appendChild(el('span', 'op', '×'));
     grid.appendChild(dur); grid.appendChild(durUnit); grid.appendChild(el('span', 'op', '='));
-    grid.appendChild(total); grid.appendChild(el('span', 'unit', '時間/月'));
+    grid.appendChild(total);   // 単位は値の中に出す（「2 時間/月」）。別の要素にすると幅が足りないとき折れる
     time.appendChild(grid);
     var thint = el('div', 'hint'); thint.dataset.hintFor = 'time'; time.appendChild(thint);
     main.appendChild(time);
@@ -423,6 +422,7 @@
     row.querySelectorAll('[data-key]').forEach(function (inp) {
       var v = d[inp.dataset.key];
       if (v == null) v = '';
+      if (inp.dataset.key === 'total') return;   // 合計は下で単位付きに整形する
       if (!editing && inp.value !== String(v)) inp.value = v;
     });
     row.classList.toggle('selected', !!d.selected);
@@ -441,7 +441,7 @@
     ['freq', 'dur'].forEach(function (k) {
       row.querySelector('[data-key="' + k + '"]').classList.toggle('is-empty', !!problems.time);
     });
-    row.querySelector('[data-key="total"]').value = d.total || '';   // 合計は常に計算結果（編集中でも）
+    row.querySelector('[data-key="total"]').value = d.total ? d.total + ' 時間/月' : '';   // 合計は常に計算結果（編集中でも）
     row.dataset.problems = Object.keys(problems).length;
   }
 
