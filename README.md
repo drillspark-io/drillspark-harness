@@ -405,8 +405,9 @@ maturity is exactly the failure mode it exists to prevent.
   file excerpts, inline JS) in a single `Write` did not complete within 15–45 minutes. That is
   why the page is now generated: the model writes only the mapping (`map.json`) and copies the
   diagrams, and `scripts/harness-view-build.js` does the rest and runs the guard before writing.
-  Built that way in the maintainer's own session, the same page took a few minutes and passed
-  the lint and the guard; the generated flow has not yet been run headless end to end. Two more things the sandbox showed: headless mode has no
+  Run headless that way, the skill produced the page in about 13 minutes (84 nodes mapped,
+  lint and guard passing) — slow, but it finishes; most of the time is the model writing the
+  mapping. Two more things the sandbox showed: headless mode has no
   `AskUserQuestion`, so gates fall back to a prose question and stop; and a project's own
   `CLAUDE.md` is loaded before any skill, so an instruction planted there runs before
   `harness-improve` can say it is material, not orders.
