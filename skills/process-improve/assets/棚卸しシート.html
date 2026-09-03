@@ -71,12 +71,12 @@
   .notice[hidden] { display: none; }
 
   .ledger { margin-top: 24px; border-top: 1px solid var(--rule-strong); }
-  .head { display: grid; grid-template-columns: 36px 1.7fr 1fr 2.6fr 1.5fr 1.7fr 56px; gap: 0 12px; padding: 8px 0 6px; font-size: 12px; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--rule); }
+  .head { display: grid; grid-template-columns: 36px 1.6fr 1fr minmax(24em, 2.6fr) 1.1fr 1.7fr 56px; gap: 0 12px; padding: 8px 0 6px; font-size: 12px; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--rule); }
   .head span:first-child { text-align: right; }
 
   .row { border-bottom: 1px solid var(--rule); background: var(--ground); }
   .row.selected { background: var(--surface); border-left: 3px solid var(--accent); margin-left: -3px; }
-  .main { display: grid; grid-template-columns: 36px 1.7fr 1fr 2.6fr 1.5fr 1.7fr 56px; gap: 0 12px; align-items: start; padding: 10px 0 8px; }
+  .main { display: grid; grid-template-columns: 36px 1.6fr 1fr minmax(24em, 2.6fr) 1.1fr 1.7fr 56px; gap: 0 12px; align-items: start; padding: 10px 0 8px; }
   .num { text-align: right; padding-top: 7px; font-size: 13px; color: var(--muted); }
 
   .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -104,7 +104,8 @@
   button.small.quiet:hover { color: var(--warn); border-color: var(--warn); }
   button.small.danger { color: var(--warn); background: var(--warn-soft); }
 
-  .time { display: grid; grid-template-columns: 0.8fr 1fr 12px 0.8fr 0.9fr 12px 0.8fr auto; gap: 4px; align-items: center; }
+  .time { display: grid; grid-template-columns: 3.4em 4.8em 12px 3.4em 4em 12px 3.6em auto; gap: 4px; align-items: center; }
+  .time select { padding-left: 4px; padding-right: 2px; font-size: 13px; }
   .time .op { text-align: center; color: var(--muted); }
   .time .unit { font-size: 12px; color: var(--muted); white-space: nowrap; }
   input[readonly] { background: var(--accent-soft); border-color: transparent; color: var(--ink); text-align: right; }
@@ -190,10 +191,8 @@
   'use strict';
 
   var METHODS = ['実測', '未計測'];   // 保存する値（表の lint と同じ2語）
-  var METHOD_LABELS = {                // 選ぶときに見せる文言。問いは「その数字は実際の時間か、当て推量か」の1つだけ
-    '実測': '測った（その場の時計でも、日報や記録からでも）',
-    '未計測': '見積もり（「1日の何割くらい」や感覚の数字）'
-  };
+  var METHOD_LABELS = { '実測': '測った', '未計測': '見積もり' };   // 選択肢は短く。説明は欄の下に常時出す
+  var METHOD_HELP = '測った＝時計や日報の実際の時間 ／ 見積もり＝「1日の何割くらい」や感覚の数字';
   var FREQ_UNITS = ['回/月', '回/週', '回/日', '回/年'];   // 頻度の単位。月に換算する倍率は PER_MONTH
   var PER_MONTH = { '回/月': 1, '回/週': 52 / 12, '回/日': 20, '回/年': 1 / 12 };   // 回/日 は月20日として
   var FREQ_PREFIX = { '回/月': '月', '回/週': '週', '回/日': '日', '回/年': '年' };
@@ -223,9 +222,25 @@
              purpose: '', selected: false, trigger: '', work: '', tools: '', next: '', updatedAt: '' };
   }
   /** 頻度 × 所要時間 から 合計（時間/月）と、業務一覧の「かかる時間」に写す文字列を組む。素人に掛け算をさせない */
+  function num(s) {   // 「月1」「2時間」「３０」のように単位や全角が混ざっていても数だけ拾う
+    var m = /[0-9０-９]+(?:[.．][0-9０-９]+)?/.exec(String(s));
+    return m ? parseFloat(m[0].replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })) : NaN;
+  }
+  /** 数字欄に単位まで書かれたら、単位を右の選択に移して数字だけ残す（「月1」→ 1・回/月、「2時間」→ 2・時間） */
+  function absorbUnits(d, key) {
+    var v = String(d[key]);
+    if (key === 'freq') {
+      var pf = /^\s*(毎)?([月週日年])/.exec(v) || /(毎)?([月週日年])\s*$/.exec(v.replace(/[回件]/g, ''));
+      if (pf) d.freqUnit = '回/' + pf[2];
+      if (/[月週日年回件毎]/.test(v) && !isNaN(num(v))) d.freq = String(num(v));
+    }
+    if (key === 'dur') {
+      if (/時/.test(v)) d.durUnit = '時間'; else if (/分/.test(v)) d.durUnit = '分';
+      if (/[時分]/.test(v) && !isNaN(num(v))) d.dur = String(num(v));
+    }
+  }
   function computeTime(d) {
-    var f = parseFloat(String(d.freq).replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }));
-    var u = parseFloat(String(d.dur).replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }));
+    var f = num(d.freq), u = num(d.dur);
     if (!(f > 0) || !(u > 0)) { d.total = ''; d.timeText = ''; return; }
     var hours = f * (PER_MONTH[d.freqUnit] || 1) * (d.durUnit === '時間' ? u : u / 60);
     var total = Math.round(hours * 10) / 10;
@@ -256,7 +271,7 @@
     if (!d.who.trim()) p.who = '誰がやるかが空です';
     else if (holdProblem(d.who)) p.who = holdProblem(d.who);
     if (!String(d.freq).trim() || !String(d.dur).trim()) p.time = '頻度と所要時間を数字で（合計は自動で出ます）';
-    else if (!d.total) p.time = '頻度と所要時間は 0 より大きい数字で（単位は右で選ぶ）';
+    else if (!d.total) p.time = '頻度と所要時間は 0 より大きい数字で';
     if (!d.method) p.method = '測った数字か見積もりかを選んでください';
     if (!d.purpose.trim()) p.purpose = '仕事の目的が空です（要らないなら「不要」）';
     else if (holdProblem(d.purpose)) p.purpose = holdProblem(d.purpose);
@@ -329,6 +344,9 @@
       i.addEventListener('input', function () { onEdit(id, i.dataset.key, i.value); });
       i.addEventListener('change', function () { onEdit(id, i.dataset.key, i.value); });
     });
+    [freq, dur].forEach(function (i) {   // 欄を離れたら、単位を移したあとの数字だけにする
+      i.addEventListener('blur', function () { var v = rows[id] && rows[id][i.dataset.key]; if (v != null && i.value !== String(v)) i.value = v; });
+    });
     grid.appendChild(freq); grid.appendChild(freqUnit); grid.appendChild(el('span', 'op', '×'));
     grid.appendChild(dur); grid.appendChild(durUnit); grid.appendChild(el('span', 'op', '='));
     grid.appendChild(total); grid.appendChild(el('span', 'unit', '時間/月'));
@@ -340,7 +358,7 @@
     var method = el('div', 'field');
     var mlab = el('label', null, '測り方'); mlab.htmlFor = id + '-method'; method.appendChild(mlab);
     var msel = el('select'); msel.id = id + '-method'; msel.dataset.key = 'method'; msel.setAttribute('aria-label', '測り方');
-    var o0 = el('option', null, '— 測った？ 見積もり？ —'); o0.value = ''; msel.appendChild(o0);
+    var o0 = el('option', null, '— 選ぶ —'); o0.value = ''; msel.appendChild(o0);
     METHODS.forEach(function (m) { var o = el('option', null, METHOD_LABELS[m]); o.value = m; msel.appendChild(o); });
     msel.addEventListener('change', function () { onEdit(id, 'method', msel.value); });
     method.appendChild(msel);
@@ -413,7 +431,7 @@
     var problems = check(d);
     row.querySelectorAll('[data-hint-for]').forEach(function (h) {
       var key = h.dataset.hintFor, msg = problems[key];
-      h.textContent = msg || '';
+      h.textContent = msg || (key === 'method' ? METHOD_HELP : '');
       h.classList.toggle('bad', !!msg);
     });
     ['name', 'who', 'purpose', 'method', 'trigger', 'work', 'tools', 'next'].forEach(function (k) {
@@ -453,6 +471,13 @@
   // ---- 編集と保存 ----
   function onEdit(id, key, value) {
     rows[id][key] = value;
+    if (key === 'freq' || key === 'dur') {
+      absorbUnits(rows[id], key);
+      var inp = els[id].querySelector('[data-key="' + key + '"]');
+      var sel = els[id].querySelector('[data-key="' + key + 'Unit"]');
+      if (document.activeElement !== inp) inp.value = rows[id][key];   // 入力中は文字を消さない
+      if (sel) sel.value = rows[id][key + 'Unit'];
+    }
     computeTime(rows[id]);
     paint(id);
     paintStats();
