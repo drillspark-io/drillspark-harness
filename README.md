@@ -160,7 +160,8 @@ limit **and** a destination, and a criteria file the generating side cannot edit
 employee looking at their own job. It builds a table of their work — where the `Artifact` tool is
 available it publishes a small inventory sheet (`skills/process-improve/assets/棚卸しシート.html`,
 one row per task, auto-saved to the artifact's database) and reads the rows back instead of
-interviewing for 10–30 tasks one question at a time; without it, the interview remains — ranks it by
+interviewing one question at a time (an employee typically lists 1–10 tasks, but four fields each
+still means dozens of turns); without it, the interview remains — ranks it by
 time using ABC analysis *by machine* (the user is never asked to compute a cumulative percentage), draws the one
 or two heaviest as a DrillSpark diagram, walks ECRS in order — **eliminate, combine, rearrange,
 simplify, asked one question at a time** rather than "please suggest improvements" — and ends with
