@@ -2,7 +2,7 @@
 name: process-expert
 description: 業務の専門家役。起動時に渡された役割（台本作成ならライター、業務改善なら改善コンサル）として、工程の案や改善案を出す。案を出すだけで、図を書かず承認もしない。知識が足りなければ Web で調べる。
 tools: WebSearch, WebFetch
-disallowedTools: Edit, Write, mcp__drillspark__update_diagram, mcp__claude_ai_DrillSpark__update_diagram
+disallowedTools: Edit, Write, advisor, mcp__drillspark__update_diagram, mcp__claude_ai_DrillSpark__update_diagram
 model: sonnet
 ---
 
