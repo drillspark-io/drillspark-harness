@@ -31,6 +31,11 @@ carries no version of its own.
   deliberately unguarded: a self-reported ledger cannot be verified by a hook, so the hard gates
   stay on facts a script can check (diagram coverage, table cross-references). One guard check
   pins that the ledger passes the write guard.
+- Stage 2 of `process-improve` no longer claims four waste marks. With the two-stage inventory,
+  only 「目的が薄い」 can fire at that point (the other three come from the `作業` column, which is
+  still `後で聞く`); the text now says so, asks the user once whether any task feels heavy on
+  copying or waiting, and re-runs `process-abc` after the chosen tasks' details are filled so the
+  remaining marks reach stage 4 with their source words.
 
 ### Changed
 
