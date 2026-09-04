@@ -41,7 +41,10 @@ carries no version of its own.
   diagram's AI lane is the draft for the process diagram. `process-improve` ends by handing over
   the exact line to paste into a new session. The purpose stage asks only what fills its four
   fields; judgment criteria, procedures, tools and data shapes belong to later stages and are
-  never offered as a "decide it now" option.
+  never offered as a "decide it now" option. Before the purpose questions, a one-round
+  read-through sorts the request sheet's open points into "ask at that stage's diagram", "ask a
+  human at run time" or "outside this harness"; the three-round limit applies per stop, not to
+  the whole run.
 - `process-expert` searches the web only when it lacks knowledge of the work (the design
   diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
