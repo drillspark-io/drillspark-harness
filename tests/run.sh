@@ -182,6 +182,7 @@ T=$(mktemp -d)
 mkdir -p "$T/docs/harness/x/可視化" "$T/業務改善/sub" "$T/other"
 VIEW_GUARD="scripts/harness-view-guard.js"
 PROC_GUARD="scripts/process-write-guard.js"
+FREEZE_GUARD="scripts/harness-freeze-guard.js"
 
 # guard_case <guard> <期待 exit> <期待する stderr の語（空なら見ない）> <名前> <tool> <file_path> <content の元ファイル> [回数欄] [cwd] [command] [project_id]
 #   "-" は無しの意味。回数欄を与えると content の1行目の直後に <!-- 直し: N/2 --> を挿む。
@@ -269,10 +270,48 @@ guard_case "$PROC_GUARD" 2 "書き換えない" "process: 一覧に無い図へ�
 guard_case "$PROC_GUARD" 0 "" "process: 一覧にある図への update_diagram は通す"     mcp__drillspark__update_diagram - - - "$T" - 11111111-1111-4111-8111-111111111111
 guard_case "$PROC_GUARD" 0 "" "process: 一覧が無い場所からの update_diagram は通す"  mcp__drillspark__update_diagram - - - "$T/other" - 22222222-2222-4222-8222-222222222222
 guard_case "$PROC_GUARD" 2 "書き換えない" "process: 第3のサーバー名でも update_diagram を見る" mcp__ds__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
+# ハーネスの図は docs/harness/ の .md（図.md・改善/<日付>.md）に URL がある。業務一覧に無くても通す。案内は置き場を分けて示す
+mkdir -p "$T/docs/harness/h/処理/p" "$T/hz/docs/harness"
+printf '# p 図\n\n| DrillSpark | https://example.test/editor?id=33333333-3333-4333-8333-333333333333 |\n' > "$T/docs/harness/h/処理/p/図.md"
+guard_case "$PROC_GUARD" 0 "" "process: docs/harness の 図.md にある図への update_diagram は通す" mcp__drillspark__update_diagram - - - "$T" - 33333333-3333-4333-8333-333333333333
+guard_case "$PROC_GUARD" 2 "図.md" "process: 止めたときの案内に harness 側の置き場（図.md）が出る" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
+guard_case "$PROC_GUARD" 2 "書き換えない" "process: docs/harness だけの場所でも、どこにも無い図は止める" mcp__drillspark__update_diagram - - - "$T/hz" - 22222222-2222-4222-8222-222222222222
+# スクリプトからの書き換え（python のヒアドキュメントで業務一覧が書き換えられた実例）
+guard_case "$PROC_GUARD" 2 "Write" "process: python から 業務改善/ を書くのは止める"   Bash - - - - "python - <<'PY'
+p='業務改善/業務一覧.md'
+open(p,'w').write('x')
+PY"
+guard_case "$PROC_GUARD" 2 "Write" "process: node -e から 業務改善/ を書くのは止める"   Bash - - - - "node -e \"require('fs').writeFileSync('業務改善/改善案.md','x')\""
+guard_case "$PROC_GUARD" 2 "Write" "process: PowerShell の Set-Content で 業務改善/ を書くのは止める" Bash - - - - "Set-Content 業務改善/改善案.md 'x'"
+guard_case "$PROC_GUARD" 0 "" "process: node <ファイル> で lint を呼ぶのは止めない"   Bash - - - - "node scripts/process-table-lint.js 業務改善/業務一覧.md"
+guard_case "$PROC_GUARD" 0 "" "process: 業務改善/ に触れない python は止めない"        Bash - - - - "python -c 'print(1)'"
 DRILLSPARK_HARNESS_GUARDS=off guard_case "$PROC_GUARD" 0 "" "process: DRILLSPARK_HARNESS_GUARDS=off で柵を切れる" Write "$T/業務改善/業務一覧.md" "$DIR/ng-table-blank.md"
 DRILLSPARK_HARNESS_GUARDS=off guard_case "$VIEW_GUARD" 0 "" "view: DRILLSPARK_HARNESS_GUARDS=off で柵を切れる"    Edit "$V" -
+
+# 凍結した合格条件 — 番号付きの行は変えず消さず、足すだけ。足したら版を上げる
+F="$T/docs/harness/h/処理/p/合格条件.md"
+printf '# p 合格条件（凍結: 2026-01-01）\n\n| # | 条件 | 期待 |\n|---|---|---|\n| 1 | a を通す | exit 0 |\n| 2 | b を止める | exit 2 |\n' > "$F"
+printf '# p 合格条件（凍結: 2026-01-01）\n\n| # | 条件 | 期待 |\n|---|---|---|\n| 1 | a を止める | exit 2 |\n| 2 | b を止める | exit 2 |\n' > "$T/other/凍結-変更.md"
+printf '# p 合格条件（凍結: 2026-01-01）\n\n| # | 条件 | 期待 |\n|---|---|---|\n| 1 | a を通す | exit 0 |\n| 2 | b を止める | exit 2 |\n| 3 | c を止める | exit 2 |\n' > "$T/other/凍結-追加-版なし.md"
+printf '# p 合格条件（凍結: 2026-01-01 / 第2版 2026-01-02）\n\n| # | 条件 | 期待 |\n|---|---|---|\n| 1 | a を通す | exit 0 |\n| 2 | b を止める | exit 2 |\n| 3 | c を止める | exit 2 |\n' > "$T/other/凍結-追加-第2版.md"
+printf '# p 合格条件（第2版）\n\n| # | 条件 | 期待 |\n|---|---|---|\n| 1 | a を通す | exit 0 |\n| 2 | b を止める | exit 2 |\n' > "$T/other/凍結-語なし.md"
+printf '# p 合格条件（下書き）\n\n| # | 条件 | 期待 |\n|---|---|---|\n| 1 | a を通す | exit 0 |\n' > "$T/docs/harness/h/処理/q-合格条件.md"
+guard_case "$FREEZE_GUARD" 2 "凍結" "freeze: 凍結済みの番号行を変える Write は止める"        Write "$F" "$T/other/凍結-変更.md"
+guard_case "$FREEZE_GUARD" 2 "版"   "freeze: 行を足すのに版を上げない Write は止める"        Write "$F" "$T/other/凍結-追加-版なし.md"
+guard_case "$FREEZE_GUARD" 0 ""     "freeze: 行を足して第2版に上げる Write は通す"            Write "$F" "$T/other/凍結-追加-第2版.md"
+guard_case "$FREEZE_GUARD" 2 "凍結" "freeze: 「凍結」の語を消す Write は止める"               Write "$F" "$T/other/凍結-語なし.md"
+guard_case "$FREEZE_GUARD" 2 "凍結" "freeze: 番号行に掛かる Edit も止める"                   Edit  "$F" -
+guard_case "$FREEZE_GUARD" 0 ""     "freeze: 凍結の語が無い合格条件.md は通す"                Write "$T/docs/harness/h/処理/q-合格条件.md" "$T/other/凍結-変更.md"
+guard_case "$FREEZE_GUARD" 0 ""     "freeze: まだ無い合格条件.md への Write（初回の凍結）は通す" Write "$T/docs/harness/h/処理/r/合格条件.md" "$T/other/凍結-変更.md"
+guard_case "$FREEZE_GUARD" 0 ""     "freeze: docs/harness の外の 合格条件.md は見ない"         Write "$T/other/合格条件.md" "$T/other/凍結-変更.md"
+guard_case "$FREEZE_GUARD" 2 "Write" "freeze: Bash で 合格条件.md へ heredoc は止める"       Bash - - - - "cat > docs/harness/h/処理/p/合格条件.md <<'EOF'
+x
+EOF"
+guard_case "$FREEZE_GUARD" 2 "Write" "freeze: sed -i の対象が 合格条件.md は止める"          Bash - - - - "sed -i 's/a/b/' docs/harness/h/処理/p/合格条件.md"
+guard_case "$FREEZE_GUARD" 0 ""     "freeze: 合格条件.md を読むだけの Bash は通す"            Bash - - - - "cat docs/harness/h/処理/p/合格条件.md | head"
+DRILLSPARK_HARNESS_GUARDS=off guard_case "$FREEZE_GUARD" 0 "" "freeze: DRILLSPARK_HARNESS_GUARDS=off で柵を切れる" Write "$F" "$T/other/凍結-変更.md"
 # 壊れた入力・object でない JSON で無関係な作業を止めない（例外で落ちれば exit 1 になる）
-for g in "$VIEW_GUARD" "$PROC_GUARD"; do
+for g in "$VIEW_GUARD" "$PROC_GUARD" "$FREEZE_GUARD"; do
   for bad in 'not json' '{}' 'null' '[]' '42'; do
     if printf '%s' "$bad" | node "$g" >/dev/null 2>&1; then echo "  PASS $(basename "$g")  入力 $bad は通す (exit 0)"; else echo "  FAIL $(basename "$g")  入力 $bad で止めた／落ちた"; fail=1; fi
   done
@@ -436,7 +475,8 @@ for p in \
   scripts/file-saved-lint.js \
   scripts/process-abc.js \
   scripts/process-coverage.js \
-  scripts/process-write-guard.js
+  scripts/process-write-guard.js \
+  scripts/harness-freeze-guard.js
 do
   if [ -f "$p" ]; then echo "  PASS $p"; else echo "  FAIL $p が無い"; fail=1; fi
 done

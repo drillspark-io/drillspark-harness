@@ -150,6 +150,8 @@ skill / agent の frontmatter、コマンド定義 — 機械で拾える起動�
 ### 手順
 
 1. **プロジェクトを新規に作る**（`create_project`）。処理1つに1つ。名前は `<ハーネス名> / <処理名>`。
+   **直後に URL を `改善/<日付>.md` に書く**（描き終えてからではなく、作った直後）。プラグインの柵は、
+   業務一覧の「図の在りか」にも `docs/harness/` の .md にも無いプロジェクトへの `update_diagram` を止める。
    **他人のプロジェクトは読むだけ。** `update_diagram` は全置換で、図は git の外にあり、
    書き戻しに失敗して復旧できるのは作った人だけ。`update_diagram` を使うのは
    **この節で自分が作ったプロジェクトに対してだけ**
@@ -341,10 +343,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" docs/harness/<ハーネ�
 **`docs/harness/` 配下と、自分が作った DrillSpark プロジェクトだけ。**
 `.claude/` 配下は**読むだけ**。直すのは implement。
 
-> **これは本文のお願いにとどまる。** このハーネス自身が「本文に『必ず通すこと』と書くだけだと破れる。
-> 機械が必ず走る形にした」と書いているとおり、柵にはなっていない。柵はプラグインの `hooks/hooks.json` で
-> 配れる（MAPPING.md 6.5・実測）が、`業務改善/` の `process-write-guard.js` と同型の柵 — 処理一覧の
-> DrillSpark URL 列と `update_diagram` の突き合わせ — は harness 側に**未実装**。既知の欠落として残す。
+> **「`docs/harness/` 配下だけ」は本文のお願いにとどまる**（全 Write を止めると他の skill が動かない）。
+> 柵になっているのは2つ — `update_diagram` は `docs/harness/` の .md に URL があるプロジェクトにしか通らず
+> （`process-write-guard.js`）、凍結した `合格条件.md` は番号付きの行を変えられない（`harness-freeze-guard.js`）。
 
 ## 人間の介入点
 

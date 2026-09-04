@@ -41,7 +41,7 @@ skills/process-improve/     業務を棚卸しして改善する（5工程）
 skills/process-improve-view/  改善計画を1枚にする（処理）
 agents/                     レビュー役と評価役。生成側から分離されている
 reference/                  判定基準（各エージェントが毎回読む）と 設計.md の雛形
-scripts/                    図・可視化 HTML・業務改善の lint と ABC 分析、第二階層の網羅、可視化の生成、書く前に効く柵2本（どれも依存なし）
+scripts/                    図・可視化 HTML・業務改善の lint と ABC 分析、第二階層の網羅、可視化の生成、書く前に効く柵3本（どれも依存なし）
 hooks/hooks.json            柵（PreToolUse）をプラグインとして配る定義
 tests/                      lint と柵の期待挙動を固定するサンプル＋ランナー（件数は run.sh の出力から取る。手で数えない）
 .claude-plugin/             plugin.json と marketplace.json（このリポジトリ自身が単独プラグインのマーケットプレース）

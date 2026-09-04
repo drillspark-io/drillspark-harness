@@ -82,17 +82,18 @@ claude --plugin-dir . -- "Use the process-improve skill to inventory my work"
 
 ### Hooks
 
-Installing the plugin registers two guard scripts as **PreToolUse hooks** (three matchers, five
+Installing the plugin registers three guard scripts as **PreToolUse hooks** (three matchers, seven
 commands) in every session, in every project.
 They are declared in `hooks/hooks.json`; nothing is written to your `settings.json`.
 
 | matcher | guard | what it stops |
 |---|---|---|
 | `Write` `Edit` `MultiEdit` `Bash` | `scripts/harness-view-guard.js` | overwriting a `docs/harness/*/可視化/*.html` page, a fix counter past 2, a page that fails the lint, a Bash redirect / `tee` / `cp` / `mv` whose target is a `可視化/*.html` page |
-| `Write` `Edit` `MultiEdit` `Bash` | `scripts/process-write-guard.js` | a table or plan under `業務改善/` that fails its lint (the plugin's own file names are always checked; other files there are left alone unless they contain a plugin table); a Bash redirect / `tee` / `cp` / `mv` / `sed -i` into `業務改善/`, and any file redirect while the shell is inside `業務改善/` |
-| `mcp__*__update_diagram` | `scripts/process-write-guard.js` | `update_diagram` on a project that `業務改善/業務一覧.md` does not list — someone else's diagram |
+| `Write` `Edit` `MultiEdit` `Bash` | `scripts/process-write-guard.js` | a table or plan under `業務改善/` that fails its lint (the plugin's own file names are always checked; other files there are left alone unless they contain a plugin table); a Bash redirect / `tee` / `cp` / `mv` / `sed -i` into `業務改善/`, any file redirect while the shell is inside `業務改善/`, and a python / perl / ruby / `node -e` / PowerShell command that names a path under `業務改善/` |
+| `mcp__*__update_diagram` | `scripts/process-write-guard.js` | `update_diagram` on a project whose id is neither in `業務改善/業務一覧.md` nor in any `.md` under `docs/harness/` — someone else's diagram. The message names where each skill records its own project (`図の在りか`, `処理/<名>/図.md`, `改善/<日付>.md`) |
+| `Write` `Edit` `MultiEdit` `Bash` | `scripts/harness-freeze-guard.js` | changing or removing a numbered row of a frozen `docs/harness/**/合格条件.md` (one that contains 「凍結」), adding rows without raising 「第N版」, dropping the 「凍結」 word, or writing the file through a Bash redirect / `sed -i` |
 
-Everything else exits 0 immediately: the cost is one `node` start per guard — two per `Write` /
+Everything else exits 0 immediately: the cost is one `node` start per guard — three per `Write` /
 `Edit` / `Bash` call, about 100 ms each — and no model context. To switch the guards off without uninstalling, set
 `DRILLSPARK_HARNESS_GUARDS=off`; to remove them, `claude plugin disable drillspark-harness`.
 
@@ -124,6 +125,7 @@ agents/process-improve-reviewer.md    業務改善の判定役。基準を読む
 scripts/process-abc.js                業務一覧から ABC 分析と印の候補を決定論で出す
 scripts/process-coverage.js           get_project の結果から、全工程に第二階層があるかを数える（§4 に入る前の条件）
 scripts/process-write-guard.js        業務改善/ を書く前に効く柵（表と1枚の検査・図の書き換え先）。PreToolUse hook
+scripts/harness-freeze-guard.js       凍結した合格条件.md の番号行を変えさせない柵。PreToolUse hook
 reference/business-improvement-criteria.md  業務改善の判定線。判定役が毎回読む
 reference/business-improvement-tables.md    4つの表の列と入る値
 scripts/process-table-lint.js         業務改善の表を決定論で検査（依存なし）
@@ -346,7 +348,7 @@ bash tests/run.sh
 `tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
 the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
 then six page-build checks, two stage-coverage checks, six inventory-sheet checks, three
-diagram-display checks, 55 guard checks and one hook-wiring check, validates the plugin and checks that all 36 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+diagram-display checks, 80 guard checks and one hook-wiring check, validates the plugin and checks that all 37 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
 | checks | what |
@@ -361,7 +363,7 @@ do not update them by hand.)
 | 2 (`ok-coverage.json`: every stage has a second level; `ng-coverage-missing.json`: stages 3 and 4 are named as missing, read from stdin) | `process-coverage` |
 | 6 (`skills/process-improve/assets/棚卸しシート.html`: written as a fragment, connects through `claude.use("db")`, its 測り方 options match `process-table-lint`, frequency units, Google Fonts is the only external resource, no private information) | inventory sheet |
 | 3 (every skill whose text calls `show_project` allows it under both server prefixes) | diagram display |
-| 55 (PreToolUse JSON fed to each guard: what it stops, what it must let through — including the resume ledger `業務改善/進行.md` — malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
+| 80 (PreToolUse JSON fed to each guard: what it stops, what it must let through — including the resume ledger `業務改善/進行.md`, harness projects recorded under `docs/harness/`, script writes into `業務改善/`, the frozen 合格条件.md — malformed input, the off switch) | `harness-view-guard`, `process-write-guard`, `harness-freeze-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 
 Every fixture carries an `expect: <CODE> x<count>` line (`%% expect:` in `.mmd`), and the runner

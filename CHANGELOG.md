@@ -19,7 +19,7 @@ carries no version of its own.
   organization-internal and cannot be shared publicly.
 - `tests/run.sh` — six checks on the sheet (fragment, `claude.use("db")`, 測り方 options identical
   to `process-table-lint`, frequency units, Google Fonts as the only external resource, no
-  private information). The shipped-file check now covers 36 files.
+  private information). The shipped-file check now covers 37 files.
 - `scripts/process-coverage.js` — counts, from a `get_project` response, which first-level
   stages have a second-level (task) diagram. In a real run the model drew one of seven stages and
   moved on to the success criterion; stage 3-2 of `process-improve` now loops over every stage
@@ -56,6 +56,34 @@ carries no version of its own.
   `sub_diagrams` (every diagram linted first) instead of one `update_diagram` per stage. The three
   writing skills list `show_project` under both server prefixes; `tests/run.sh` checks that every
   skill whose text calls it also allows it.
+- **`update_diagram` guard covers harness projects, and its message says where each skill records
+  its own.** In a full run, `harness-implement` created the process diagram as a new project, the
+  guard stopped the first `update_diagram` ("not in 業務一覧.md"), and the model followed the
+  message literally: it wrote the harness project's URL into the inventory's 図の在りか column as
+  `改善後:` — the slot that means "this business's to-be diagram". The guard now also accepts any
+  project id found in a `.md` under `docs/harness/` (`処理/<名>/図.md`, `改善/<日付>.md`), enforces
+  whenever either `業務改善/業務一覧.md` or `docs/harness/` exists, and its message lists the three
+  places by skill. `harness-implement` writes 図.md with the URL right after `create_project`;
+  `harness-improve` writes 改善/<日付>.md the same way.
+- **Script writes into `業務改善/` are stopped.** The same edit above was made with a
+  `python - <<'PY'` heredoc, which the Bash guard did not see, so the table lint never ran.
+  `process-write-guard` now stops python / perl / ruby / php, `node -e`, and PowerShell
+  `Set-Content` / `Out-File` / `Add-Content` commands that name a path under `業務改善/`
+  (`node <file>` — the way the lints are run — passes). Five guard checks.
+- `scripts/harness-freeze-guard.js` — a third PreToolUse guard. A `docs/harness/**/合格条件.md`
+  that contains 「凍結」 is frozen: a Write / Edit that changes or removes a numbered table row
+  (成果物・合格条件・介入点) is refused, adding rows requires raising 「第N版」, dropping the word
+  is refused, and Bash redirects / `sed -i` into the file are refused. Changing a condition means
+  keeping the old row and adding a superseding one. In the same run the evaluator's report led to
+  an ad-hoc second version of the frozen file, which the skill text alone could not prevent.
+  Twelve guard checks plus the bad-input set; the hook wiring check counts seven commands.
+- `harness-evaluator` no longer probes hook registration with its own Bash. Its live check had
+  been `echo "npx wrangler pages deploy …"` — a string, not a command, which no guard matches —
+  and the pass-through was reported as a P0 "hook not registered". Registration is judged from
+  `settings.json` and whether the session was restarted; if either cannot be confirmed it is
+  written as unverified, not as a failure.
+- `harness-implement` says real files are written with `Write`: a Bash heredoc collapses `\` and
+  broke a hook script's regular expressions in the run.
 - `process-expert` searches the web only when it lacks knowledge of the work (the design
   diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
