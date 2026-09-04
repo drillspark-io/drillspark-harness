@@ -340,6 +340,30 @@ EOF
 printf '%s\n' "$out"
 if [ "$got" -ne 0 ]; then fail=1; fi
 
+echo "== 図の表示 =="
+# 本文で show_project を呼ぶスキルは、両方のサーバー名（drillspark / claude_ai_DrillSpark）で許可していること。
+# 片方だけだと、もう一方の名前で繋いだ環境で図が出ずに止まる。
+out=$(node -e '
+  const fs = require("fs");
+  let bad = 0, n = 0;
+  for (const d of fs.readdirSync("skills")) {
+    const p = "skills/" + d + "/SKILL.md";
+    if (!fs.existsSync(p)) continue;
+    const t = fs.readFileSync(p, "utf8");
+    const head = t.split("\n").slice(0, 8).join("\n");
+    const body = t.slice(head.length);
+    if (!/show_project/.test(body)) continue;
+    n++;
+    const ok = /mcp__drillspark__show_project/.test(head) && /mcp__claude_ai_DrillSpark__show_project/.test(head);
+    console.log((ok ? "  PASS " : "  FAIL ") + d + "  本文で show_project を呼び、両方の名前で許可している");
+    if (!ok) bad = 1;
+  }
+  if (n === 0) { console.log("  FAIL show_project を呼ぶスキルが1つも無い"); bad = 1; }
+  process.exit(bad);
+' 2>&1); got=$?
+printf '%s\n' "$out"
+if [ "$got" -ne 0 ]; then fail=1; fi
+
 echo "== hook の配線 =="
 # hooks.json が読めること、要る matcher が揃っていること、command が指すスクリプトが実在すること。
 # （validate は JSON の文法しか見ない。パスだけ壊れた hook は validate を通る — 実測）

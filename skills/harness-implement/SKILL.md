@@ -1,7 +1,7 @@
 ---
 name: harness-implement
 description: リポジトリの目的を固め、処理をDrillSparkで作図し、Claude Code の実ファイル（rules / agents / skills / hooks の実体）に落として評価するまで。処理は1回の起動につき1つだけ作り、次の処理は新しいセッションで起動する。全処理を束ねて settings.json と CLAUDE.md を書くのは harness-compose。ハーネスを新しく作るとき、2つ目以降の処理を作るとき、既存の図を実装に落とすとき、処理1つ分の図を直して再適用するときに使う。
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__list_projects, mcp__drillspark__create_folder, mcp__drillspark__list_folders, mcp__drillspark__list_versions, mcp__drillspark__restore_version, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__create_folder, mcp__claude_ai_DrillSpark__list_folders, mcp__claude_ai_DrillSpark__list_versions, mcp__claude_ai_DrillSpark__restore_version
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__list_projects, mcp__drillspark__create_folder, mcp__drillspark__list_folders, mcp__drillspark__list_versions, mcp__drillspark__restore_version, mcp__drillspark__show_project, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__create_folder, mcp__claude_ai_DrillSpark__list_folders, mcp__claude_ai_DrillSpark__list_versions, mcp__claude_ai_DrillSpark__restore_version, mcp__claude_ai_DrillSpark__show_project
 ---
 
 # harness-implement — 目的から作図して設定に落とす
@@ -284,8 +284,13 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" docs/harness/<ハーネ�
 **まとめて描かない。** 最初の1枚はルート図（骨格）で、骨格が違うと下のドリルダウンが全部無駄になる。
 
 ```
-図を1枚描く → 構造 lint → 【承認ゲート】この図でよいか → 残りがあれば次の1枚へ
+図を1枚描く → 構造 lint → 保存 → show_project でその図を出す → 【承認ゲート】この図でよいか → 残りがあれば次の1枚へ
 ```
+
+**図を画面に出すのはゲートの直前に1回だけ。** `show_project(project_id, "<その図のキー>")` は、Claude Desktop では
+呼び出し1回が図のウィジェット1枚になる。保存のたび・lint の直しのたびに呼ぶと画面が図で埋まるので、
+ゲートで見せる1回に限る（`show_project` の説明文は「プロジェクトごとに1回」と言うが、このスキルではゲートごとに1回。
+`create_project` は自分で1回出すので、ルート図のゲートでは呼ばない）。CLI では文字しか返らないので、リンクは必ず添える。
 
 **機械が見るものを人間のゲートへ持ち込まない。**
 数値ID・二重引用符ラベル・`%% duration`・多出力・到達性・レーンと線種・IDの重複は

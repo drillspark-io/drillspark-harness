@@ -45,6 +45,17 @@ carries no version of its own.
   read-through sorts the request sheet's open points into "ask at that stage's diagram", "ask a
   human at run time" or "outside this harness"; the three-round limit applies per stop, not to
   the whole run.
+- **Diagrams are shown with `show_project`, once per confirmation.** In Claude Desktop the DrillSpark
+  connector renders one diagram widget per tool result; with one `update_diagram` per stage, a run
+  filled the conversation with 15–20 widgets of the same project. DrillSpark now returns text only
+  from `update_diagram` and shows a widget only from `create_project` and the new `show_project`
+  (`project_id`, optional `diagram_key` to open a tab). `process-improve` stage 3-2 calls it once per
+  stage with that stage's key, `harness-implement` once before each approval gate,
+  `harness-improve` once before the two-level discussion; never after a save, a lint fix or a
+  read-back. The to-be project in stage 4-3 is created in one `create_project` call with
+  `sub_diagrams` (every diagram linted first) instead of one `update_diagram` per stage. The three
+  writing skills list `show_project` under both server prefixes; `tests/run.sh` checks that every
+  skill whose text calls it also allows it.
 - `process-expert` searches the web only when it lacks knowledge of the work (the design
   diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10

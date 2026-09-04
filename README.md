@@ -345,8 +345,8 @@ bash tests/run.sh
 
 `tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
 the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
-then six page-build checks, two stage-coverage checks, six inventory-sheet checks, 55 guard checks
-and one hook-wiring check, validates the plugin and checks that all 36 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+then six page-build checks, two stage-coverage checks, six inventory-sheet checks, three
+diagram-display checks, 55 guard checks and one hook-wiring check, validates the plugin and checks that all 36 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
 | checks | what |
@@ -360,6 +360,7 @@ do not update them by hand.)
 | 6 (`ok-build-minimal.*.json` builds a page whose fix counter goes 0 → 1 → 2 and is refused on the fourth run; a map without `purpose` and a map without its diagrams are refused without writing) | `harness-view-build` |
 | 2 (`ok-coverage.json`: every stage has a second level; `ng-coverage-missing.json`: stages 3 and 4 are named as missing, read from stdin) | `process-coverage` |
 | 6 (`skills/process-improve/assets/棚卸しシート.html`: written as a fragment, connects through `claude.use("db")`, its 測り方 options match `process-table-lint`, frequency units, Google Fonts is the only external resource, no private information) | inventory sheet |
+| 3 (every skill whose text calls `show_project` allows it under both server prefixes) | diagram display |
 | 55 (PreToolUse JSON fed to each guard: what it stops, what it must let through — including the resume ledger `業務改善/進行.md` — malformed input, the off switch) | `harness-view-guard`, `process-write-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 

@@ -1,7 +1,7 @@
 ---
 name: process-improve
 description: 自分の業務を棚卸しして改善する。業務の一覧を作り、時間のかかっている業務を選び、DrillSpark で図にして、なくす・まとめる・並び替える・簡単にする の順で改善案を出し、AIに任せられる工程を依頼書にするまで。業務改善が初めての人が、AIに質問されながら進められる。
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, Artifact, Skill, mcp__drillspark__list_projects, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, Artifact, Skill, mcp__drillspark__list_projects, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__get_diagram, mcp__drillspark__list_diagrams, mcp__drillspark__show_project, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__show_project
 ---
 
 # process-improve — 業務を棚卸しして改善する
@@ -40,7 +40,10 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, Artif
 5. **質問は `AskUserQuestion` で出す。** テキストで番号付きの質問を並べない。
    `AskUserQuestion` が無い環境（`claude -p` などの非対話実行）では、散文で問いを1つ出して止まり、先へ進まない
 6. **CLI に mermaid を貼らない。** 図は DrillSpark のリンクに任せ、
-   CLI にはレーンごとの箇条書きで「どの順に何をするか」だけ出す
+   CLI にはレーンごとの箇条書きで「どの順に何をするか」だけ出す。
+   **図を画面に出すのは `show_project` で、利用者に確かめてもらう場面ごとに1回だけ**（`create_project` は自分で1回出す）。
+   保存のたび・lint の直しのたび・読み戻しのたびには呼ばない — Claude Desktop ではこの呼び出し1回が図のウィジェット1枚で、
+   確認と無関係に呼ぶと画面が図で埋まる。CLI では文字しか返らないので、リンクは必ず添える
 7. **工程の切れ目は「完了」ではありません。** 実行環境に外部レビュー役（`advisor` など、会話全体を別のモデルに送る道具）があっても、
    工程ごとに呼びません。呼ぶなら起動直後と、AI化依頼書を渡した後の2回まで。工程の切れ目で呼ぶと、そのたびに会話全体が
    送られて1〜2分止まり、利用者には「処理が異常に長い」と見えます
@@ -241,7 +244,9 @@ printf '%s' "$MERMAID" | node "${CLAUDE_PLUGIN_ROOT}/scripts/diagram-lint.js" -
 1. 現在地を `[3/5 業務を図にする — 工程 k/n「工程名」の作業]` と出す
 2. その工程の作業を描き、構造 lint と `validate_diagram` を通して保存する（作業が10個を超えたら階層をもう1段足す）
 3. **その工程の作業だけ**を CLI に箇条書きで見せる（5〜10行。上から順に、「一般例」「未確認」の印付き）。他の工程は見せない。
-   図そのものは手順2で DrillSpark に入っているので、プロジェクトのリンクと「工程 k を開くと図で見えます」を添える。
+   図そのものは `show_project(project_id, "<工程のノードID>")` で**その工程の図を開いた形で1回**出し、プロジェクトのリンクも添える
+   （`show_project` の説明文は「プロジェクトごとに1回」と言うが、このスキルでは**確認の場面ごとに1回**。工程 k の確認で
+   出すのは工程 k の図で、前の工程のウィジェットを更新して見てもらう形にはしない）。
    CLI の箇条書きは判断のための要約で、図の代わりではない
 4. `AskUserQuestion` で「この工程の作業はこれでよい／直す」を問う（**上限3往復**）。直すなら直してから次の工程へ
 
@@ -315,10 +320,14 @@ E（なくす）の問いは「やめたら誰が困りますか」— 困る人
      変えていない工程を省くと、改善後の図だけで業務の全体が読めなくなります — 改善後の図は単独で成り立つ完全な図にします
    - **「AIに任せる」案の工程・作業は「AI」レーン**に置き、備考に案の要点を書く。「人がやる」案は元のレーンのまま
    - 「一般例」「未確認」の印は引き継ぐ（改善後の図でも確かめていないものは確かめていない）
-2. 構造 lint（標準入力）と `validate_diagram` を通して `create_project` で第一階層を作り、**直後に** URL を業務一覧の「図の在りか」に
-   `<現状の URL> ／ 改善後: <URL>` の形で `Edit` で書き足す（hook はこの列にある図しか書き換えさせない）
-3. 全工程の第二階層を、1つずつ `update_diagram`（キーは工程のノードID）で足す。終わったら `process-coverage.js` で
-   改善後の図も全工程に第二階層があることを数える（現状図と同じ検査）
+2. 第一階層と全工程の第二階層の mermaid を**全部先に**構造 lint（標準入力）と `validate_diagram` に通す
+   （1枚でも壊れていると次の呼び出しが丸ごと失敗する）
+3. `create_project` を **1回だけ**呼び、`root_diagram` に第一階層、`sub_diagrams` に全工程の第二階層（キーは工程のノードID）を渡す。
+   工程ごとに `update_diagram` で足していかない — 改善後の図は最後に一度見比べるもので、工程ごとに確かめる場面が無い。
+   **直後に** URL を業務一覧の「図の在りか」に `<現状の URL> ／ 改善後: <URL>` の形で `Edit` で書き足す
+   （hook はこの列にある図しか書き換えさせない）。終わったら `get_project` の結果を `process-coverage.js` で数え、
+   改善後の図も全工程に第二階層があることを確かめる（現状図と同じ検査）。
+   図は `create_project` が1回出すので、ここで `show_project` は呼ばない。案を直して図を直したあとの見比べで、もう1回出す
 4. **CLI で見せるのは「変更点」です。** 消した／まとめた／並べ替えた／AIに任せた の順に、**工程名か作業名**（`3_2 金額を入力する` のようにIDつき）と
    推奨／理由／やらないとどうなるか を箇条書きで5〜10行。
    その下に**現状の図と改善後の図のリンクを並べて**、見比べてもらいます。「ファイルを開いてください」とは言いません — 利用者はファイルを見に行きません

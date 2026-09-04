@@ -1,7 +1,7 @@
 ---
 name: harness-improve
 description: 既にあるハーネスから処理の一覧を起こし、処理ごとの理想図をオーナーと対話しながら育て、実ファイルとの差分を出すまで。実装はしない。引き継いだハーネスにも自分で作ったハーネスにも入る。図も設計書も無い前提で始める。
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project, mcp__drillspark__list_projects, mcp__drillspark__list_diagrams, mcp__drillspark__get_diagram, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__list_versions, mcp__drillspark__restore_version, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__list_versions, mcp__claude_ai_DrillSpark__restore_version
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project, mcp__drillspark__list_projects, mcp__drillspark__list_diagrams, mcp__drillspark__get_diagram, mcp__drillspark__get_diagram_rules, mcp__drillspark__validate_diagram, mcp__drillspark__create_project, mcp__drillspark__update_diagram, mcp__drillspark__list_versions, mcp__drillspark__restore_version, mcp__drillspark__show_project, mcp__claude_ai_DrillSpark__get_project, mcp__claude_ai_DrillSpark__list_projects, mcp__claude_ai_DrillSpark__list_diagrams, mcp__claude_ai_DrillSpark__get_diagram, mcp__claude_ai_DrillSpark__get_diagram_rules, mcp__claude_ai_DrillSpark__validate_diagram, mcp__claude_ai_DrillSpark__create_project, mcp__claude_ai_DrillSpark__update_diagram, mcp__claude_ai_DrillSpark__list_versions, mcp__claude_ai_DrillSpark__restore_version, mcp__claude_ai_DrillSpark__show_project
 ---
 
 # harness-improve — ハーネス全体を改善する
@@ -178,6 +178,9 @@ skill / agent の frontmatter、コマンド定義 — 機械で拾える起動�
    （人間ゲートは増やさない）
 7. オーナーに URL を出して**2段で話し合う**。**CLI に mermaid を貼らない** — 図はリンクに任せ、
    CLI にはレーンごとの箇条書きで「どの順に何をするか」だけ出す。
+   図を画面に出すのは、話し合いに入る直前の `show_project(project_id)` **1回**（Claude Desktop では呼び出し1回が
+   ウィジェット1枚。手順5の保存や突き合わせのたびには呼ばない。話し合いの途中で直した図は、出したウィジェットが
+   更新ボタンで最新を映す）。
    - **1段目＝工程**（並び・分岐・担当・人の止め所）を順に確認しながら、改善案があれば添える。
      案の出どころは目的だけ。案が無い工程は「無し」と言う — 無理に出すと提案のための提案になる
    - **2段目＝詳細**（備考・分岐の条件・成果物・要確認印の箇所）。**工程が固まってから** —
