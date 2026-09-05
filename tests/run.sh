@@ -411,12 +411,14 @@ out=$(node -e '
   let bad = 0;
   const setup = fs.readFileSync("reference/drillspark-setup.md", "utf8");
   const readme = fs.readFileSync("README.md", "utf8");
+  const readmeJa = fs.readFileSync("README.ja.md", "utf8");
   const owner = setup.split("## 業務改善")[0];
   const staff = setup.split("## 業務改善")[1] || "";
   const cases = [
     ["setup.md 案内する文面（オーナー向け）", owner, /解約/],
     ["setup.md 業務改善の利用者向けの3行", staff, /解約/],
-    ["README Connecting DrillSpark", readme, /[Cc]ancel/],
+    ["README.md Installation", readme, /[Cc]ancel/],
+    ["README.ja.md インストール", readmeJa, /解約/],
   ];
   for (const [name, text, cancel] of cases) {
     const ok = /`drill-kaizen`/.test(text) && cancel.test(text);
@@ -469,6 +471,8 @@ for p in \
   .claude-plugin/marketplace.json \
   hooks/hooks.json \
   README.md \
+  README.ja.md \
+  docs/design-notes.md \
   CHANGELOG.md \
   LICENSE \
   .github/workflows/tests.yml \

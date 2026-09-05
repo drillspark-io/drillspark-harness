@@ -84,6 +84,11 @@ carries no version of its own.
   written as unverified, not as a failure.
 - `harness-implement` says real files are written with `Write`: a Bash heredoc collapses `\` and
   broke a hook script's regular expressions in the run.
+- The README is rewritten in the shape of popular plugin READMEs — what it does, installation,
+  quick start, then tables of skills, agents, guards and scripts — and a Japanese edition
+  `README.ja.md` is added. The long-form reasoning, the two-family design, the lint codes and the
+  status detail move to `docs/design-notes.md`. The shipped-file check covers both new files and
+  the setup-guidance check reads both READMEs (four checks).
 - The DrillSpark setup guidance (`reference/drillspark-setup.md`, which every skill shows when
   the connection check fails, and the README) now hands a user without an account the coupon
   code `drill-kaizen`: one month free, and the user must cancel before the free month ends or
