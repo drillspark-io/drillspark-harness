@@ -38,7 +38,7 @@ of falling back to pasting Mermaid into the terminal.
 ## Connecting DrillSpark
 
 1. **Create an account** at [drillspark.io](https://drillspark.io/). A user without an account gets
-   the coupon code `drill-kaizen` (one month free). **Cancel before the free month ends**, or billing
+   the coupon code `drill-kaizen` (one month free; entered on the payment page). **Cancel before the free month ends**, or billing
    starts; the skills say so whenever they hand out the code.
 2. **Connect the MCP server** — two ways:
    - **Claude Code** — issue an API key (`dsk_…`) from the
