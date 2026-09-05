@@ -480,6 +480,7 @@ for p in \
   docs/harness/process-improve/可視化/業務を改善する-2026-09-05.html \
   CHANGELOG.md \
   LICENSE \
+  NOTICE \
   .github/workflows/tests.yml \
   skills/harness-implement/SKILL.md \
   skills/harness-implement/MAPPING.md \

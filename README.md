@@ -203,3 +203,5 @@ Run `bash tests/run.sh` and `claude plugin validate . --strict` before opening a
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+Copyright 2026 つむぎや株式会社 (Tsumugiya)

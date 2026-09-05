@@ -181,3 +181,5 @@ PR の前に `bash tests/run.sh` と `claude plugin validate . --strict` を通�
 ## ライセンス
 
 Apache-2.0。[LICENSE](LICENSE) を見てください。
+
+Copyright 2026 つむぎや株式会社
