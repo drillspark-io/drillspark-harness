@@ -84,13 +84,14 @@ carries no version of its own.
   written as unverified, not as a failure.
 - `harness-implement` says real files are written with `Write`: a Bash heredoc collapses `\` and
   broke a hook script's regular expressions in the run.
-- Two more pre-implementation decisions in `harness-implement`: where each stage writes its
-  output (a named file — the diagram's document node where there is one — and the next stage
-  checks that the file exists by machine before it starts), and whether a stage that produces a
-  deliverable hands it to a reviewer agent without write tools before the next stage, with the
-  reason recorded when it does not. In a real run the deliverable was built first and its outline
-  written last, and the outline's author judged its own research. Both are rows in the `実装.md`
-  template, checks in `harness-design-reviewer`, and lines in the criteria file (owner decision).
+- Each stage's output is drawn as a document node (with its output path in the note), and a
+  deliverable that feeds the next stage gets an inspection node in a separate agent lane, or the
+  reason for not having one in `図.md`. Both are decided in the diagram, so they reach the frozen
+  deliverable list rather than being added at implementation time; `図.md` gains a
+  per-stage table for them, the generated skill checks the previous stage's file exists before a
+  stage starts, and `harness-design-reviewer` and the criteria file look for both (owner decision).
+  In a real run the deliverable was built first and its outline written last, and the outline's
+  author judged its own research.
 - `process-expert` searches the web only when it lacks knowledge of the work (the design
   diagram's "知識があるか？" branch); the earlier "always search once" rule is withdrawn.
 - Stage 3-2 is paced per stage: draw one stage's tasks, show only that stage's tasks (5–10
