@@ -88,6 +88,21 @@ What happens:
 Reads `.claude/`, draws what it currently does, corrects the diagram toward the ideal with you, and
 hands the diff to `harness-implement`. It never edits files.
 
+### See one workflow on one page
+
+```text
+/drillspark-harness:harness-visualize  「業務を改善する」を1枚にしたい
+```
+
+Builds a single HTML page under `docs/harness/<name>/可視化/` that layers the diagram, the design and
+the run record. Every node gets one row: what it became, the mechanism (instruction, confirmation,
+guard, agent), the file and place that implements it, and its status; diagram, table and source
+excerpts link to each other.
+
+![The visualization page: below the first-level diagram, one row per node with its implementing file and mechanism](docs/images/harness-view-steps.jpg)
+
+*The plugin's own workflow "improve a business process". With no evaluation report yet, every status reads "design only".*
+
 ### Terms
 
 | Term | Meaning |

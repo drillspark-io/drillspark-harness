@@ -476,6 +476,8 @@ for p in \
   docs/images/drillspark-root.jpg \
   docs/images/drillspark-drilldown.jpg \
   docs/images/inventory-sheet.jpg \
+  docs/images/harness-view-steps.jpg \
+  docs/harness/process-improve/可視化/業務を改善する-2026-09-05.html \
   CHANGELOG.md \
   LICENSE \
   .github/workflows/tests.yml \

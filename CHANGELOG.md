@@ -84,6 +84,12 @@ carries no version of its own.
   written as unverified, not as a failure.
 - `harness-implement` says real files are written with `Write`: a Bash heredoc collapses `\` and
   broke a hook script's regular expressions in the run.
+- Screenshots in the README (`docs/images/`): the plugin's own workflow diagram in DrillSpark (first
+  level and one drill-down), the inventory sheet with three sample rows, and the visualization page.
+  That page, `docs/harness/process-improve/可視化/業務を改善する-2026-09-05.html`, is a real
+  `harness-visualize` output for the plugin's own process (84 nodes mapped from `実装.md`; all
+  statuses "design only" because there is no evaluation report), built with
+  `scripts/harness-view-build.js` from the shipped `map.json` and `diagrams.json`.
 - The README is rewritten in the shape of popular plugin READMEs — what it does, installation,
   quick start, then tables of skills, agents, guards and scripts — and a Japanese edition
   `README.ja.md` is added. The long-form reasoning, the two-family design, the lint codes and the
