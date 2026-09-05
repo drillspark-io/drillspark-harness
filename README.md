@@ -27,6 +27,10 @@ The same method works on **a human's job**: there are no files to read, so the s
 you, draws the work, and produces a one-page hand-off saying which tasks go to AI and where a
 person must approve.
 
+![A workflow drawn in DrillSpark: the first level holds only the stages, with the document each stage leaves drawn beside it](docs/images/drillspark-root.jpg)
+
+*The plugin's own workflow "improve a business process". The first level is stages only; opening a stage shows its tasks.*
+
 ## Try it
 
 ### Build a harness
@@ -44,6 +48,8 @@ What happens:
 3. **Diagrams are drawn one at a time.** First the skeleton, then the tasks inside each stage.
    After each one, the DrillSpark diagram is shown and you are asked "is this right?". What each
    stage writes to a file, and who inspects a deliverable, are drawn on the diagram too.
+
+   ![The second level of the stage "draw the work": a user lane and an AI lane, with "are the stages right?" and "are the tasks right?" as the points where a person stops the run](docs/images/drillspark-drilldown.jpg)
 4. **Pass conditions are shown** — machine-checkable tests derived from the diagram (inputs a hook
    must stop and must let through, lint results). Once you approve them they are frozen.
 5. **The files are written.** Skills, agents, hooks and rules land in `.claude/`; a reviewer agent

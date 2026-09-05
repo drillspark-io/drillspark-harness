@@ -473,6 +473,8 @@ for p in \
   README.md \
   README.ja.md \
   docs/design-notes.md \
+  docs/images/drillspark-root.jpg \
+  docs/images/drillspark-drilldown.jpg \
   CHANGELOG.md \
   LICENSE \
   .github/workflows/tests.yml \
