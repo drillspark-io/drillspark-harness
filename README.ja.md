@@ -2,183 +2,165 @@
 
 > English: [README.md](README.md)
 
-**先に業務の流れを図に描き、その図から Claude Code にハーネスを作らせて検証する。**
+**Claude Code の設定を、先に業務の図を描いてから作る。作ったものは、作った AI とは別の AI が採点する。**
 
-[DrillSpark](https://drillspark.io/) の BPMN 図を Claude Code の実設定 — skill・agent・hook・権限・合格条件 — に落とし、
-人の業務も同じ方法で棚卸しして改善する Claude Code プラグインです。レビュー役と評価役は生成した側とは別のエージェントで、
-生成側が書き換えられない判定基準ファイルに照らして判定します。
+## どんな問題を解くか
 
-## できること
+Claude Code に長い手順を書いても、そのとおりには動きません。「必ず確認して」と書いた確認は飛ばされ、
+どこで人が止めるべきかは誰も決めておらず、できあがったものは作った本人が「できました」と言うだけです。
 
-| 系統 | 手元にあるもの | 出てくるもの |
-|---|---|---|
-| `harness-*` | Claude Code のハーネスの目的（または既にある `.claude/`） | 承認済みの DrillSpark の図、凍結した合格条件、それを実装した `.claude/` の実ファイル。別のエージェントがレビューと評価をする |
-| `process-*` | 自分の仕事。面談か1枚の棚卸しシートで答える | 時間の重い順に並んだ業務一覧（ABC 分析）、重い業務の図、1問ずつ進める ECRS の改善案、何を AI に渡しどこで人が承認するかを書いた引き渡しの1枚 |
+このプラグインは順番を変えます。
 
-全体を支える規則は2つです。
+1. **先に図を描く。** 誰が・何を・どの順で・どこで人が確認するかを、[DrillSpark](https://drillspark.io/) の業務フロー図に描いて、
+   あなたが1枚ずつ承認します。図が契約です。
+2. **図から設定を作る。** 承認した図から、Claude Code の skill・agent・hook・権限を作ります。「必ず確認して」の一文は、
+   確認を通らないと動かない hook（柵）になります。
+3. **別の AI が採点する。** 作った側とは別のエージェントが、プラグインに同梱された判定基準に照らして指摘します。
+   判定基準はあなたのリポジトリの外にあるので、作った側が書き換えられません。
 
-- **図が契約。** 誰が・何を・どの順で・どこで人が止めるかは図の上で決めて承認します。会話の中で即興しません。
-- **生成した側は自分を採点しない。** レビューと評価は別のエージェントが `reference/harness-design-criteria.md` を読んで行います。
-  このファイルはプラグインの中、あなたのリポジトリの外にあります。
+同じ方法で**人の仕事**も扱えます。読むファイルが無いので聞き取りで業務の一覧と図を作り、
+どの作業を AI に任せてどこで人が承認するかを決めた1枚を出します。
+
+## 使ってみる
+
+### ハーネスを作る
+
+```text
+/drillspark-harness:harness-implement  新しいハーネスを作りたい。目的は「ブログ記事を書いて公開する」
+```
+
+起きること:
+
+1. **目的を聞かれる。** 誰のため・何を成果物とするか・成功を何で測るか・やらないこと。答えは `docs/harness/<名>/設計.md` に保存されます。
+2. **処理（ワークフロー）の一覧を提案される。** 「記事を書く」「公開する」のように、独立した仕事の単位ごとに1行。あなたが確認して確定します。
+3. **図を1枚ずつ描く。** まず全体の骨格、次に工程ごとの作業。1枚描くたびに DrillSpark の図が表示され、「この図でよいか」と聞かれます。
+   工程ごとに何をファイルに残すか、成果物を誰が検査するかも図の上に描かれます。
+4. **合格条件を見せられる。** 図から導いた、機械で判定できるテスト（hook が止める入力と通す入力、lint の合否など）。承認すると凍結され、以後は実装の都合で変えられません。
+5. **実装される。** `.claude/` に skill・agent・hook・rule が書かれ、レビュー役の agent が判定基準に照らして指摘し、凍結した合格条件が実行されます。ここでは人は止まりません。
+6. **次の処理は新しいセッションで。** 1回の起動で作るのは処理1つです。全部そろったら `harness-compose` が `settings.json` と `CLAUDE.md` を書き、`harness-evaluator` が実タスクを通して測ります。
+
+### 自分の仕事を棚卸しして改善する
+
+```text
+/drillspark-harness:process-improve  私の業務を棚卸ししたい
+```
+
+起きること:
+
+1. **仕事を聞かれる。** 業務名・頻度・1回の時間・目的。`Artifact` が使える環境では1枚の入力シートが開き、1業務1行で書き込めます。
+2. **時間の重い順に並ぶ。** ABC 分析はスクリプトが計算します。答えられなかった欄は空欄ではなく「未確認: ◯◯さんに聞く」として残ります。
+3. **重い業務が図になる。** 工程ごとに、作業を1つずつ「これでよいか」と確かめながら描きます。専門家役の AI が一般知識で埋めた箇所には「一般例」の印が付きます。
+4. **改善を1問ずつ聞かれる。** なくせるか・まとめられるか・順番を変えられるか・簡単にできるか（ECRS）。案は改善後の図として描かれ、現状の図と見比べます。
+5. **引き渡しの1枚が出る。** どの作業を AI に任せるか（H1〜H5）、どこで人が承認するか、どれだけ時間が浮くか。実装はしません。
+
+### 引き継いだハーネスを見直す
+
+```text
+/drillspark-harness:harness-improve  このリポジトリのハーネスを見直したい
+```
+
+`.claude/` のファイルを読んで、いまの動きを図に起こし、あなたと対話しながら理想の形へ直し、差分を出します。
+ファイルは編集しません。差分は `harness-implement` への作業指示になります。
+
+### 用語
+
+| 語 | 意味 |
+|---|---|
+| ハーネス | Claude Code に渡す設定の一式。`CLAUDE.md`・skill・agent・hook・権限 |
+| 処理 | ハーネスが持つ独立した仕事の単位。「記事を書く」「請求書を転記する」。1処理＝DrillSpark の1プロジェクト |
+| 工程 | 処理の中の段階。図の第一階層。その下に作業が並ぶ |
 
 ## インストール
 
-前提:
-
-| | |
+| 前提 | |
 |---|---|
 | Claude Code | `2.1.233` 以上 |
-| Node.js | 14 以上。どのセッションでも `PATH` に在ること（hook が `node` を起動します。依存は無し） |
-| DrillSpark | アカウントと、MCP サーバの接続。下を見てください |
+| Node.js | 14 以上。`PATH` に在ること（hook が `node` を起動します。依存パッケージは無し） |
+| DrillSpark | アカウントと MCP サーバの接続 |
 
 **1. DrillSpark に繋ぐ。** [drillspark.io](https://drillspark.io/) でアカウントを作ります。
 アカウントが無い人にはクーポンコード `drill-kaizen` を渡します（1ヶ月無料。お支払い画面で入力）。
-**無料期間が終わる前に自分で解約**しないと課金が始まります。続けて MCP サーバを繋ぎます。
+**無料期間が終わる前に自分で解約**しないと課金が始まります。
 
 - **Claude Code** — [ダッシュボード](https://drillspark.io/dashboard)で API キー（`dsk_…`）を発行し、
-  `https://drillspark.io/api/mcp/mcp` を `http` サーバとして `drillspark` の名前で追加し、`Authorization: Bearer <キー>` ヘッダを付けます。
-- **Claude Desktop / claude.ai** — 設定のコネクタからアカウントを連携します（OAuth）。
+  `https://drillspark.io/api/mcp/mcp` を `http` サーバとして `drillspark` の名前で追加します（`Authorization: Bearer <キー>`）。
+- **Claude Desktop / claude.ai** — 設定のコネクタから連携します。
 
-`/mcp` で確かめます。セッションの途中で繋いだら再起動が要ります。skill は2つのサーバ名（`drillspark` と claude.ai コネクタ）を
-受け付けます。それ以外の名前では、レビュー役の agent が図を読めません。症状ごとの案内は
-[`reference/drillspark-setup.md`](reference/drillspark-setup.md) にあります。
+`/mcp` で確かめます。途中で繋いだら再起動が要ります。サーバ名は `drillspark` か claude.ai コネクタのどちらかにしてください。
+それ以外の名前だとレビュー役の agent が図を読めません。繋がらないときの切り分けは
+[`reference/drillspark-setup.md`](reference/drillspark-setup.md)。
 
-**2. プラグインを入れる。** このリポジトリ自身がマーケットプレースです。
+**2. プラグインを入れる。**
 
 ```bash
 /plugin marketplace add drillspark-io/drillspark-harness
 /plugin install drillspark-harness@drillspark-harness
 ```
 
-入れずに1セッションだけ試すなら、clone した先から:
+入れずに1セッションだけ試すなら、clone した先で `claude --plugin-dir ./drillspark-harness`。
 
-```bash
-claude --plugin-dir ./drillspark-harness
-```
+## 中身
 
-## クイックスタート
+### skill
 
-ハーネスを最初から作る（処理は1セッションに1つ）:
+| skill | 使うとき |
+|---|---|
+| `harness-implement` | ハーネスを新しく作る。既存のハーネスに処理を足す。図を直して実ファイルに再適用する |
+| `harness-compose` | 全処理の実装が終わり、`settings.json` と `CLAUDE.md` を1回で書く |
+| `harness-improve` | ハーネスを引き継いだ。理想と `.claude/` の差分を知りたい |
+| `harness-visualize` | 処理1つの図・設計・実行記録を HTML 1枚で見たい |
+| `process-improve` | 自分の（誰かの）仕事を棚卸しして、AI に任せる部分を決めたい |
+| `process-improve-view` | 改善計画を HTML 1枚にしたい |
 
-```text
-/drillspark-harness:harness-implement  新しいハーネスを作りたい。目的は「ブログ記事を書いて公開する」
-```
+### agent
 
-引き継いだハーネスを見直す（`.claude/` を読んで図を起こす。編集はしない）:
-
-```text
-/drillspark-harness:harness-improve  このリポジトリのハーネスを見直したい
-```
-
-自分の業務を棚卸しして改善する（ファイルは要らない。skill が聞きます）:
-
-```text
-/drillspark-harness:process-improve  私の業務を棚卸ししたい
-```
-
-どの工程も承認ゲートで止まり、次に進む前に結果を `docs/harness/<名>/`（`process-*` は `業務改善/`）のファイルに書きます。
-
-## skill
-
-| skill | 使うとき | 出てくるもの |
-|---|---|---|
-| `harness-implement` | 新しいハーネスを作る、既存のハーネスに2つ目の処理を足す、図を直して実ファイルに再適用する | 目的と処理一覧（`設計.md`）、処理ごとに1つの DrillSpark プロジェクト、凍結した合格条件、その処理の `.claude/` ファイル。8工程のうち6つ。1セッションに1処理 |
-| `harness-compose` | 全処理の実装が終わった | `settings.json` の hook と権限、`CLAUDE.md`、束ねた合格条件の置き場。処理をまたいで共有するファイルを書く唯一の工程 |
-| `harness-improve` | ハーネスを引き継いだ、理想と `.claude/` の中身の差分が欲しい | 処理の一覧表、処理ごとに一緒に育てる理想図、`harness-implement` へ渡す差分。`.claude/` の下には書かない |
-| `harness-visualize` | 処理1つの図・設計・実際に起きたことを1枚で見たい | `docs/harness/<名>/可視化/` の自己完結の HTML 1枚。`scripts/harness-view-build.js` が組み立てる |
-| `process-improve` | 人の業務を棚卸しして改善したい | `業務改善/業務一覧.md`、ABC の順位、DrillSpark の図、現状と改善後の2枚で見比べる ECRS の案、`AI化依頼書.md` |
-| `process-improve-view` | 改善計画を1枚にしたい | `業務改善/改善計画-<処理>.html` |
-
-skill は `/drillspark-harness:<skill>` で登録されます。依頼が description に合えば Claude が自分で呼びます。
-
-## agent
-
-どの agent も**指摘を返すだけで編集しません**。毎回判定基準ファイルを読み、見つからなければ判定を拒みます。
+どの agent も指摘を返すだけで、ファイルを直しません。
 
 | agent | 役割 |
 |---|---|
-| `harness-design-reviewer` | 図と実装を判定基準に照らしてレビューし、MUST / NICE を返す |
-| `harness-asis-reviewer` | 現状図を実際の `.claude/` ファイルと突き合わせる |
-| `harness-evaluator` | 凍結した合格条件を走らせ、処理ごとに実タスクを通し、成功指標を測る |
-| `process-expert` | 渡された専門家の役割で、業務の工程→作業の割り当て表を提案する。承認の場には出ない |
-| `process-improve-reviewer` | 業務改善の出力を `reference/business-improvement-criteria.md` に照らして判定する |
+| `harness-design-reviewer` | 図と実装を判定基準に照らしてレビューする |
+| `harness-asis-reviewer` | 現状図が `.claude/` の実ファイルと合っているかを見る |
+| `harness-evaluator` | 凍結した合格条件を走らせ、実タスクを通し、成功指標を測る |
+| `process-expert` | 専門家の役割で業務の工程と作業を提案する |
+| `process-improve-reviewer` | 業務改善の出力を判定基準に照らして判定する |
 
-## hook（柵）
+### 柵（hook）
 
-インストールすると、3本の柵スクリプトが **PreToolUse hook** として登録されます。定義は `hooks/hooks.json` にあり、
-あなたの `settings.json` には何も書きません。
+インストールすると PreToolUse hook が3本入ります。`settings.json` には何も書きません。
 
 | 柵 | 止めるもの |
 |---|---|
-| `harness-view-guard.js` | 可視化の1枚の上書き、直しの回数欄が2を超えたもの、lint に落ちる1枚 |
-| `process-write-guard.js` | `業務改善/` 配下で lint に落ちる表と1枚、Bash のリダイレクトやスクリプト経由の書き込み、プラグインが記録していない DrillSpark プロジェクトへの `update_diagram`（他人の図） |
-| `harness-freeze-guard.js` | 凍結した `合格条件.md` の番号付きの行の変更・削除、版を上げない行の追加、「凍結」の印の削除 |
+| `harness-view-guard.js` | 可視化の1枚の上書き、直しの回数が上限を超えた書き込み、lint に落ちる1枚 |
+| `process-write-guard.js` | `業務改善/` の表で lint に落ちるもの、スクリプトやリダイレクト経由の書き込み、プラグインが記録していない DrillSpark の図の書き換え |
+| `harness-freeze-guard.js` | 凍結した合格条件の行の変更・削除 |
 
-それ以外は即座に exit 0 です。柵1本につき `node` の起動1回、約 100 ms、モデルの文脈は使いません。
-柵だけ切るには `DRILLSPARK_HARNESS_GUARDS=off`、外すには `claude plugin disable drillspark-harness`。
+対象外の操作は即座に通ります（`node` の起動1回、約 100 ms）。切るには `DRILLSPARK_HARNESS_GUARDS=off`。
 
-## lint とスクリプト
+### スクリプト
 
-どのスクリプトも依存なしで、終了コードは `0`（合格）/ `2`（違反。1件1行）/ `1`（実行エラー）です。
-セッションの中では `$CLAUDE_PLUGIN_ROOT` がプラグインを指します。clone した先では `node scripts/…` で呼びます。
+依存なしの Node.js スクリプト。終了コードは `0` 合格 / `2` 違反 / `1` エラー。図の構造 lint、可視化 HTML の lint、
+業務改善の表と1枚の lint、ABC 分析、第二階層の網羅、保存の確認。呼び方とコードの一覧は
+[docs/design-notes.md](docs/design-notes.md#the-lints)。
 
-```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js"       diagram.mmd            # 構文でなく構造を見る
-node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js"  docs/harness/<名>/可視化/<処理>-<日付>.html
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-table-lint.js" 業務改善/業務一覧.md
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-plan-lint.js"  業務改善/改善計画-<処理>.html
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-abc.js"        業務改善/業務一覧.md   # ABC の順位と無駄の印
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-coverage.js"   < get_project.json     # 全工程に第二階層があるか
-node "$CLAUDE_PLUGIN_ROOT/scripts/file-saved-lint.js"    <パス>                 # 本当に保存されたか
-```
+## 設計の背景
 
-各 lint のコードと、なぜその検査があるか: [docs/design-notes.md](docs/design-notes.md#the-lints)（英語）。
-
-## 仕組み
-
-```text
-目的を考える → 処理の種類を考える
-  →〔1処理ずつ〕処理を作る → 合格条件を決める → 実装する
-  →（全処理そろったら）統合する → 評価する →（改善する）
-```
-
-- 工程は自動で連鎖しません。ゲートを通ることは「この出力を受け入れた」であって「次を始めてよい」ではありません。
-- **すべての工程がファイルを残し**、`docs/harness/<名>/` に在ることを機械で確かめます。
-- **1セッションで作るのは1処理。** 同じ文脈で2つ目を描くと1つ目の癖が混ざります。規則を読み直させても直らず、セッションを分けると直りました。
-- **承認は図より上に集約します。** 図より下のゲートは合格条件の凍結だけで、設計レビューは実装の中で agent 同士が行います。
-- 生成される側のハーネスも、工程ごとにファイルを残します（図の document ノード）。次の工程の入力になる成果物には、書き込み道具を持たない検査役の agent を挟みます。
-
-理由の全文、2系統の設計、規則を形づくった実際の欠陥の記録: [docs/design-notes.md](docs/design-notes.md)（英語）。
-
-## 検証
-
-```bash
-claude plugin validate . --strict
-bash tests/run.sh
-```
-
-`tests/run.sh` は、ファイル名の接頭辞が期待する終了コードを表す 58 件のサンプルに lint を当て、続けて1枚の生成・第二階層の網羅・
-入力画面・図の表示・接続の案内・柵・hook の配線を検査し、プラグインを validate し、同梱ファイルの存在を確かめます。1件でも違えば exit 1 です。
-件数はランナーが出力します。サンプルの固定の仕方は [docs/design-notes.md](docs/design-notes.md#how-the-tests-are-pinned) を見てください。
-CI は Ubuntu と Windows で同じものを走らせます。
+なぜ図を契約にするのか、なぜ1セッションで1処理なのか、どんな失敗からこの規則ができたか。
+[docs/design-notes.md](docs/design-notes.md)（英語）にまとめてあります。
 
 ## 現状
 
-`0.4.0`。検証したのは作者だけです。`process-improve` に実際の業務を1人分、`harness-implement` → `compose` → `evaluate` で
-ハーネスを1つ作って実タスクを1件通しました。素の Claude Code との比較で勝ちを示せてはいません。承認ゲート・エスカレーション・
-ループの上限を人が立ち会って動かしたのは数回です。自分で走らせるまでは未検証と扱ってください。
-詳細: [docs/design-notes.md](docs/design-notes.md#status-and-known-limitations)（英語）。
+`0.4.0`。検証したのは作者だけです。`process-improve` に実際の業務を1人分、`harness-implement` からの一連でハーネスを1つ作って
+実タスクを1件通しました。素の Claude Code との比較で勝ちを示せてはいません。自分で走らせるまでは未検証と扱ってください。
 
 ## 言語について
 
-skill と agent の本文は日本語で、これが正本です。計測された細部 — 記録された失敗、件数、各規則の理由 — を多く含むので、
-機械翻訳はしていません。英語版が必要なら [issue](https://github.com/drillspark-io/drillspark-harness/issues) を立ててください。
+skill と agent の本文は日本語で、これが正本です。英語版が必要なら
+[issue](https://github.com/drillspark-io/drillspark-harness/issues) を立ててください。
 
 ## 貢献
 
 issue と pull request は [github.com/drillspark-io/drillspark-harness](https://github.com/drillspark-io/drillspark-harness) へ。
-PR の前に `bash tests/run.sh` と `claude plugin validate . --strict` を通してください。`tests/run.sh` は凍結した合格条件です。
-直すのは実装で、テストではありません。
+PR の前に `bash tests/run.sh` と `claude plugin validate . --strict` を通してください。
 
 ## ライセンス
 

@@ -2,204 +2,186 @@
 
 > 日本語版: [README.ja.md](README.ja.md)
 
-**Draw the workflow first, then let Claude Code build and check the harness from the diagram.**
+**Draw the workflow before Claude Code builds its own configuration. Then let a different AI grade the result.**
 
-A Claude Code plugin that turns a [DrillSpark](https://drillspark.io/) BPMN diagram into real
-configuration — skills, agents, hooks, permissions and pass conditions — and audits a human's
-business process the same way. Reviewers and the evaluator run as separate agents against a
-criteria file the generating side cannot edit.
+> Skill and agent bodies are written in Japanese. See [Language](#language).
 
-> **Skill content is written in Japanese.** The manifest and this README are in English; the
-> skill and agent bodies are not translated. See [Language](#language).
+## The problem
 
-## What it does
+Long instructions to Claude Code are not followed reliably. The "always check with me" you wrote
+gets skipped, nobody decided where a human should stop the run, and whatever comes out is declared
+finished by the same AI that built it.
 
-| Family | You start with | You end with |
-|---|---|---|
-| `harness-*` | A purpose for a Claude Code harness (or an existing `.claude/` directory) | Approved DrillSpark diagrams, frozen pass conditions, and the real `.claude/` files that implement them — reviewed and evaluated by separate agents |
-| `process-*` | Your own job, described in an interview or a one-page inventory sheet | An inventory table ranked by time (ABC analysis), a diagram of the heaviest work, ECRS improvements asked one at a time, and a one-page hand-off note saying what to give to AI and where a human must approve |
+This plugin changes the order.
 
-Two rules hold everything together:
+1. **Draw first.** Who does what, in what order, and where a human confirms is drawn as a business
+   process diagram in [DrillSpark](https://drillspark.io/), and you approve it one diagram at a
+   time. The diagram is the contract.
+2. **Build from the diagram.** The approved diagram becomes Claude Code skills, agents, hooks and
+   permissions. "Always check with me" becomes a hook that refuses to run without the check.
+3. **Grade with a separate AI.** Reviewer agents that did not build anything judge the result
+   against a criteria file shipped inside the plugin — outside your repository, so the building
+   side cannot edit it.
 
-- **The diagram is the contract.** Who does what, in what order, and where a human stops the run
-  is decided on the diagram and approved there — not improvised in chat.
-- **The generating side cannot grade itself.** Review and evaluation are separate agents reading
-  `reference/harness-design-criteria.md`, which lives inside the plugin, outside your repository.
+The same method works on **a human's job**: there are no files to read, so the skill interviews
+you, draws the work, and produces a one-page hand-off saying which tasks go to AI and where a
+person must approve.
+
+## Try it
+
+### Build a harness
+
+```text
+/drillspark-harness:harness-implement  新しいハーネスを作りたい。目的は「ブログ記事を書いて公開する」
+```
+
+What happens:
+
+1. **You are asked for the purpose.** Who it is for, what it produces, how success is measured,
+   what is out of scope. Saved to `docs/harness/<name>/設計.md`.
+2. **A list of workflows is proposed** — one row per independent unit of work, such as "write an
+   article" and "publish". You confirm it.
+3. **Diagrams are drawn one at a time.** First the skeleton, then the tasks inside each stage.
+   After each one, the DrillSpark diagram is shown and you are asked "is this right?". What each
+   stage writes to a file, and who inspects a deliverable, are drawn on the diagram too.
+4. **Pass conditions are shown** — machine-checkable tests derived from the diagram (inputs a hook
+   must stop and must let through, lint results). Once you approve them they are frozen.
+5. **The files are written.** Skills, agents, hooks and rules land in `.claude/`; a reviewer agent
+   checks them against the criteria; the frozen pass conditions run. No human stops here.
+6. **The next workflow is a new session.** One run builds one workflow. When all are done,
+   `harness-compose` writes `settings.json` and `CLAUDE.md`, and `harness-evaluator` runs real
+   tasks through the result.
+
+### Inventory and improve your own work
+
+```text
+/drillspark-harness:process-improve  私の業務を棚卸ししたい
+```
+
+What happens:
+
+1. **You are asked about your work** — task name, how often, how long, what for. Where the
+   `Artifact` tool is available, a one-page inventory sheet opens and you fill one row per task.
+2. **Tasks are ranked by time.** A script does the ABC analysis. Anything you could not answer
+   stays visible as 「未確認: ask so-and-so」 rather than a blank.
+3. **The heaviest task becomes a diagram**, one stage at a time, each confirmed with you. Whatever
+   the expert agent filled in from general knowledge is marked 「一般例」.
+4. **Improvements are asked one question at a time** — eliminate, combine, rearrange, simplify
+   (ECRS). The proposal is drawn as a to-be diagram next to the as-is one.
+5. **A one-page hand-off is produced**: which tasks to give to AI and how far (H1–H5), where a
+   person approves, how much time it saves. Nothing is implemented.
+
+### Review a harness you inherited
+
+```text
+/drillspark-harness:harness-improve  このリポジトリのハーネスを見直したい
+```
+
+Reads `.claude/`, draws what it currently does, corrects the diagram toward the ideal with you, and
+hands the diff to `harness-implement`. It never edits files.
+
+### Terms
+
+| Term | Meaning |
+|---|---|
+| harness | The configuration handed to Claude Code: `CLAUDE.md`, skills, agents, hooks, permissions |
+| 処理 (workflow) | One independent unit of work the harness performs — "write an article", "post an invoice". One workflow = one DrillSpark project |
+| 工程 (stage) | A step inside a workflow; the first level of the diagram, with tasks below it |
 
 ## Installation
 
-Requirements:
-
-| | |
+| Requirement | |
 |---|---|
 | Claude Code | `2.1.233` or later |
-| Node.js | 14 or later, on `PATH` in every session (the hooks start `node`; no dependencies) |
-| DrillSpark | an account and the MCP server connected — see below |
+| Node.js | 14 or later, on `PATH` (the hooks start `node`; no dependencies) |
+| DrillSpark | an account and the MCP server connected |
 
 **1. Connect DrillSpark.** Create an account at [drillspark.io](https://drillspark.io/). A user
 without an account gets the coupon code `drill-kaizen` (one month free; entered on the payment
-page). **Cancel before the free month ends**, or billing starts. Then connect the MCP server:
+page). **Cancel before the free month ends**, or billing starts.
 
 - **Claude Code** — issue an API key (`dsk_…`) from the [dashboard](https://drillspark.io/dashboard)
-  and add `https://drillspark.io/api/mcp/mcp` as an `http` server named `drillspark` with an
-  `Authorization: Bearer <key>` header.
-- **Claude Desktop / claude.ai** — link the account from the connector settings (OAuth).
+  and add `https://drillspark.io/api/mcp/mcp` as an `http` server named `drillspark`
+  (`Authorization: Bearer <key>`).
+- **Claude Desktop / claude.ai** — link the account from the connector settings.
 
-Check with `/mcp`. Connecting mid-session needs a restart. The skills accept both server names
-(`drillspark` and the claude.ai connector); under any other name the reviewer agents cannot read
-diagrams. Per-symptom help: [`reference/drillspark-setup.md`](reference/drillspark-setup.md)
-(Japanese).
+Check with `/mcp`; connecting mid-session needs a restart. Name the server `drillspark` or use the
+claude.ai connector — under any other name the reviewer agents cannot read diagrams. Triage for
+connection problems: [`reference/drillspark-setup.md`](reference/drillspark-setup.md) (Japanese).
 
-**2. Install the plugin.** The repository is its own marketplace:
+**2. Install the plugin.**
 
 ```bash
 /plugin marketplace add drillspark-io/drillspark-harness
 /plugin install drillspark-harness@drillspark-harness
 ```
 
-To try it for one session without installing, from a clone:
+To try it for one session without installing: `claude --plugin-dir ./drillspark-harness` from a clone.
 
-```bash
-claude --plugin-dir ./drillspark-harness
-```
+## What's inside
 
-## Quick start
+### Skills
 
-Build a harness from scratch (one workflow per session):
+| Skill | Use it when |
+|---|---|
+| `harness-implement` | Building a new harness, adding a workflow to one, or re-applying a corrected diagram to files |
+| `harness-compose` | Every workflow is implemented and `settings.json` / `CLAUDE.md` should be written once |
+| `harness-improve` | You inherited a harness, or want the diff between the ideal and what `.claude/` does |
+| `harness-visualize` | You want one workflow's diagram, design and run record on a single HTML page |
+| `process-improve` | You want to inventory a job and decide what to hand to AI |
+| `process-improve-view` | You want the improvement plan on one HTML page |
 
-```text
-/drillspark-harness:harness-implement  新しいハーネスを作りたい。目的は「ブログ記事を書いて公開する」
-```
+### Agents
 
-Improve a harness you inherited — reads `.claude/` and draws the diagram from it, never edits:
-
-```text
-/drillspark-harness:harness-improve  このリポジトリのハーネスを見直したい
-```
-
-Inventory and improve your own work — no files needed, the skill interviews you:
-
-```text
-/drillspark-harness:process-improve  私の業務を棚卸ししたい
-```
-
-Every stage stops at an approval gate and writes its result to a file under `docs/harness/<name>/`
-(or `業務改善/` for `process-*`) before the next stage starts.
-
-## Skills
-
-| Skill | Use it when | What it produces |
-|---|---|---|
-| `harness-implement` | You want a new harness, a second workflow for an existing one, or a diagram re-applied to files | Purpose and workflow list (`設計.md`), one DrillSpark project per workflow, frozen pass conditions, the workflow's `.claude/` files. Six of the eight stages; one workflow per session |
-| `harness-compose` | Every workflow is implemented | `settings.json` hooks and permissions, `CLAUDE.md`, the merged pass-condition directory — the only stage that writes files shared across workflows |
-| `harness-improve` | You inherited a harness, or want a diff between the ideal and what is in `.claude/` | A workflow table, one ideal diagram per workflow grown with you, and a diff handed to `harness-implement`. Never writes under `.claude/` |
-| `harness-visualize` | You want one page showing a workflow's diagram, design and what actually ran | A self-contained HTML page under `docs/harness/<name>/可視化/`, built by `scripts/harness-view-build.js` |
-| `process-improve` | You want to inventory and improve a human job | `業務改善/業務一覧.md`, ABC ranking, a DrillSpark diagram, ECRS proposals as an as-is / to-be pair, `AI化依頼書.md` |
-| `process-improve-view` | You want the improvement plan on one page | `業務改善/改善計画-<workflow>.html` |
-
-Skills register as `/drillspark-harness:<skill>` and are also invoked by Claude when a request
-matches their description.
-
-## Agents
-
-All agents **report findings and never edit**. They read the criteria file on every run and refuse
-to judge if they cannot find it.
+Every agent reports findings and never edits files.
 
 | Agent | Role |
 |---|---|
-| `harness-design-reviewer` | Reviews diagrams and implementation against the criteria; returns MUST / NICE items |
-| `harness-asis-reviewer` | Checks an as-is diagram against the real `.claude/` files |
-| `harness-evaluator` | Runs the frozen pass conditions, walks each workflow with a real task, measures the success metric |
-| `process-expert` | Proposes stage → task tables for a job from a given expert role; never appears at approval gates |
-| `process-improve-reviewer` | Judges the process-improvement outputs against `reference/business-improvement-criteria.md` |
+| `harness-design-reviewer` | Reviews diagrams and implementation against the criteria |
+| `harness-asis-reviewer` | Checks that an as-is diagram matches the real `.claude/` files |
+| `harness-evaluator` | Runs the frozen pass conditions and real tasks, measures the success metric |
+| `process-expert` | Proposes stages and tasks for a job from an expert's point of view |
+| `process-improve-reviewer` | Judges process-improvement outputs against their criteria file |
 
-## Hooks (guards)
+### Guards (hooks)
 
-Installing the plugin registers three guard scripts as **PreToolUse hooks**, declared in
-`hooks/hooks.json`. Nothing is written to your `settings.json`.
+Installing adds three PreToolUse hooks. Nothing is written to your `settings.json`.
 
 | Guard | Stops |
 |---|---|
-| `harness-view-guard.js` | Overwriting a visualization page, a fix counter past 2, a page that fails its lint |
-| `process-write-guard.js` | A table or plan under `業務改善/` that fails its lint, writes into it through Bash redirects or scripts, and `update_diagram` on a DrillSpark project the plugin did not record (someone else's diagram) |
-| `harness-freeze-guard.js` | Changing or removing a numbered row of a frozen `合格条件.md`, adding rows without raising the version, dropping the 「凍結」 mark |
+| `harness-view-guard.js` | Overwriting a visualization page, writes past the fix limit, a page that fails its lint |
+| `process-write-guard.js` | Tables under `業務改善/` that fail their lint, writes through scripts or redirects, `update_diagram` on a DrillSpark project the plugin did not record |
+| `harness-freeze-guard.js` | Changing or removing rows of a frozen pass-condition file |
 
-Everything else exits 0 immediately: one `node` start per guard, about 100 ms, no model context.
-Switch the guards off with `DRILLSPARK_HARNESS_GUARDS=off`; remove them with
-`claude plugin disable drillspark-harness`.
+Everything else passes immediately (one `node` start, about 100 ms). Switch off with
+`DRILLSPARK_HARNESS_GUARDS=off`.
 
-## Lints and scripts
+### Scripts
 
-Every script is dependency-free and exits `0` (pass) / `2` (violations, one line each) / `1` (error).
-Inside a session `$CLAUDE_PLUGIN_ROOT` points at the plugin; from a clone use `node scripts/…`.
+Dependency-free Node.js scripts, exit `0` pass / `2` violations / `1` error: diagram structure
+lint, visualization-page lint, process table and plan lints, ABC analysis, second-level coverage,
+saved-file check. Commands and codes: [docs/design-notes.md](docs/design-notes.md#the-lints).
 
-```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/diagram-lint.js"       diagram.mmd            # structure, not just syntax
-node "$CLAUDE_PLUGIN_ROOT/scripts/harness-view-lint.js"  docs/harness/<name>/可視化/<workflow>-<date>.html
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-table-lint.js" 業務改善/業務一覧.md
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-plan-lint.js"  業務改善/改善計画-<workflow>.html
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-abc.js"        業務改善/業務一覧.md   # ABC ranks and waste marks
-node "$CLAUDE_PLUGIN_ROOT/scripts/process-coverage.js"   < get_project.json     # every stage has a second level?
-node "$CLAUDE_PLUGIN_ROOT/scripts/file-saved-lint.js"    <path>                 # was it really written?
-```
+## Design background
 
-Codes and the reasoning behind each lint: [docs/design-notes.md](docs/design-notes.md#the-lints).
-
-## How it works
-
-```text
-目的を考える → 処理の種類を考える
-  →〔one workflow at a time〕処理を作る → 合格条件を決める → 実装する
-  →（once every workflow is done）統合する → 評価する →（改善する）
-```
-
-- Stages do not chain. Passing a gate means *this output is accepted*, not *start the next stage*.
-- **Every stage leaves a file** under `docs/harness/<name>/` and checks by machine that it exists.
-- **One session builds one workflow.** Drawing a second one in the same context leaks the first
-  one's habits into it; splitting the session fixed it where re-reading the rules did not.
-- **Approval is concentrated above the diagram.** The only gate below it is freezing the pass
-  conditions; design review runs agent-to-agent inside implementation.
-- Each stage of the *generated* harness also writes a file (a document node on the diagram), and a
-  deliverable that feeds the next stage gets an inspection agent without write tools.
-
-The full reasoning, the two-family design and the recorded defects that shaped these rules:
-[docs/design-notes.md](docs/design-notes.md).
-
-## Validation
-
-```bash
-claude plugin validate . --strict
-bash tests/run.sh
-```
-
-`tests/run.sh` runs the lints against 58 fixtures whose filename prefix encodes the expected exit
-code, then the page-build, stage-coverage, inventory-sheet, diagram-display, setup-guidance, guard
-and hook-wiring checks, validates the plugin and checks that every shipped file is present. Any
-mismatch exits 1. The counts are printed by the runner; see
-[docs/design-notes.md](docs/design-notes.md#how-the-tests-are-pinned) for how fixtures are pinned.
-CI runs the same on Ubuntu and Windows.
+Why the diagram is the contract, why one session builds one workflow, and which recorded
+failures produced each rule: [docs/design-notes.md](docs/design-notes.md).
 
 ## Status
 
-`0.4.0`. Verified so far only by its author: one real job through `process-improve`, one harness
-built and run through `harness-implement` → `compose` → `evaluate`. No comparison against a plain
-Claude Code session has yet shown a win. Approval gates, escalation and loop caps have been
-exercised with a human present only a few times — treat them as unproven until you have run them
-yourself. Details: [docs/design-notes.md](docs/design-notes.md#status-and-known-limitations).
+`0.4.0`. Verified only by its author so far: one real job through `process-improve`, one harness
+built end-to-end and run on one real task. No comparison against a plain Claude Code session has
+shown a win yet. Treat it as unproven until you have run it yourself.
 
 ## Language
 
-The skill and agent bodies are Japanese and are not translated. They carry measured detail —
-recorded failures, counts, and the reasons behind each rule — and a machine translation would
-quietly drop the parts that matter. If you need an English edition, open an
-[issue](https://github.com/drillspark-io/drillspark-harness/issues).
+Skill and agent bodies are Japanese, and that text is the source of truth. If you need an English
+edition, open an [issue](https://github.com/drillspark-io/drillspark-harness/issues).
 
 ## Contributing
 
-Issues and pull requests are welcome at
-[github.com/drillspark-io/drillspark-harness](https://github.com/drillspark-io/drillspark-harness).
-Run `bash tests/run.sh` and `claude plugin validate . --strict` before opening a PR. `tests/run.sh`
-is a frozen pass condition: fix the implementation, not the test.
+Issues and pull requests: [github.com/drillspark-io/drillspark-harness](https://github.com/drillspark-io/drillspark-harness).
+Run `bash tests/run.sh` and `claude plugin validate . --strict` before opening a PR.
 
 ## License
 
