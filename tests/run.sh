@@ -403,6 +403,31 @@ out=$(node -e '
 printf '%s\n' "$out"
 if [ "$got" -ne 0 ]; then fail=1; fi
 
+echo "== 接続の案内 =="
+# DrillSpark に繋がらないときの案内は、アカウントが無い人にクーポンコード（1ヶ月無料）を渡し、
+# 無料期間が終わる前に自分で解約する、を同じ場所に添えていること。コードだけ渡すと解約を知らずに課金が始まる。
+out=$(node -e '
+  const fs = require("fs");
+  let bad = 0;
+  const setup = fs.readFileSync("reference/drillspark-setup.md", "utf8");
+  const readme = fs.readFileSync("README.md", "utf8");
+  const owner = setup.split("## 業務改善")[0];
+  const staff = setup.split("## 業務改善")[1] || "";
+  const cases = [
+    ["setup.md 案内する文面（オーナー向け）", owner, /解約/],
+    ["setup.md 業務改善の利用者向けの3行", staff, /解約/],
+    ["README Connecting DrillSpark", readme, /[Cc]ancel/],
+  ];
+  for (const [name, text, cancel] of cases) {
+    const ok = /`drill-kaizen`/.test(text) && cancel.test(text);
+    console.log((ok ? "  PASS " : "  FAIL ") + name + "  クーポンコード drill-kaizen と解約の注記がある");
+    if (!ok) bad = 1;
+  }
+  process.exit(bad);
+' 2>&1); got=$?
+printf '%s\n' "$out"
+if [ "$got" -ne 0 ]; then fail=1; fi
+
 echo "== hook の配線 =="
 # hooks.json が読めること、要る matcher が揃っていること、command が指すスクリプトが実在すること。
 # （validate は JSON の文法しか見ない。パスだけ壊れた hook は validate を通る — 実測）

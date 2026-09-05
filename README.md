@@ -37,7 +37,9 @@ of falling back to pasting Mermaid into the terminal.
 
 ## Connecting DrillSpark
 
-1. **Create an account** at [drillspark.io](https://drillspark.io/).
+1. **Create an account** at [drillspark.io](https://drillspark.io/). A user without an account gets
+   the coupon code `drill-kaizen` (one month free). **Cancel before the free month ends**, or billing
+   starts; the skills say so whenever they hand out the code.
 2. **Connect the MCP server** — two ways:
    - **Claude Code** — issue an API key (`dsk_…`) from the
      [dashboard](https://drillspark.io/dashboard) and add
@@ -348,7 +350,7 @@ bash tests/run.sh
 `tests/run.sh` runs the five lints as 58 checks — 54 fixtures whose filename prefix encodes
 the expected exit code (`ok-*` → 0, `ng-*` → 2), two ABC-analysis checks and two save checks —
 then six page-build checks, two stage-coverage checks, six inventory-sheet checks, three
-diagram-display checks, 80 guard checks and one hook-wiring check, validates the plugin and checks that all 37 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
+diagram-display checks, three setup-guidance checks, 80 guard checks and one hook-wiring check, validates the plugin and checks that all 37 shipped files are present. Any mismatch exits 1. (Counts are taken from the runner's output;
 do not update them by hand.)
 
 | checks | what |
@@ -363,6 +365,7 @@ do not update them by hand.)
 | 2 (`ok-coverage.json`: every stage has a second level; `ng-coverage-missing.json`: stages 3 and 4 are named as missing, read from stdin) | `process-coverage` |
 | 6 (`skills/process-improve/assets/棚卸しシート.html`: written as a fragment, connects through `claude.use("db")`, its 測り方 options match `process-table-lint`, frequency units, Google Fonts is the only external resource, no private information) | inventory sheet |
 | 3 (every skill whose text calls `show_project` allows it under both server prefixes) | diagram display |
+| 3 (`reference/drillspark-setup.md` — the owner guidance and the process-improve guidance — and the README hand out the coupon code `drill-kaizen` together with the cancel-before-billing note) | setup guidance |
 | 80 (PreToolUse JSON fed to each guard: what it stops, what it must let through — including the resume ledger `業務改善/進行.md`, harness projects recorded under `docs/harness/`, script writes into `業務改善/`, the frozen 合格条件.md — malformed input, the off switch) | `harness-view-guard`, `process-write-guard`, `harness-freeze-guard` |
 | 1 (`hooks/hooks.json` parses, has the three matchers, every command points at a shipped script) | hook wiring |
 

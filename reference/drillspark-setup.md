@@ -46,7 +46,8 @@ list_projects()    ← 接頭辞は mcp__drillspark__（自分で付けた名前
 **【人間の実行】接続はオーナーにしかできない。** `AskUserQuestion` で出す
 （テキストで番号付きの質問を並べない → harness-implement〈出力の作法〉）。
 
-1. **アカウント** — https://drillspark.io/ で作る
+1. **アカウント** — https://drillspark.io/ で作る。**アカウントが無い人にはクーポンコード `drill-kaizen` を渡す**
+   （1ヶ月無料）。**無料期間が終わる前に自分で解約しないと課金が始まる**、を必ず添える
 2. **接続** — 2通りある
    - **Claude Code** — ダッシュボード（https://drillspark.io/dashboard）で API キー（`dsk_…`）を発行し、
      MCP サーバ `https://drillspark.io/api/mcp/mcp` を `type: http` で追加して
@@ -66,7 +67,8 @@ list_projects()    ← 接頭辞は mcp__drillspark__（自分で付けた名前
 上の節はハーネスの作者（オーナー）向けで、一般社員には `設計.md` も「保留」の欄も無い。
 `process-improve` から案内するときは、**上の「案内する文面」の1〜4だけ**を、次の3行を添えて出す。
 
-1. 「図を描く道具（DrillSpark）に、まだ繋がっていません。無料で登録できます」
+1. 「図を描く道具（DrillSpark）に、まだ繋がっていません。登録にはクーポンコード `drill-kaizen` が使えます
+   （1ヶ月無料）。無料期間が終わる前に、自分で解約してください」
 2. 「登録して繋いだら、もう一度この作業を呼んでください。続きから進みます」
 3. 「これは失敗ではなく、初めてのときは必ず通る手順です」
 

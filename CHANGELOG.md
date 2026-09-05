@@ -84,6 +84,11 @@ carries no version of its own.
   written as unverified, not as a failure.
 - `harness-implement` says real files are written with `Write`: a Bash heredoc collapses `\` and
   broke a hook script's regular expressions in the run.
+- The DrillSpark setup guidance (`reference/drillspark-setup.md`, which every skill shows when
+  the connection check fails, and the README) now hands a user without an account the coupon
+  code `drill-kaizen`: one month free, and the user must cancel before the free month ends or
+  billing starts. Three checks in `tests/run.sh` pin the code and the cancellation note in both
+  places.
 - Each stage's output is drawn as a document node (with its output path in the note), and a
   deliverable that feeds the next stage gets an inspection node in a separate agent lane, or the
   reason for not having one in `図.md`. Both are decided in the diagram, so they reach the frozen
