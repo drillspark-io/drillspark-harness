@@ -190,12 +190,6 @@ saved-file check. Commands and codes: [docs/design-notes.md](docs/design-notes.m
 Why the diagram is the contract, why one session builds one workflow, and which recorded
 failures produced each rule: [docs/design-notes.md](docs/design-notes.md).
 
-## Status
-
-`0.4.0`. Verified only by its author so far: one real job through `process-improve`, one harness
-built end-to-end and run on one real task. No comparison against a plain Claude Code session has
-shown a win yet. Treat it as unproven until you have run it yourself.
-
 ## Language
 
 Skill and agent bodies are Japanese, and that text is the source of truth. If you need an English
