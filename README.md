@@ -63,14 +63,14 @@ Details and the per-symptom triage the skills follow:
 The repository is its own single-plugin marketplace (`.claude-plugin/marketplace.json`):
 
 ```bash
-/plugin marketplace add jackasser/drillspark-harness
+/plugin marketplace add drillspark-io/drillspark-harness
 /plugin install drillspark-harness@drillspark-harness
 ```
 
 From a local clone, the same two steps take a path:
 
 ```bash
-git clone https://github.com/jackasser/drillspark-harness
+git clone https://github.com/drillspark-io/drillspark-harness
 /plugin marketplace add ./drillspark-harness
 /plugin install drillspark-harness@drillspark-harness
 ```
@@ -337,7 +337,7 @@ row could be marked on-hold and the table would pass.
 The skill and agent bodies are Japanese and are not translated. They carry a lot of
 measured detail — recorded failures, counts, and the reasons behind each rule — and a
 machine translation would quietly drop the parts that matter. If you need an English
-edition, open an [issue](https://github.com/jackasser/drillspark-harness/issues); a translation
+edition, open an [issue](https://github.com/drillspark-io/drillspark-harness/issues); a translation
 is a real piece of work, not a build step.
 
 ## Validation

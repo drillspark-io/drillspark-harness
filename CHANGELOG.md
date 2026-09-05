@@ -154,7 +154,7 @@ to switch them off (`DRILLSPARK_HARNESS_GUARDS=off`).
   only when they contain a plugin table; no Bash redirect, `tee`, `cp`, `mv` or `sed -i` into
   `業務改善/`; no `update_diagram` on a project the inventory does not list).
 - `.claude-plugin/marketplace.json` — the repository is its own single-plugin marketplace, so
-  `/plugin marketplace add jackasser/drillspark-harness` resolves.
+  `/plugin marketplace add drillspark-io/drillspark-harness` resolves.
 - `scripts/process-abc.js` — ABC ranking and waste marks from `業務一覧.md`, deterministic;
   reads `/月`, `/週` and `/年` totals and converts to a month.
 - `process-table-lint`: `ENUM_VALUE`, `NODE_REF`, `ESTIMATE_NOT_ALLOWED`, `GUESSED_IN_REQUEST`,
