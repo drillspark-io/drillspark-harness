@@ -118,7 +118,7 @@ reference/設計.md.template            設計ファイル一式の雛形（工�
 scripts/harness-view-build.js         可視化の1枚を map.json ＋ diagrams.json から組み立てる（書く前に柵を通す。依存なし）
 scripts/harness-view-lint.js          可視化 HTML の契約を決定論で検査（依存なし）
 scripts/harness-view-guard.js         可視化 HTML を書く前に効く柵（上書き・回数欄・lint）。PreToolUse hook
-hooks/hooks.json                      guard 2本をプラグインとして配る hook 定義
+hooks/hooks.json                      柵3本をプラグインとして配る hook 定義
 
 skills/process-improve/               業務を棚卸しして改善する（5工程）
 skills/process-improve-view/          改善計画を1枚にする（処理）。判定はしない

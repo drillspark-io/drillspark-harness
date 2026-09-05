@@ -67,8 +67,8 @@ allowed-tools: Read, Write, Grep, Glob, Bash, mcp__drillspark__get_project, mcp_
    **読むのはこの5行と、`skills/harness-implement/MAPPING.md` の 2.1節・3.1節だけ。**
    プラグインの `scripts/`・`tests/`・他の skill 本文を読まない（1枚の形は生成スクリプトが持っている）。
    `tests/run.sh` を走らせない。ブラウザで描画確認をしない — 1枚の合否は lint と読み戻しで決める。
-   **ファイルは1つずつ Read で読む** — まとめて `cat` すると出力が切り詰められ、読み直しになる（実測で約35秒の浪費）。
-   実測で、この範囲を超えて読んだ回は入力集めだけで時間を使い切り、1枚が出なかった
+   **ファイルは1つずつ Read で読む** — まとめて `cat` すると出力が切り詰められ、読み直しになる。
+   この範囲を超えて読むと、入力集めだけで時間を使い切って1枚が出ない
 2. **図を写す。** `get_project` が返した `content.diagrams`（`{ "root": "flowchart …", "2": … }`）を**そのまま**
    `docs/harness/<ハーネス名>/可視化/<処理名>-<日付>.diagrams.json` に Write する。手で編集しない — 原文が正。
    図の構造（ノードID・形状・ラベル・レーン・エッジ）は生成スクリプトが機械で拾う。**LLM の読解で数え直さない。**

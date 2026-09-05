@@ -189,7 +189,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" docs/harness/<ハーネ�
    **`settings.json` を新しく書くのは `harness-compose`** なので、②がこのスキルで要るのは
    **既に参照されているスクリプトを触る回**（＝図1枚単位の再適用）だけ
 2. **成功メッセージを完了根拠にしない。** 生成・保存後は必ず読み戻して中身を確認する
-   （`update_diagram` が success を返しつつ内容が巻き戻っていた実例がある）
+   （`update_diagram` が success を返しつつ内容が巻き戻ることがある）
 3. **再実行は図1枚単位。** 全体を作り直さず、指定された図に対応する成果物だけ出し直す
 4. **検証基準を生成側に置かない。** GO判定・lint基準は、それを満たす側が書き換えられない場所へ
 
@@ -502,7 +502,7 @@ MAPPING.md をそのまま適用する。**表に無い要素を推測で埋め�
 
 **skill 本文の工程の節は、前の工程の出力ファイルの有無を機械で確かめてから始める。** `test -s <パス>` で足り、
 落ちたら前の工程へ戻る。図の document ノードが決めたファイルがそこに無いなら、前の工程は終わっていない。
-利用者のリポジトリの skill では `${CLAUDE_PLUGIN_ROOT}` は文字のまま残り、Bash の環境変数にも無い（実測）。
+利用者のリポジトリの skill では `${CLAUDE_PLUGIN_ROOT}` は文字のまま残り、Bash の環境変数にも無い。
 生成する skill から同梱スクリプトを呼ばない。
 
 skill 本文の書き方は3点だけ守る。`description` は「何をするか」と「いつ使うか」の両方を書く
@@ -519,7 +519,7 @@ hook が要る処理は、**hook の実体（`.claude/hooks/<name>.js`）まで�
 **依存順は、参照される実体（スクリプト → skill / agent / rules）が先。**
 **既存ファイルを上書きしないことを先に確認する。**
 **実ファイルは Write で書く。** Bash のヒアドキュメントは `\` を1つに潰すので、正規表現を持つ JavaScript が
-構文エラーになる（実例あり）。`docs/harness/` の文書も同じ。
+構文エラーになる。`docs/harness/` の文書も同じ。
 特に **skill と agent で同義フィールドの綴りが違う**（skill は `disallowed-tools`、agent は `disallowedTools`）。
 
 ### 別インスタンスにレビューさせる
