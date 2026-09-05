@@ -68,6 +68,8 @@ What happens:
 
 1. **You are asked about your work** — task name, how often, how long, what for. Where the
    `Artifact` tool is available, a one-page inventory sheet opens and you fill one row per task.
+
+   ![The inventory sheet: one row per task with name, owner, count × duration, measured or estimated, and purpose; the monthly total is computed](docs/images/inventory-sheet.jpg)
 2. **Tasks are ranked by time.** A script does the ABC analysis. Anything you could not answer
    stays visible as 「未確認: ask so-and-so」 rather than a blank.
 3. **The heaviest task becomes a diagram**, one stage at a time, each confirmed with you. Whatever
