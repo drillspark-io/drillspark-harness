@@ -1,0 +1,20 @@
+{
+  "name": "drillspark-harness",
+  "interface": {
+    "displayName": "Drillspark Harness"
+  },
+  "plugins": [
+    {
+      "name": "drillspark-harness-codex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/drillspark-harness-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

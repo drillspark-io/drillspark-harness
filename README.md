@@ -2,6 +2,11 @@
 
 > 日本語版: [README.ja.md](README.ja.md)
 
+Choose your host: the instructions below are for **Claude Code**. A separate **Codex preview**
+is available in [plugins/drillspark-harness-codex](plugins/drillspark-harness-codex/README.md).
+Both editions share workflow rules, review criteria and validation scripts. Codex host activation
+and live MCP workflows still require the [release checks](docs/codex-release-checklist.md).
+
 **Draw the workflow before Claude Code builds its own configuration. Then let a different AI grade the result.**
 
 > Skill and agent bodies are written in Japanese. See [Language](#language).

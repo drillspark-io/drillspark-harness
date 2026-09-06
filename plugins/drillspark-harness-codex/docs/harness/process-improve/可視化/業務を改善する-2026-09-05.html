@@ -1,0 +1,843 @@
+<!doctype html>
+<!-- 直し: 0/2 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>process-improve ／ 業務を改善する — 可視化</title>
+<style>
+  /* デザインシステム（skills/harness-visualize/SKILL.md「画面の作り」）。
+     色は意味役で持つ: neutral ／ accent（この1枚・選択・飛ぶ）／ 状態 ok・stop・draft ／ 仕組み plea・ask・fence・agent。
+     状態と仕組みは色＋文字＋印（✓ ■ ○ ／ · ? ⊘ ⇢）で伝え、色だけに頼らない。罫線と余白で区切り、影は最小。 */
+  :root {
+    --bg: #f6f8fa; --card: #ffffff; --surface-2: #f6f8fa; --line: #d1d9e0; --line-2: #e6eaef;
+    --fg: #1f2328; --muted: #59636e; --muted-2: #818b98;
+    --accent: #0969da; --accent-strong: #0550ae; --sel: #ddf4ff; --selline: #54aeff; --flash: #b6e3ff;
+    --ok: #1a7f37; --stop: #9a6700; --draft: #59636e; --draft-line: #d1d9e0; --link: #0969da;
+    --plea: #59636e; --plea-bg: #f6f8fa; --plea-line: #d1d9e0;
+    --ask: #0969da; --ask-bg: #ddf4ff; --ask-line: #54aeff;
+    --fence: #d1242f; --fence-bg: #ffebe9;
+    --agent: #8250df; --agent-bg: #fbefff; --agent-line: #c297ff;
+    --add: #fbfcfd; --acline: #afb8c1; --new: #f6f8fa; --warn: #fff8c5; --warn-line: #d4a72c;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Mono", Consolas, "BIZ UDGothic", "Liberation Mono", monospace;
+    --shadow: 0 1px 0 rgba(31,35,40,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1117; --card: #161b22; --surface-2: #1c2129; --line: #3d444d; --line-2: #2a3038;
+      --fg: #e6edf3; --muted: #9198a1; --muted-2: #6e7681;
+      --accent: #4493f8; --accent-strong: #79c0ff; --sel: #0c2d6b; --selline: #1f6feb; --flash: #1f6feb;
+      --ok: #3fb950; --stop: #d29922; --draft: #9198a1; --draft-line: #3d444d; --link: #4493f8;
+      --plea: #9198a1; --plea-bg: #1c2129; --plea-line: #3d444d;
+      --ask: #4493f8; --ask-bg: #0c2d6b; --ask-line: #1f6feb;
+      --fence: #f85149; --fence-bg: #3c1618;
+      --agent: #ab7df8; --agent-bg: #271052; --agent-line: #6e40c9;
+      --add: #12161c; --acline: #3d444d; --new: #1c2129; --warn: #272115; --warn-line: #9e6a03;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px;
+         line-height: 1.65; margin: 0; padding: 0 1.5rem 4rem; -webkit-font-smoothing: antialiased; }
+  a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+  main { max-width: 72rem; margin: 0 auto; }
+  h1 { font-size: 26px; line-height: 1.35; letter-spacing: -.01em; margin: 0 0 .5rem; }
+  h2 { font-size: 18px; line-height: 1.35; font-weight: 600; margin: 0 0 .75rem; }
+  h3 { font-size: 14px; font-weight: 600; margin: 1.5rem 0 .5rem; display: flex; align-items: center; gap: .5rem; }
+  h3::before { content: ""; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+  .sub { color: var(--muted); font-size: 12.5px; margin: 0 0 1rem; }
+  .banner { background: var(--warn); border: 1px solid var(--warn-line);
+            padding: .65rem .9rem; border-radius: 6px; font-size: 13px; margin-bottom: 1rem; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+            padding: 1rem 1.5rem 1.5rem; margin-bottom: 1rem; scroll-margin-top: 3.4rem; }
+  .tag { display: inline-block; font-size: 11.5px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2);
+         border-radius: 999px; padding: 0 .5rem; line-height: 18px; vertical-align: middle; margin-left: .5rem; font-weight: 400; white-space: nowrap; }
+  .note { font-size: 12.5px; color: var(--muted); margin: .75rem 0 0; }
+
+  /* 目次（追従） */
+  nav.toc { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+            margin: 0 -1.5rem 1.5rem; padding: .5rem 1.5rem; font-size: 12.5px; }
+  nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+  nav.toc a { color: var(--muted); text-decoration: none; padding: 2px 10px; border-radius: 999px; }
+  nav.toc a:hover, nav.toc a:focus-visible { background: var(--sel); color: var(--accent-strong); font-weight: 600; text-decoration: none; }
+  nav.toc .here { margin-left: auto; color: var(--muted-2); }
+
+  /* 表: 縦罫を捨て、横罫だけ */
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 1.5; }
+  .wrap.wide table { min-width: 1080px; }
+  th, td { padding: 7px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-2); }
+  th { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); white-space: nowrap;
+       border-bottom: 1px solid var(--line); letter-spacing: .02em; }
+  tr:last-child td { border-bottom: 0; }
+  td.nw, .s-t, .s-s, .s-d, .s-n { white-space: nowrap; }
+  td.nw { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  th.add, td.add { background: var(--add); }
+  th.add { border-top: 2px solid var(--acline); }
+  th.ac, td.ac { border-left: 1px solid var(--line); }
+  tr.sel td { background: var(--sel) !important; box-shadow: inset 3px 0 0 var(--accent); }
+  tr[hidden] { display: none; }
+  code { font-family: var(--mono); font-size: .93em; background: var(--surface-2); border: 1px solid var(--line-2);
+         padding: 0 .35rem; border-radius: 4px; }
+  .s-t, .s-s, .s-d, .s-n { font-size: 12.5px; }
+  .s-t::before, .s-s::before, .s-d::before, .s-n::before { display: inline-block; width: 14px; font-size: 11px; }
+  .s-t { color: var(--ok); font-weight: 600; }   .s-t::before { content: "✓"; }
+  .s-s { color: var(--stop); font-weight: 600; } .s-s::before { content: "■"; }
+  .s-d { color: var(--draft); font-weight: 500; } .s-d::before { content: "○"; }
+  .s-n { color: var(--muted-2); }                 .s-n::before { content: "–"; }
+  .me td { font-weight: 600; }
+
+  /* 仕組みの印: 塗ったチップ＋先頭記号。破れない 柵 だけ枠を太く */
+  .mech { display: inline-block; font-size: 11.5px; line-height: 18px; padding: 0 .45rem 0 .4rem; border-radius: 4px; border: 1px solid;
+          white-space: nowrap; font-weight: 600; }
+  .mech::before { font-size: 10px; margin-right: 4px; }
+  .mech.fence { color: var(--fence); background: var(--fence-bg); border-color: var(--fence); border-width: 1.5px; } .mech.fence::before { content: "⊘"; }
+  .mech.ask   { color: var(--ask);   background: var(--ask-bg);   border-color: var(--ask-line); }   .mech.ask::before   { content: "?"; }
+  .mech.plea  { color: var(--plea);  background: var(--plea-bg);  border-color: var(--plea-line); }  .mech.plea::before  { content: "·"; font-size: 14px; }
+  .mech.agent { color: var(--agent); background: var(--agent-bg); border-color: var(--agent-line); } .mech.agent::before { content: "⇢"; }
+  .mech.none  { color: var(--muted-2); border-color: var(--line); font-weight: 400; }
+
+  /* 飛ぶリンク */
+  a.jump { color: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: var(--selline); text-underline-offset: 3px; }
+  a.jump:hover { text-decoration-color: var(--accent); background: var(--sel); }
+  a.jump:focus-visible, .part:focus-visible, svg a:focus-visible > * { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  a.jump::after { content: "↗"; color: var(--accent); margin-left: .2rem; font-size: 11px; }
+
+  /* 図: 枠は持たず地だけ */
+  figure.dia { margin: .75rem 0 .5rem; background: var(--surface-2); border: 0;
+               border-radius: 6px; padding: .75rem; overflow-x: auto; }
+  figure.dia svg { display: block; width: 100%; height: auto; margin: 0 auto; }
+  .nd { fill: var(--card); stroke: var(--draft-line); stroke-width: 1.5; }
+  .nd.st-t { stroke: var(--ok); stroke-width: 2; }
+  .nd.st-s { stroke: var(--stop); stroke-width: 2; }
+  .nd.st-d { stroke: var(--draft); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .nd.st-n { stroke: var(--line); stroke-width: 1.5; }
+  svg a { cursor: pointer; }
+  svg a:hover .nd { fill: var(--sel); }
+  svg a.sel .nd { fill: var(--sel); stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: none; }
+  .lbl { fill: var(--fg); font: 13px var(--font); text-anchor: middle; pointer-events: none; }
+  .lbl.sm { font-size: 11px; fill: var(--muted); }
+  .lbl.b { font-weight: 600; }
+  .eg { stroke: var(--muted-2); stroke-width: 1.5; fill: none; }
+  .eg.dash { stroke-dasharray: 2 4; stroke-linecap: round; }
+  .lane { fill: var(--card); stroke: var(--line); }
+  .lane-t { fill: var(--muted-2); font: 600 10.5px var(--font); letter-spacing: .04em; }
+  .shared { fill: var(--card); stroke: var(--acline); stroke-width: 1.5; stroke-dasharray: 2 3; }
+  .legend { font-size: 12px; color: var(--muted); display: flex; gap: .3rem .9rem; flex-wrap: wrap;
+            margin: .4rem 0 0; align-items: center; }
+  .legend .g { font-weight: 600; color: var(--fg); }
+  .legend .k { display: inline-block; width: 18px; height: 11px; border: 2px solid; border-radius: 3px;
+               margin-right: 5px; vertical-align: -1px; }
+  .legend .k.t { border-color: var(--ok); }
+  .legend .k.s { border-color: var(--stop); }
+  .legend .k.d { border-style: dashed; border-width: 1.5px; border-color: var(--draft); }
+  .legend .k.n { border-width: 1.5px; border-color: var(--line); }
+  .legend .ln { display: inline-block; width: 22px; border-top: 2px dotted var(--muted-2); margin-right: 5px; vertical-align: middle; }
+  .legend .ln.solid { border-top: 1.5px solid var(--muted-2); }
+  /* 階層: パンくず（現在地だけ塗る）・深さバッジ・サブフローを持つノードは枠を太く */
+  .crumb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin: 0 0 .5rem; }
+  .crumb span { border: 1px solid var(--selline); background: var(--sel); color: var(--accent-strong); border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .crumb span.here { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .crumb i { color: var(--muted-2); font-style: normal; }
+  .crumb .depth { margin-left: 8px; border: 0; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--sel); }
+  .nd.dd { stroke-width: 2.5; }
+  .ddm { fill: var(--accent); font: 600 10px var(--font); text-anchor: end; pointer-events: none; }
+  .stm { font: 600 11px var(--font); text-anchor: end; pointer-events: none; }
+  /* ノードID: 図・表・逆引きで同じ形 */
+  .nid { display: inline-block; font: 600 11px/16px var(--mono); color: var(--muted); background: var(--surface-2); border: 1px solid var(--line);
+         border-radius: 3px; padding: 0 5px; min-width: 22px; text-align: center; vertical-align: 1px; }
+  tr.sel .nid { color: var(--accent-strong); border-color: var(--accent); background: var(--card); }
+  .nidr { fill: var(--surface-2); stroke: var(--line); stroke-width: 1; }
+  .nidt { fill: var(--muted); font: 600 10.5px var(--mono); text-anchor: middle; pointer-events: none; }
+  svg a.sel .nidr { stroke: var(--accent); fill: var(--card); } svg a.sel .nidt { fill: var(--accent-strong); }
+  /* 列グループの見出し行（図から／転記） */
+  tr.grp th { color: var(--muted-2); background: var(--card); text-align: center; border-bottom: 1px solid var(--line-2); padding: 4px 10px; }
+  tr.grp th.add { color: var(--muted); background: var(--add); border-bottom: 2px solid var(--acline); }
+  th.me, td.me { background: var(--sel); } th.me { color: var(--accent-strong); }
+  .hit { color: var(--ok); font-weight: 600; } .miss { color: var(--muted-2); }
+  /* 図の右に凡例・絞り込みを置く */
+  .dia-row { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; margin: .75rem 0 .5rem; }
+  .dia-row figure.dia { flex: 1 1 58%; min-width: 20rem; margin: 0; }
+  .dia-row .side { flex: 1 1 30%; min-width: 16rem; }
+  .dia-row .side .legend { margin: 0 0 .6rem; }
+  .subs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 0 0 .6rem; }
+  .subs .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--selline); background: var(--sel); color: var(--accent-strong); border-radius: 999px; padding: 1px 10px 1px 6px; }
+  .stm.t { fill: var(--ok); } .stm.s { fill: var(--stop); } .stm.d { fill: var(--draft); }
+
+  /* 状態の絞り込み */
+  .filter { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted); margin: .75rem 0 .5rem; }
+  .filter button { font: inherit; background: var(--card); color: var(--fg); border: 1px solid var(--line);
+                   border-radius: 999px; padding: 2px 12px; cursor: pointer; }
+  .filter button[aria-pressed="true"] { background: var(--fg); color: var(--card); border-color: var(--fg); font-weight: 600; }
+
+  /* ハーネス地図の処理カード */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .75rem; margin: .5rem 0; }
+  .card { border: 1px solid var(--line); border-radius: 6px; padding: .75rem 1rem; font-size: 13px; background: var(--card); }
+  .card.me { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .card h4 { margin: 0 0 .5rem; font-size: 14px; }
+  .card dl { margin: 0; display: grid; grid-template-columns: 4.5rem 1fr; gap: 3px 10px; }
+  .card dt { color: var(--muted-2); font-size: 12px; padding-top: 1px; }
+  .card dd { margin: 0; }
+
+  /* 実ファイル: 左に行番号、帯はコード列に */
+  details.dsrc { background: none; margin: .5rem 0 1rem; border: 1px solid var(--line); border-radius: 6px; }
+  details.dsrc > summary { font-size: 12px; color: var(--muted); padding: .3rem .6rem; cursor: pointer; }
+  pre.mermaid { background: var(--surface-2); border: 0; border-top: 1px solid var(--line);
+                padding: .7rem .9rem; overflow-x: auto; font-size: 12.5px; margin: 0; font-family: var(--mono); }
+  details.file { border: 1px solid var(--line); border-radius: 6px; margin: .5rem 0; background: var(--surface-2); scroll-margin-top: 3.4rem; overflow: hidden; }
+  details.file > summary { cursor: pointer; padding: .5rem .75rem; font-size: 13px; font-family: var(--mono); }
+  details.file > summary:hover { background: var(--line-2); }
+  summary .meta { font-family: var(--font); color: var(--muted-2); font-size: 12px; margin-left: .5rem; }
+  /* 行は .ln で1行ずつ持つ。pre の改行は white-space: normal で潰し、行の中だけ pre にする（二重の空行を防ぐ）。行番号は CSS カウンタ */
+  pre.src { margin: 0; border-top: 1px solid var(--line); background: var(--card); padding: .5rem 0;
+            overflow-x: auto; font-size: 12.5px; line-height: 1.6; font-family: var(--mono);
+            white-space: normal; counter-reset: ln; }
+  pre.src .ln { display: block; white-space: pre; padding: 0 1rem 0 0; min-height: 1.6em; counter-increment: ln; }
+  pre.src .ln::before { content: counter(ln); display: inline-block; width: 44px; text-align: right; margin-right: 14px;
+                        color: var(--muted-2); font-size: 11px; user-select: none; }
+  .part { display: block; position: relative; margin: 3px 0; padding: 0 0 3px; scroll-margin-top: 4rem; cursor: pointer; }
+  .part::after { content: ""; position: absolute; left: 52px; right: 0; top: 0; bottom: 0; z-index: 0;
+                 background: var(--sel); border-left: 3px solid var(--selline); border-radius: 0 4px 4px 0; }
+  .part > .ln { position: relative; z-index: 1; }
+  .part > .ln::before { color: var(--accent); }
+  .part::before { content: attr(data-label); position: relative; z-index: 1; display: block; padding: 3px 0 2px 72px;
+                  font: 600 11px/1.5 var(--font); color: var(--accent-strong); }
+  .part.flash::after { animation: flash 2.6s ease-out forwards; }
+  .part.sel::after { border-left-color: var(--accent); box-shadow: inset 0 0 0 1px var(--selline); }
+  @keyframes flash { 0%, 55% { background: var(--flash); } 100% { background: var(--sel); } }
+  @media (prefers-reduced-motion: reduce) { .part.flash::after { animation: none; background: var(--flash); } }
+
+  footer { color: var(--muted-2); font-size: 12px; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<main>
+<nav class="toc" aria-label="目次"><ul><li><a href="#s-purpose">目的</a></li><li><a href="#s-harness">ハーネス全体</a></li><li><a href="#s-steps">工程 → 実装先</a></li><li><a href="#s-gates">介入点</a></li><li><a href="#s-tests">合格条件</a></li><li><a href="#s-products">成果物</a></li><li><a href="#s-files">ファイル → ノード</a></li><li><a href="#s-src">実ファイル</a></li><li><a href="#s-open">未完</a></li><li class="here">処理「業務を改善する」／ 2026-09-05</li></ul></nav>
+<h1>process-improve ／ 業務を改善する</h1>
+<p class="sub">可視化 1枚 ／ 処理「業務を改善する」／ 材料は <code>docs/harness/process-improve/</code> の設計・図・凍結した合格条件・実装の記録と、プラグインの実ファイル</p>
+<div class="banner">評価レポート（<code>評価/</code>）が無い1枚。全工程の状態は「設計のみ ○」。実装先は実ファイルと突き合わせた実物。</div>
+<section data-section="目的" id="s-purpose"><h2>目的<span class="tag">転記元: 設計.md 1節</span></h2><p>業務改善をやったことのない人が、自分の仕事を棚卸しし、図にして、AI に任せる部分を決められるようにする。成功指標: 記入漏れ 0 件 — AI化候補の H1〜H5 ／ 承認の有無 ／ 業務一覧の測り方（MUST）。</p></section>
+<section data-section="処理一覧" id="s-harness"><h2>ハーネス全体と処理一覧<span class="tag">転記元: 設計.md 2節・統合.md・各処理の 実装.md 2節</span></h2><p class="note" style="margin:0 0 .6rem">このハーネス（プラグイン）は2つの処理でできている。この1枚は処理1。</p><div class="cards"><div class="card me"><h4>1 業務を改善する <span class="tag">この1枚</span></h4><dl><dt>状態</dt><dd>実装済み（凍結 2026-08-31）</dd><dt>起動</dt><dd>利用者が skill <code>process-improve</code> を呼ぶ</dd><dt>成果物</dt><dd><code>業務改善/</code> に 業務一覧・改善案・AI化依頼書・保留 と DrillSpark の図</dd><dt>介入点</dt><dd>起動 1／承認ゲート 3／実行 9</dd></dl></div><div class="card"><h4>2 改善計画を1枚にする</h4><dl><dt>状態</dt><dd>実装済み</dd><dt>起動</dt><dd>利用者が skill <code>process-improve-view</code> を呼ぶ</dd><dt>成果物</dt><dd><code>業務改善/改善計画-&lt;業務&gt;.html</code></dd><dt>介入点</dt><dd>起動 1／承認ゲート 0／実行 0</dd></dl></div></div><h3>共有部品（ハーネスに1つしかないもの）</h3><div class="wrap"><table><thead><tr><th>部品</th><th>どこ</th><th>処理1</th><th>処理2</th></tr></thead><tbody><tr><td>判定基準</td><td><code>reference/business-improvement-criteria.md</code></td><td class="hit">判定役が毎回読む</td><td class="hit">判定役が毎回読む</td></tr><tr><td>hook（PreToolUse）</td><td><code>hooks/hooks.json</code> → <code>scripts/process-write-guard.js</code></td><td class="hit">表と図の書き込みを止める</td><td class="hit">1枚の書き込みを止める</td></tr><tr><td>専門家役</td><td><code>agents/process-expert.md</code></td><td class="hit">工程の案出し・ECRS の問いかけ</td><td class="miss">呼ばない</td></tr></tbody></table></div><p class="note">介入点の総数: 起動 2／承認ゲート 3／実行 9／エスカレーション先は利用者が指名／基準の決定は判定基準ファイル。</p></section>
+<section data-section="工程" id="s-steps"><h2>工程 → 実装先<span class="tag">図 8 枚（決定論で抽出）＋ 実装.md 1節の転記</span></h2>
+<p class="note" style="margin:0 0 .5rem">左3列は図から機械で取った（手で数えていない）。右5列は <code>実装.md</code> と <code>合格条件.md</code> からの転記で、実ファイルを読んで埋め直していない。行の <code>data-node-id</code> は全図で一意。</p>
+<div id="t-steps"><h3 id="d-root">第一階層（root） 業務を改善する<span class="tag">ノード 13・エッジ 13・レーン 3</span></h3>
+<div class="crumb"><span class="here">業務を改善する</span><span class="depth">階層 1</span></div>
+<div class="dia-row"><figure class="dia"><svg viewBox="0 0 1180 230" role="img" aria-label="処理「業務を改善する」の第一階層。レーン 3・ノード 13"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted-2)"/></marker></defs><rect class="lane" x="10" y="14" width="408" height="204" rx="6"/><text class="lane-t" x="20" y="32">現状を掴む</text><rect class="lane" x="428" y="14" width="190" height="204" rx="6"/><text class="lane-t" x="438" y="32">図にする</text><rect class="lane" x="628" y="14" width="532" height="204" rx="6"/><text class="lane-t" x="638" y="32">改善する</text><path class="eg" d="M96,60 H116" marker-end="url(#ah)"/><path class="eg" d="M234,60 H254" marker-end="url(#ah)"/><path class="eg" d="M175,82 V131 H72 V143" marker-end="url(#ah)"/><path class="eg dash" d="M372,60 H454" marker-end="url(#ah)"/><path class="eg dash" d="M572,60 H654" marker-end="url(#ah)"/><path class="eg" d="M513,82 V131 H490 V143" marker-end="url(#ah)"/><path class="eg" d="M772,60 H792" marker-end="url(#ah)"/><path class="eg" d="M713,82 V131 H690 V143" marker-end="url(#ah)"/><path class="eg" d="M713,82 V131 H914 V143" marker-end="url(#ah)"/><path class="eg" d="M910,60 H930" marker-end="url(#ah)"/><path class="eg" d="M851,82 V131 H802 V143" marker-end="url(#ah)"/><path class="eg dash" d="M982,30 V40 H313 V38" marker-end="url(#ah)"/><text class="lbl sm" x="647.5" y="38">はい</text><path class="eg" d="M1034,60 H1054" marker-end="url(#ah)"/><text class="lbl sm" x="1033" y="56">いいえ</text><a href="#r-1" data-ref="1" aria-label="ノード 1 Start"><rect class="nd st-d" x="36" y="44" width="60" height="32" rx="16"/><text class="lbl" x="66" y="64">Start</text><rect class="nidr" x="52" y="28" width="28" height="14" rx="3"/><text class="nidt" x="66" y="39">1</text><text class="stm d" x="92" y="56">○</text></a><a href="#r-2" data-ref="2" aria-label="ノード 2 業務の一覧を作る"><rect class="nd st-d dd" x="116" y="38" width="118" height="44" rx="4"/><line class="eg" x1="122" y1="38" x2="122" y2="82"/><line class="eg" x1="228" y1="38" x2="228" y2="82"/><text class="lbl b" x="175" y="64">業務の一覧を作る</text><rect class="nidr" x="161" y="22" width="28" height="14" rx="3"/><text class="nidt" x="175" y="33">2</text><text class="stm d" x="230" y="50">○</text></a><a href="#r-3" data-ref="3" aria-label="ノード 3 改善する業務を選ぶ"><rect class="nd st-d dd" x="254" y="38" width="118" height="44" rx="4"/><line class="eg" x1="260" y1="38" x2="260" y2="82"/><line class="eg" x1="366" y1="38" x2="366" y2="82"/><text class="lbl b" x="313" y="64">改善する業務を選ぶ</text><rect class="nidr" x="299" y="22" width="28" height="14" rx="3"/><text class="nidt" x="313" y="33">3</text><text class="stm d" x="368" y="50">○</text></a><a href="#r-9" data-ref="9" aria-label="ノード 9 業務一覧"><path class="nd st-d" d="M26,143 h92 v28 q-23,-10 -46,0 q-23,10 -46,0 z"/><text class="lbl" x="72" y="164">業務一覧</text><rect class="nidr" x="58" y="127" width="28" height="14" rx="3"/><text class="nidt" x="72" y="138">9</text><text class="stm d" x="114" y="155">○</text></a><a href="#r-4" data-ref="4" aria-label="ノード 4 業務を図にする"><rect class="nd st-d dd" x="454" y="38" width="118" height="44" rx="4"/><line class="eg" x1="460" y1="38" x2="460" y2="82"/><line class="eg" x1="566" y1="38" x2="566" y2="82"/><text class="lbl b" x="513" y="64">業務を図にする</text><rect class="nidr" x="499" y="22" width="28" height="14" rx="3"/><text class="nidt" x="513" y="33">4</text><text class="stm d" x="568" y="50">○</text></a><a href="#r-10" data-ref="10" aria-label="ノード 10 業務の図"><path class="nd st-d" d="M444,143 h92 v28 q-23,-10 -46,0 q-23,10 -46,0 z"/><text class="lbl" x="490" y="164">業務の図</text><rect class="nidr" x="476" y="127" width="28" height="14" rx="3"/><text class="nidt" x="490" y="138">10</text><text class="stm d" x="532" y="155">○</text></a><a href="#r-5" data-ref="5" aria-label="ノード 5 改善案を出す"><rect class="nd st-d dd" x="654" y="38" width="118" height="44" rx="4"/><line class="eg" x1="660" y1="38" x2="660" y2="82"/><line class="eg" x1="766" y1="38" x2="766" y2="82"/><text class="lbl b" x="713" y="64">改善案を出す</text><rect class="nidr" x="699" y="22" width="28" height="14" rx="3"/><text class="nidt" x="713" y="33">5</text><text class="stm d" x="768" y="50">○</text></a><a href="#r-6" data-ref="6" aria-label="ノード 6 AI化依頼書を作る"><rect class="nd st-d dd" x="792" y="38" width="118" height="44" rx="4"/><line class="eg" x1="798" y1="38" x2="798" y2="82"/><line class="eg" x1="904" y1="38" x2="904" y2="82"/><text class="lbl b" x="851" y="64">AI化依頼書を作る</text><rect class="nidr" x="837" y="22" width="28" height="14" rx="3"/><text class="nidt" x="851" y="33">6</text><text class="stm d" x="906" y="50">○</text></a><a href="#r-7" data-ref="7" aria-label="ノード 7 次の業務も改善する?"><polygon class="nd st-d" points="982,30 1034,60 982,90 930,60"/><text class="lbl" x="982" y="64">次の業務も改善する?</text><rect class="nidr" x="968" y="14" width="28" height="14" rx="3"/><text class="nidt" x="982" y="25">7</text><text class="stm d" x="1030" y="42">○</text></a><a href="#r-8" data-ref="8" aria-label="ノード 8 End"><rect class="nd st-d" x="1054" y="44" width="60" height="32" rx="16"/><text class="lbl" x="1084" y="64">End</text><rect class="nidr" x="1070" y="28" width="28" height="14" rx="3"/><text class="nidt" x="1084" y="39">8</text><text class="stm d" x="1110" y="56">○</text></a><a href="#r-11" data-ref="11" aria-label="ノード 11 改善案"><path class="nd st-d" d="M644,143 h92 v28 q-23,-10 -46,0 q-23,10 -46,0 z"/><text class="lbl" x="690" y="164">改善案</text><rect class="nidr" x="676" y="127" width="28" height="14" rx="3"/><text class="nidt" x="690" y="138">11</text><text class="stm d" x="732" y="155">○</text></a><a href="#r-12" data-ref="12" aria-label="ノード 12 AI化依頼書"><path class="nd st-d" d="M756,143 h92 v28 q-23,-10 -46,0 q-23,10 -46,0 z"/><text class="lbl" x="802" y="164">AI化依頼書</text><rect class="nidr" x="788" y="127" width="28" height="14" rx="3"/><text class="nidt" x="802" y="138">12</text><text class="stm d" x="844" y="155">○</text></a><a href="#r-13" data-ref="13" aria-label="ノード 13 保留"><path class="nd st-d" d="M868,143 h92 v28 q-23,-10 -46,0 q-23,10 -46,0 z"/><text class="lbl" x="914" y="164">保留</text><rect class="nidr" x="900" y="127" width="28" height="14" rx="3"/><text class="nidt" x="914" y="138">13</text><text class="stm d" x="956" y="155">○</text></a></svg></figure><div class="side">
+<div class="legend"><span class="g">枠の色と印＝状態</span><span><span class="k t"></span>✓ 通った</span><span><span class="k s"></span>■ 止まった</span><span><span class="k d"></span>○ 設計のみ</span></div>
+<div class="legend"><span class="g">線</span><span><span class="ln solid"></span>制御（実線）</span><span><span class="ln"></span>データ・人との受け渡し（点線）</span></div>
+<div class="legend"><span class="g">形＝種別</span><span>角丸＝開始／終了</span><span>角＝作業</span><span>二重線＝サブプロセス（子図あり）</span><span>ひし形＝分岐</span><span>底が波＝成果物</span></div>
+<div class="subs">子図: <span class="chip"><span class="nid">2</span> 業務の一覧を作る</span><span class="chip"><span class="nid">3</span> 改善する業務を選ぶ</span><span class="chip"><span class="nid">4</span> 業務を図にする</span><span class="chip"><span class="nid">5</span> 改善案を出す</span><span class="chip"><span class="nid">6</span> AI化依頼書を作る</span></div>
+<div class="filter" role="group" aria-label="状態で絞り込む">絞り込み: <button data-filter="" aria-pressed="true">すべて</button><button data-filter="s-t" aria-pressed="false">通った</button><button data-filter="s-s" aria-pressed="false">止まった</button><button data-filter="s-d" aria-pressed="false">設計のみ</button></div>
+</div></div>
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="1" id="r-1"><td><span class="nid">1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／現状を掴む</div></td><td><span class="s-d">設計のみ</span></td><td>起動（利用者が skill を呼ぶ）</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>frontmatter <code>description</code>・「始める前に」</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="2" id="r-2"><td><span class="nid">2</span></td><td>業務の一覧を作る<div class="note" style="margin:2px 0 0">サブプロセス／現状を掴む／⏱ 45 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §1</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 1. 業務の一覧を作る</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="3" id="r-3"><td><span class="nid">3</span></td><td>改善する業務を選ぶ<div class="note" style="margin:2px 0 0">サブプロセス／現状を掴む／⏱ 25 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §2</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 2. 改善する業務を選ぶ</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="9" id="r-9"><td><span class="nid">9</span></td><td>業務一覧<div class="note" style="margin:2px 0 0">成果物／現状を掴む</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech fence">柵</span></td><td><code>業務改善/業務一覧.md</code></td><td>列の定義は <code>reference/business-improvement-tables.md</code>。書く前に柵</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4" id="r-4"><td><span class="nid">4</span></td><td>業務を図にする<div class="note" style="margin:2px 0 0">サブプロセス／図にする／⏱ 45 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §3</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 3. 業務を図にする</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="10" id="r-10"><td><span class="nid">10</span></td><td>業務の図<div class="note" style="margin:2px 0 0">成果物／図にする</div></td><td><span class="s-d">設計のみ</span></td><td>DrillSpark のプロジェクト（業務1つに1つ）</td><td><span class="mech fence">柵</span></td><td>—</td><td>URL は 業務一覧「図の在りか」。無い図への <code>update_diagram</code> は柵が止める</td><td class="nw">図.md</td></tr>
+<tr data-node-id="5" id="r-5"><td><span class="nid">5</span></td><td>改善案を出す<div class="note" style="margin:2px 0 0">サブプロセス／改善する／⏱ 40 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §4</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 4. 改善案を出す</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6" id="r-6"><td><span class="nid">6</span></td><td>AI化依頼書を作る<div class="note" style="margin:2px 0 0">サブプロセス／改善する／⏱ 20 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §5</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 5. AI化依頼書を作る</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="7" id="r-7"><td><span class="nid">7</span></td><td>次の業務も改善する?<div class="note" style="margin:2px 0 0">分岐／改善する／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>人間の判断（上限を置かないループ）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 次の業務へ進むか決める</td><td class="nw">図.md</td></tr>
+<tr data-node-id="8" id="r-8"><td><span class="nid">8</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／改善する</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="11" id="r-11"><td><span class="nid">11</span></td><td>改善案<div class="note" style="margin:2px 0 0">成果物／改善する</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech fence">柵</span></td><td><code>業務改善/改善案.md</code></td><td>書く前に柵（process-table-lint）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="12" id="r-12"><td><span class="nid">12</span></td><td>AI化依頼書<div class="note" style="margin:2px 0 0">成果物／改善する</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech fence">柵</span></td><td><code>業務改善/AI化依頼書.md</code></td><td>書く前に柵（<code>--list 業務一覧.md</code>）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="13" id="r-13"><td><span class="nid">13</span></td><td>保留<div class="note" style="margin:2px 0 0">成果物／改善する</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>列は 何が決まらなかったか／相談先／いつ</td><td class="nw">実装.md 1節</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart LR
+  subgraph sg_0 [&quot;現状を掴む&quot;]
+    direction LR
+    1([&quot;Start&quot;])
+    %% note[1]: 人間の介入点5種 — 起動:利用者がスキルを呼ぶ(自動で始まらない) / 承認ゲート:業務一覧・各業務の工程・各業務の作業 の3つ / 実行:9つ(仕事の目的を答える・改善する業務を選ぶ・直す所を言う(工程と作業)・成功の形に合意する・案の引っかかる所を言う・案を選ぶ・任せ方に合意する・承認の有無を決める・次の業務へ進むか決める。正本は 合格条件.md 5節) / エスカレーション先:詰まった時点で利用者が指名する相手。開始時には決めさせない / 基準の決定:判定基準ファイル。利用者もAIも決めない
+    %% duration[1]: 0
+    2[[&quot;業務の一覧を作る&lt;br/&gt;⏱ 45 分&quot;]]
+    %% note[2]: 最初にDrillSparkに繋がるか確かめる(この工程の第二階層の先頭)。一覧は2段 — 最初は全業務で 業務名・誰が・かかる時間＋測り方・仕事の目的 の4つだけを聞き、残り4列は「後で聞く」。「仕事の目的」列が全行埋まった時点が承認ゲート1。「不要」を選択肢として先に見せる。答えられない項目はAIが埋めず「未確認：◯◯さんに聞く」と書く
+    %% duration[2]: 45
+    3[[&quot;改善する業務を選ぶ&lt;br/&gt;⏱ 25 分&quot;]]
+    %% note[3]: ABC分析を scripts/process-abc.js が決定論で出し、ムダの印を根拠の語つきで添える。図にするのは1〜2業務だけ。選んだ業務の「後で聞く」4列をここで埋める
+    %% duration[3]: 25
+    9@{ shape: doc, label: &quot;業務一覧&quot; }
+    %% note[9]: 業務改善/ に置く。列は 業務名/誰が/きっかけ/作業/使う道具/次へ渡す先/かかる時間/測り方/仕事の目的/聞いた相手/図の在りか。図の在りか(DrillSparkのURL)は工程4でプロジェクトを作った直後に書く。書けるのは PreToolUse hook の検査(process-table-lint)を通った表だけ
+    %% duration[9]: 0
+  end
+  subgraph sg_1 [&quot;図にする&quot;]
+    direction LR
+    4[[&quot;業務を図にする&lt;br/&gt;⏱ 45 分&quot;]]
+    %% note[4]: 工程を承認してから作業を描く2段構え。現状図と理想図を2枚描かない。聞き取れなかった箇所は印を付けて置く。create_project の直後にそのURLを業務一覧の「図の在りか」列に書く — hook はこの列に無いプロジェクトへの update_diagram を止める(他人の図を書き換えない、の柵)
+    %% duration[4]: 45
+    10@{ shape: doc, label: &quot;業務の図&quot; }
+    %% note[10]: DrillSparkのプロジェクト。業務1つに1つ。第一階層が工程、第二階層が作業。判定役は get_diagram で読む(ファイルには残さない)
+    %% duration[10]: 0
+  end
+  subgraph sg_2 [&quot;改善する&quot;]
+    direction LR
+    5[[&quot;改善案を出す&lt;br/&gt;⏱ 40 分&quot;]]
+    %% note[5]: E(なくす)→C(まとめる)→R(並び替える)→S(簡単にする)の順。Sを先にやると不要な作業を高速化するだけになる。案が出なかった段階はその理由を改善案.md の先頭の節に残す(E・C・Rを検討した痕跡)
+    %% duration[5]: 40
+    6[[&quot;AI化依頼書を作る&lt;br/&gt;⏱ 20 分&quot;]]
+    %% note[6]: 工程ごとにAIへの任せ方(H1〜H5)と承認が要る操作を書く。業務名の列で業務一覧と突き合わせ、「聞いた相手」がAIの推測の業務は載せない。記入漏れ・定義に無い値・業務単位の行は hook が書く前に落とす
+    %% duration[6]: 20
+    7{&quot;次の業務も改善する?&lt;br/&gt;⏱ 5 分&quot;}
+    %% note[7]: 人間が毎回判断するループなので回数の上限を置かない。止めるのは利用者(実行の1つ。レーンは工程で切ってあるので本体側に置く)
+    %% duration[7]: 5
+    8([&quot;End&quot;])
+    %% duration[8]: 0
+    11@{ shape: doc, label: &quot;改善案&quot; }
+    %% note[11]: 先頭に「成功の形」(業務に1つ)と「案が出なかった段階とその理由」。表の列は 業務名/工程/ECRSのどれか/誰がやるか(人がやる・AIに任せる)/優先度/出どころ(本人の答え・一般例)/改善案
+    %% duration[11]: 0
+    12@{ shape: doc, label: &quot;AI化依頼書&quot; }
+    %% note[12]: AIに任せる工程だけ。列は 業務名/工程/任せ方(H1〜H5)/承認が要る操作/削減見込み(H1・H2だけ)
+    %% duration[12]: 0
+    13@{ shape: doc, label: &quot;保留&quot; }
+    %% note[13]: 決まらなかった点と相談先。次に呼んだときの入口になる
+    %% duration[13]: 0
+  end
+    1 --&gt; 2
+    2 --&gt; 3
+    2 --&gt; 9
+    3 -.-&gt; 4
+    4 -.-&gt; 5
+    4 --&gt; 10
+    5 --&gt; 6
+    5 --&gt; 11
+    5 --&gt; 13
+    6 --&gt; 7
+    6 --&gt; 12
+    7 -.-&gt;|&quot;はい&quot;| 3
+    7 --&gt;|&quot;いいえ&quot;| 8</pre></details>
+<h3 id="d-2">子図 2 業務の一覧を作る<span class="tag">ノード 11・エッジ 12・レーン 3</span></h3>
+<div class="crumb"><span class="here">2 業務の一覧を作る</span><span class="depth">階層 1</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="2_1" id="r-2_1"><td><span class="nid">2_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="2_2" id="r-2_2"><td><span class="nid">2_2</span></td><td>DrillSparkに繋がるか確かめる<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 2 分</div></td><td><span class="s-d">設計のみ</span></td><td>読み取り専用の呼び出し1回</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 始める前に — DrillSpark に繋がるか確かめる</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="2_3" id="r-2_3"><td><span class="nid">2_3</span></td><td>繋がった?<div class="note" style="margin:2px 0 0">分岐／process-improve／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文の判断</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>同上「繋がっていなければ」</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="2_4" id="r-2_4"><td><span class="nid">2_4</span></td><td>登録と接続のしかたを案内する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>案内文（正本は reference）</td><td><span class="mech plea">指示</span></td><td><code>reference/drillspark-setup.md</code></td><td>## 業務改善（process-improve）の利用者に案内するとき</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="2_5" id="r-2_5"><td><span class="nid">2_5</span></td><td>業務ごとに4項目を書いてもらう<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 8 分</div></td><td><span class="s-d">設計のみ</span></td><td>入力画面（Artifact）か1問ずつの面談</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/assets/棚卸しシート.html</code></td><td>SKILL.md ### 入力画面で書いてもらう</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="2_7" id="r-2_7"><td><span class="nid">2_7</span></td><td>表に書き出す<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 8 分</div></td><td><span class="s-d">設計のみ</span></td><td>Write で表に書く</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 1. 業務の一覧を作る（書き出し）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="2_10" id="r-2_10"><td><span class="nid">2_10</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="2_11" id="r-2_11"><td><span class="nid">2_11</span></td><td>業務一覧<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech fence">柵</span></td><td><code>業務改善/業務一覧.md</code></td><td>柵を通った表だけが書かれる</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="2_6" id="r-2_6"><td><span class="nid">2_6</span></td><td>仕事の内容と目的を答える<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 20 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（答える）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 1.「仕事の目的」の3値と「不要」の提示</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="2_8" id="r-2_8"><td><span class="nid">2_8</span></td><td>表の検査を書く前に掛ける<div class="note" style="margin:2px 0 0">作業／PreToolUse hook（決定論）／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>PreToolUse hook → 表の lint</td><td><span class="mech fence">柵</span></td><td><code>scripts/process-write-guard.js</code></td><td>Write/Edit/Bash の matcher → <code>process-table-lint.js</code></td><td class="nw">実装.md 2節・4節 #5</td></tr>
+<tr data-node-id="2_9" id="r-2_9"><td><span class="nid">2_9</span></td><td>全行埋まった?<div class="note" style="margin:2px 0 0">分岐／PreToolUse hook（決定論）／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>承認ゲート①（上限3回）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 【止まる①】業務一覧の確認</td><td class="nw">図.md 介入点の表</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    2_1([&quot;Start&quot;])
+    %% note[2_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:この工程の最後(業務一覧) / 実行:仕事の内容と目的を答える / エスカレーション先:詰まった時点で利用者が指名する相手(2_9の備考) / 基準の決定:判定基準ファイル
+    %% duration[2_1]: 0
+    2_2[&quot;DrillSparkに繋がるか確かめる&lt;br/&gt;⏱ 2 分&quot;]
+    %% note[2_2]: 読み取り専用の呼び出しを1回だけ流す。繋がっていたら何も言わずに先へ進む
+    %% duration[2_2]: 2
+    2_3{&quot;繋がった?&lt;br/&gt;⏱ 1 分&quot;}
+    %% duration[2_3]: 1
+    2_4[&quot;登録と接続のしかたを案内する&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[2_4]: 未登録は異常ではなく普通の初期状態。一般社員向けの3行(reference/drillspark-setup.md の末尾の節)を添えて登録と接続の手順を案内し、一度終わる。登録できたらまた呼んでもらう。同じ案内を繰り返さない
+    %% duration[2_4]: 5
+    2_5[&quot;業務ごとに4項目を書いてもらう&lt;br/&gt;⏱ 8 分&quot;]
+    %% note[2_5]: Artifact が使える環境では棚卸しシート(表形式・自動保存・空欄と名前の無い未確認を赤で示す)を公開し、利用者に 業務名/誰が/かかる時間(測り方つき)/仕事の目的 の4つを書いてもらって read_db で読み戻す。画面が使えないとき(Artifact 無し・claude -p・利用者が望まない)だけ1業務ずつチャットで聞く。きっかけ・作業・使う道具・次へ渡す先 は工程3で選ばれてから(それまで「後で聞く」)。目的だけ後からまとめて聞かない
+    %% duration[2_5]: 8
+    2_7[&quot;表に書き出す&lt;br/&gt;⏱ 8 分&quot;]
+    %% note[2_7]: 時間は「頻度×所要時間=合計」と測り方をセットで書く。測り方は2値 — 実測(実際にかかった時間。その場で測ったものも記録から出したものも)/未計測(何割くらいの見積もりや感覚の数字)。画面からは組み上がった文字列をそのまま写す。答えられない項目はAIが推測で埋めず「未確認：◯◯さんに聞く」と書く(名前が無い未確認は空欄と同じ)。書き出しは Write で行う — Bash のリダイレクトは hook が止める
+    %% duration[2_7]: 8
+    2_10([&quot;End&quot;])
+    %% duration[2_10]: 0
+    2_11@{ shape: doc, label: &quot;業務一覧&quot; }
+    %% note[2_11]: 業務改善/ に置く。列は 業務名/誰が/きっかけ/作業/使う道具/次へ渡す先/かかる時間/測り方/仕事の目的/聞いた相手/図の在りか。図の在りかは工程4で埋まるのでこの時点では空。hook の検査を通った表だけがここに書かれる
+    %% duration[2_11]: 0
+  end
+  subgraph sg_1 [&quot;利用者&quot;]
+    direction TB
+    2_6[&quot;仕事の内容と目的を答える&lt;br/&gt;⏱ 20 分&quot;]
+    %% note[2_6]: lane: human\n仕事の目的に入る値は3つ — 目的を1行 / 不要 / 保留：◯◯さんに聞く。「不要」を毎回いっしょに見せ、「この表は本人の棚卸しで上司への提出物ではない」と添える。逃げ道が無いと惰性で在る業務にも後付けの理由が付き、消す候補が1件も出なくなる
+    %% duration[2_6]: 20
+  end
+  subgraph sg_2 [&quot;PreToolUse hook（決定論）&quot;]
+    direction TB
+    2_8[&quot;表の検査を書く前に掛ける&lt;br/&gt;⏱ 1 分&quot;]
+    %% note[2_8]: lane: system\nscripts/process-write-guard.js → process-table-lint.js。空欄・行き先の無い保留と未確認・測り方の無い数字・定義に無い値を機械で数え、落ちれば書かせない(exit 2 と指摘文)。目視で数え直さない
+    %% duration[2_8]: 1
+    2_9{&quot;全行埋まった?&lt;br/&gt;⏱ 1 分&quot;}
+    %% note[2_9]: 上限3回。2回目は言い換えて聞く。3回聞き直しても空欄が残る行は、そこで初めて「これは誰に聞けますか」と尋ねて相手の名前を記録し、その行を保留にして承認へ進む。開始時には聞かない。保留が残っていても一覧は完成してよい
+    %% duration[2_9]: 1
+  end
+    2_1 --&gt; 2_2
+    2_2 --&gt; 2_3
+    2_3 --&gt;|&quot;いいえ&quot;| 2_4
+    2_3 --&gt;|&quot;はい&quot;| 2_5
+    2_4 --&gt; 2_10
+    2_5 -.-&gt; 2_6
+    2_7 -.-&gt; 2_8
+    2_7 --&gt; 2_11
+    2_6 -.-&gt; 2_7
+    2_8 --&gt; 2_9
+    2_9 -.-&gt;|&quot;いいえ&quot;| 2_5
+    2_9 -.-&gt;|&quot;はい&quot;| 2_10</pre></details>
+<h3 id="d-3">子図 3 改善する業務を選ぶ<span class="tag">ノード 9・エッジ 9・レーン 2</span></h3>
+<div class="crumb"><span class="here">3 改善する業務を選ぶ</span><span class="depth">階層 1</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="3_1" id="r-3_1"><td><span class="nid">3_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="3_2" id="r-3_2"><td><span class="nid">3_2</span></td><td>時間の累積でA・B・Cに分ける<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>スクリプト（決定論）</td><td><span class="mech plea">指示</span></td><td><code>scripts/process-abc.js</code></td><td>累積割合で A/B/C。<code>--abc 70,90</code></td><td class="nw">実装.md 4節 #5</td></tr>
+<tr data-node-id="3_3" id="r-3_3"><td><span class="nid">3_3</span></td><td>Aランクに印を添える<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 2 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §2</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 2. 改善する業務を選ぶ（印の候補）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="3_9" id="r-3_9"><td><span class="nid">3_9</span></td><td>選んだ業務の残り4項目を書いてもらう<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>入力画面の詳細4欄（write_db selected）か面談</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 2. 選んだ業務の残り4項目</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="3_5" id="r-3_5"><td><span class="nid">3_5</span></td><td>改善する業務を選べた?<div class="note" style="margin:2px 0 0">分岐／process-improve／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文の判断</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 2. 選べたか</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="3_6" id="r-3_6"><td><span class="nid">3_6</span></td><td>選べない理由を保留に記録する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>保留への記録</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>相談先の名前を記録して終わる</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="3_7" id="r-3_7"><td><span class="nid">3_7</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="3_8" id="r-3_8"><td><span class="nid">3_8</span></td><td>重点業務リスト<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>スクリプトの出力（表は変えない）</td><td><span class="mech none">—</span></td><td>—</td><td><code>process-abc.js</code> の標準出力</td><td class="nw">図.md</td></tr>
+<tr data-node-id="3_4" id="r-3_4"><td><span class="nid">3_4</span></td><td>改善する業務を1〜2件選ぶ<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（選ぶ）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 2. 1〜2件を選んでもらう</td><td class="nw">図.md 介入点の表</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    3_1([&quot;Start&quot;])
+    %% note[3_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:無し(選んだ結果は次の工程の図で承認される) / 実行:改善する業務を選ぶ / エスカレーション先:3_6で指名する相手 / 基準の決定:判定基準ファイル
+    %% duration[3_1]: 0
+    3_2[&quot;時間の累積でA・B・Cに分ける&lt;br/&gt;⏱ 1 分&quot;]
+    %% note[3_2]: ABC分析(重点分析)。scripts/process-abc.js が 時間=頻度×所要時間 の大きい順に並べ、累積割合でA(〜70%)/B(71〜90%)/C(91〜100%)に分ける。機械で計算し利用者に判断させない(暗算しない)。閾値は --abc 70,90 で変えられる。時間の単位が読めない行は「単位不明」として別に出す
+    %% duration[3_2]: 1
+    3_3[&quot;Aランクに印を添える&lt;br/&gt;⏱ 2 分&quot;]
+    %% note[3_3]: Aランクには価値を生んでいる長い業務が混ざるので、時間の量だけで選ばせない。この時点で付く印は「仕事の目的が薄い」(不要/保留)だけ — 転記/二重入力/待ち は作業列の語から付くが、作業列はまだ「後で聞く」。選ぶ前に「転記や待ちが多いと感じる仕事はあるか」を1回だけ聞き、答えは表に書かず候補に加える。語の無い印は付けない
+    %% duration[3_3]: 2
+    3_9[&quot;選んだ業務の残り4項目を書いてもらう&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[3_9]: きっかけ・作業・使う道具・次へ渡す先。工程2で「後で聞く」にした列を、選ばれた業務だけ埋める。画面を使っているなら write_db で selected: true を書くと画面に詳細4欄が出るので、書いてもらって read_db で読み戻す。埋まったら ABC を再実行し、転記/二重入力/待ち の印を根拠の語つきで付けて工程5へ引き継ぐ。埋まらないまま図や案に進むと検査が落ちる(DETAIL_MISSING)。答えられない項目は「未確認：◯◯さんに聞く」
+    %% duration[3_9]: 10
+    3_5{&quot;改善する業務を選べた?&lt;br/&gt;⏱ 1 分&quot;}
+    %% duration[3_5]: 1
+    3_6[&quot;選べない理由を保留に記録する&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[3_6]: 選べないまま先へ進まない。選べない理由を書き、そのとき初めて「これは誰に聞けますか」と尋ねて相手の名前を記録して終わる
+    %% duration[3_6]: 5
+    3_7([&quot;End&quot;])
+    %% duration[3_7]: 0
+    3_8@{ shape: doc, label: &quot;重点業務リスト&quot; }
+    %% note[3_8]: process-abc.js の出力。順/業務名/時間/累積%/ランク/印の候補(根拠の語)。業務一覧の表そのものは変えない
+    %% duration[3_8]: 0
+  end
+  subgraph sg_1 [&quot;利用者&quot;]
+    direction TB
+    3_4[&quot;改善する業務を1〜2件選ぶ&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[3_4]: lane: human\n1〜2件だけ。全業務を一度に図解しようとすると頓挫する。B・Cランクを選んでもよいが、そのときは理由を書いてもらう(判定役が見る)。目的が「不要」の業務はここで選ばなくてよい — 次の工程でE(なくす)として扱う
+    %% duration[3_4]: 10
+  end
+    3_1 --&gt; 3_2
+    3_2 --&gt; 3_3
+    3_3 --&gt; 3_8
+    3_3 -.-&gt; 3_4
+    3_9 --&gt; 3_7
+    3_5 --&gt;|&quot;はい&quot;| 3_9
+    3_5 --&gt;|&quot;いいえ&quot;| 3_6
+    3_6 --&gt; 3_7
+    3_4 -.-&gt; 3_5</pre></details>
+<h3 id="d-4">子図 4 業務を図にする<span class="tag">ノード 11・エッジ 14・レーン 2</span></h3>
+<div class="crumb"><span class="here">4 業務を図にする</span><span class="depth">階層 1</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="4_1" id="r-4_1"><td><span class="nid">4_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="4_2" id="r-4_2"><td><span class="nid">4_2</span></td><td>業務ごとにプロジェクトを作りURLを一覧に書く<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 3 分</div></td><td><span class="s-d">設計のみ</span></td><td>create_project と URL の記録</td><td><span class="mech fence">柵</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 3-1. URL を「図の在りか」に書く。柵が他の図への書き換えを止める</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_3" id="r-4_3"><td><span class="nid">4_3</span></td><td>工程の案を出して聞く<div class="note" style="margin:2px 0 0">サブプロセス／process-improve／⏱ 15 分</div></td><td><span class="s-d">設計のみ</span></td><td>サブエージェント（ドリルダウン）</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 工程の案を出す役割で呼ばれたとき</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_6" id="r-4_6"><td><span class="nid">4_6</span></td><td>工程ごとの作業を描いて聞く<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 20 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §3-2</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 3-2. 工程ごとの作業を第二階層に描く。<code>process-coverage.js</code> が exit 0 になるまで進まない</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_9" id="r-4_9"><td><span class="nid">4_9</span></td><td>決まらない点を保留に記録する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>保留への記録</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>3往復を超えた点</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_10" id="r-4_10"><td><span class="nid">4_10</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="4_11" id="r-4_11"><td><span class="nid">4_11</span></td><td>業務の図<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>DrillSpark のプロジェクト</td><td><span class="mech none">—</span></td><td>—</td><td>判定役は <code>get_diagram</code> で読む</td><td class="nw">図.md</td></tr>
+<tr data-node-id="4_4" id="r-4_4"><td><span class="nid">4_4</span></td><td>工程の直したい所を言う<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（直したい所を言う）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 3-1.「一般例」の印から話し合う</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="4_5" id="r-4_5"><td><span class="nid">4_5</span></td><td>工程はこれでよい?<div class="note" style="margin:2px 0 0">分岐／利用者／⏱ 2 分</div></td><td><span class="s-d">設計のみ</span></td><td>承認ゲート②（上限3往復）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 【止まる②】工程の確認</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="4_7" id="r-4_7"><td><span class="nid">4_7</span></td><td>作業の直したい所を言う<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 15 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（直したい所を言う）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 3-2. 工程ごとに見せて問う</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="4_8" id="r-4_8"><td><span class="nid">4_8</span></td><td>作業はこれでよい?<div class="note" style="margin:2px 0 0">分岐／利用者／⏱ 2 分</div></td><td><span class="s-d">設計のみ</span></td><td>承認ゲート③（上限3往復）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 【止まる③】作業の確認</td><td class="nw">図.md 介入点の表</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    4_1([&quot;Start&quot;])
+    %% note[4_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:4_5(工程)と4_8(作業)の2つ / 実行:直したい所を言う / エスカレーション先:4_9で指名する相手 / 基準の決定:判定基準ファイル
+    %% duration[4_1]: 0
+    4_2[&quot;業務ごとにプロジェクトを作りURLを一覧に書く&lt;br/&gt;⏱ 3 分&quot;]
+    %% note[4_2]: 業務1つに1プロジェクト。名前は「部門名 / 業務名」。create_project の直後に返ったURLを業務一覧の「図の在りか」列に Write で書く — PreToolUse hook はこの列に無いプロジェクトへの update_diagram を止める(他人が作った図を読むだけで書き換えない、の柵)。選んだ業務が2件なら1件ずつこの工程を通す
+    %% duration[4_2]: 3
+    4_3[[&quot;工程の案を出して聞く&lt;br/&gt;⏱ 15 分&quot;]]
+    %% note[4_3]: 専門家役のサブエージェントが案を出す(ドリルダウン)。まず工程だけを第一階層に置き5〜10個に収める。白紙から言わせない。専門家役が補った箇所には「一般例」、聞けなかった箇所には「未確認」の印を付ける。保存前に mermaid を標準入力で diagram-lint に流す(ファイルには残さない)
+    %% duration[4_3]: 15
+    4_6[&quot;工程ごとの作業を描いて聞く&lt;br/&gt;⏱ 20 分&quot;]
+    %% note[4_6]: 工程を1つ開いて、その中の作業を第二階層に描く。作業が10個を超えたらノードを詰め込まずに階層をもう1段足す。ここでも聞けなかった箇所に「未確認」の印を付ける
+    %% duration[4_6]: 20
+    4_9[&quot;決まらない点を保留に記録する&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[4_9]: そのとき初めて「これは誰に聞けますか」と尋ねて相手の名前を記録する
+    %% duration[4_9]: 5
+    4_10([&quot;End&quot;])
+    %% duration[4_10]: 0
+    4_11@{ shape: doc, label: &quot;業務の図&quot; }
+    %% note[4_11]: DrillSparkのプロジェクト。第一階層が工程、第二階層が作業。未確認と一般例の印は備考に付いている。判定役は get_diagram で読む
+    %% duration[4_11]: 0
+  end
+  subgraph sg_1 [&quot;利用者&quot;]
+    direction TB
+    4_4[&quot;工程の直したい所を言う&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[4_4]: lane: human\n図を見ると口頭では出てこなかったことが出る。ここがDrillSparkを使う理由。話し合いは「一般例」の印が付いたノードから始める
+    %% duration[4_4]: 10
+    4_5{&quot;工程はこれでよい?&lt;br/&gt;⏱ 2 分&quot;}
+    %% note[4_5]: 上限3往復。骨格が違うと下の階層が全部無駄になるので、ここを固めてから作業に入る
+    %% duration[4_5]: 2
+    4_7[&quot;作業の直したい所を言う&lt;br/&gt;⏱ 15 分&quot;]
+    %% note[4_7]: 作業まで降りると「実はその前にもう1つやっている」が出てくる。工程の段階では出ない
+    %% duration[4_7]: 15
+    4_8{&quot;作業はこれでよい?&lt;br/&gt;⏱ 2 分&quot;}
+    %% note[4_8]: 上限3往復。3往復で合意に至らなければ、決まらなかった点を保留にして先へ進む。保留が残っていても図は完成してよい
+    %% duration[4_8]: 2
+  end
+    4_1 --&gt; 4_2
+    4_2 --&gt; 4_3
+    4_3 -.-&gt; 4_4
+    4_6 --&gt; 4_11
+    4_6 -.-&gt; 4_7
+    4_9 --&gt; 4_10
+    4_4 --&gt; 4_5
+    4_5 -.-&gt;|&quot;はい&quot;| 4_6
+    4_5 -.-&gt;|&quot;いいえ&quot;| 4_3
+    4_5 -.-&gt;|&quot;3往復を超えた&quot;| 4_9
+    4_7 --&gt; 4_8
+    4_8 -.-&gt;|&quot;はい&quot;| 4_10
+    4_8 -.-&gt;|&quot;いいえ&quot;| 4_6
+    4_8 -.-&gt;|&quot;3往復を超えた&quot;| 4_9</pre></details>
+<h3 id="d-4_3">子図 4_3 工程の案を出して聞く<span class="tag">ノード 8・エッジ 8・レーン 2</span></h3>
+<div class="crumb"><span class="">4 業務を図にする</span><i>›</i><span class="here">4_3 工程の案を出して聞く</span><span class="depth">階層 2</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="4_3_1" id="r-4_3_1"><td><span class="nid">4_3_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="4_3_2" id="r-4_3_2"><td><span class="nid">4_3_2</span></td><td>業務の種類から役割を決める<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 3 分</div></td><td><span class="s-d">設計のみ</span></td><td>役割を起動時に渡す</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 起動時に役割を渡されます</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_3_6" id="r-4_3_6"><td><span class="nid">4_3_6</span></td><td>一般例の印を付ける<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>「一般例」の印</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## いちばん重要なこと — 補った箇所が分かる形で返す</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_3_7" id="r-4_3_7"><td><span class="nid">4_3_7</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="4_3_3" id="r-4_3_3"><td><span class="nid">4_3_3</span></td><td>その業務の知識があるか?<div class="note" style="margin:2px 0 0">分岐／process-expert／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>agent 本文の判断</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 知識が足りなければ調べる</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_3_4" id="r-4_3_4"><td><span class="nid">4_3_4</span></td><td>ネットで調べる<div class="note" style="margin:2px 0 0">作業／process-expert／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>Web 検索（知識が足りないときだけ）</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>同上</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_3_5" id="r-4_3_5"><td><span class="nid">4_3_5</span></td><td>工程の案を出す<div class="note" style="margin:2px 0 0">作業／process-expert／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>工程→作業の割り当て表を返す</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 工程の案を出す役割で呼ばれたとき</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="4_3_8" id="r-4_3_8"><td><span class="nid">4_3_8</span></td><td>工程の案<div class="note" style="margin:2px 0 0">成果物／process-expert</div></td><td><span class="s-d">設計のみ</span></td><td>agent の返答（文章）</td><td><span class="mech none">—</span></td><td>—</td><td>Task の結果。ファイルには残さない</td><td class="nw">図.md</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    4_3_1([&quot;Start&quot;])
+    %% note[4_3_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:無し(出した案は親工程の「工程はこれでよい?」で利用者が承認する) / 実行:無し / エスカレーション先:親工程と同じ / 基準の決定:判定基準ファイル
+    %% duration[4_3_1]: 0
+    4_3_2[&quot;業務の種類から役割を決める&lt;br/&gt;⏱ 3 分&quot;]
+    %% note[4_3_2]: 「台本作成ならライター」のように業務の種類から役割を決める。役割は無限にあるので役割ごとにエージェントを作らない。1本のエージェントに役割を渡す
+    %% duration[4_3_2]: 3
+    4_3_6[&quot;一般例の印を付ける&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[4_3_6]: 利用者の回答から来ていないノードには全部「一般例。あなたの職場では違うかもしれない」と書く。もっともらしく埋まっている方が空白より承認されやすいので、話し合いはこの印から始める
+    %% duration[4_3_6]: 5
+    4_3_7([&quot;End&quot;])
+    %% duration[4_3_7]: 0
+  end
+  subgraph sg_1 [&quot;process-expert&quot;]
+    direction TB
+    4_3_3{&quot;その業務の知識があるか?&lt;br/&gt;⏱ 1 分&quot;}
+    %% note[4_3_3]: lane: agent\n専門家役が自分で判断する
+    %% duration[4_3_3]: 1
+    4_3_4[&quot;ネットで調べる&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[4_3_4]: Web検索。検索から得た工程も「一般例」の印の対象になる
+    %% duration[4_3_4]: 10
+    4_3_5[&quot;工程の案を出す&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[4_3_5]: 案を出すだけ。図は書かない。承認の場にも出てこない。図を描くのはprocess-improve本体で、合否を持つのは利用者
+    %% duration[4_3_5]: 10
+    4_3_8@{ shape: doc, label: &quot;工程の案&quot; }
+    %% note[4_3_8]: 工程の一覧(文章)。この時点ではまだ図になっていない
+    %% duration[4_3_8]: 0
+  end
+    4_3_1 --&gt; 4_3_2
+    4_3_2 -.-&gt; 4_3_3
+    4_3_6 --&gt; 4_3_7
+    4_3_3 --&gt;|&quot;いいえ&quot;| 4_3_4
+    4_3_3 --&gt;|&quot;はい&quot;| 4_3_5
+    4_3_4 --&gt; 4_3_5
+    4_3_5 --&gt; 4_3_8
+    4_3_5 -.-&gt; 4_3_6</pre></details>
+<h3 id="d-5">子図 5 改善案を出す<span class="tag">ノード 11・エッジ 12・レーン 2</span></h3>
+<div class="crumb"><span class="here">5 改善案を出す</span><span class="depth">階層 1</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="5_1" id="r-5_1"><td><span class="nid">5_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="5_2" id="r-5_2"><td><span class="nid">5_2</span></td><td>成功の形を提案する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §4-1</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 4-1. 成功の形を先に決める</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_4" id="r-5_4"><td><span class="nid">5_4</span></td><td>ECRSの順に一緒に考える<div class="note" style="margin:2px 0 0">サブプロセス／process-improve／⏱ 30 分</div></td><td><span class="s-d">設計のみ</span></td><td>サブエージェント（ドリルダウン）</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 業務改善コンサルの役割で呼ばれたとき</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_7" id="r-5_7"><td><span class="nid">5_7</span></td><td>誰がやるかで分けて優先度を付ける<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §4-4</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 4-4. 誰がやるかで分けて優先度を付ける</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_8" id="r-5_8"><td><span class="nid">5_8</span></td><td>決まらない点を保留に記録する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>保留への記録（決まった分は 5_7 へ合流）</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>相談先の名前を記録</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_9" id="r-5_9"><td><span class="nid">5_9</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="5_10" id="r-5_10"><td><span class="nid">5_10</span></td><td>改善案<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech fence">柵</span></td><td><code>業務改善/改善案.md</code></td><td>先頭に「成功の形」と「案が出なかった段階」。柵を通った表だけ</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_11" id="r-5_11"><td><span class="nid">5_11</span></td><td>保留<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>次に呼んだときの入口</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_3" id="r-5_3"><td><span class="nid">5_3</span></td><td>成功の形に合意する<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（合意する）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 4-1. 直すか頷くか</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="5_5" id="r-5_5"><td><span class="nid">5_5</span></td><td>案の引っかかる所を言う<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（引っかかる所を言う）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 4-3. 改善後の図を見比べる</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="5_6" id="r-5_6"><td><span class="nid">5_6</span></td><td>採用する案が決まった?<div class="note" style="margin:2px 0 0">分岐／利用者／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（選ぶ。上限3往復）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 4-3. 採用する案</td><td class="nw">図.md 介入点の表</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    5_1([&quot;Start&quot;])
+    %% note[5_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:無し。5_6は「選ぶ作業」であって承認ではない(承認ゲートは業務一覧・工程・作業の3つだけ。オーナー決定) / 実行:成功の形に合意する(5_3)・案の引っかかる所を言う(5_5)・案を選ぶ(5_6) / エスカレーション先:5_8で指名する相手 / 基準の決定:判定基準ファイル
+    %% duration[5_1]: 0
+    5_2[&quot;成功の形を提案する&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[5_2]: 業務ひとつ分でまとめて決める。作業ごとには決めない — 問いが増えて素人の手が止まる。「請求書処理が月2時間から1時間になれば成功」の形。一覧の「かかっている時間」列がそのまま分母になるので後から測れる。素人に数字を出させずAIが案と根拠を出す。改善案より先に決める — あとから決めると出した案に合わせて成功の線が動く
+    %% duration[5_2]: 10
+    5_4[[&quot;ECRSの順に一緒に考える&lt;br/&gt;⏱ 30 分&quot;]]
+    %% note[5_4]: 業務改善コンサルの役割を渡した専門家役が、なくす→まとめる→並び替える→簡単にする の順に問いかける(ドリルダウン)。Eの問いは「やめたら誰が困りますか」。ムダの印は工程3で付いたものを引き継ぐ — 図から拾い直さない。「未確認」の印が残ったノードは、確かめてから案を出す。確かめられないなら案を出さない。案が出なかった段階は理由を段階ごとに1行で受け取る
+    %% duration[5_4]: 30
+    5_7[&quot;誰がやるかで分けて優先度を付ける&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[5_7]: 誰がやるかで分ける — 人がやる(手順やルールを変えるだけ。今日から始められる)/AIに任せる(次の工程で依頼書になる)。混ざっていると人がやれば済む変更までAI待ちで止まる。優先度の根拠は「仕事の目的」への効き方だけ。時間の大きさで決めない。表の先頭は業務名の列(業務一覧との突き合わせの鍵)
+    %% duration[5_7]: 10
+    5_8[&quot;決まらない点を保留に記録する&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[5_8]: そのとき初めて「これは誰に聞けますか」と尋ねて相手の名前を記録する。記録したあと5_7へ合流する — 決まった分だけでも改善案として残す。ここで終わらせると成果物が1件も出ない
+    %% duration[5_8]: 5
+    5_9([&quot;End&quot;])
+    %% duration[5_9]: 0
+    5_10@{ shape: doc, label: &quot;改善案&quot; }
+    %% note[5_10]: 業務改善/ に置く。先頭に「成功の形」(業務に1つ)と「案が出なかった段階とその理由」(E・C・Rを検討した痕跡。無ければ判定役はS先行と読む)。表の列は 業務名/工程(ノードIDで始める)/ECRSのどれか/誰がやるか/優先度/出どころ(本人の答え・一般例)/改善案。hook の検査を通った表だけが書かれる
+    %% duration[5_10]: 0
+    5_11@{ shape: doc, label: &quot;保留&quot; }
+    %% note[5_11]: 決まらなかった点と相談先。次に呼んだときの入口になる。業務改善/ に置く
+    %% duration[5_11]: 0
+  end
+  subgraph sg_1 [&quot;利用者&quot;]
+    direction TB
+    5_3[&quot;成功の形に合意する&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[5_3]: lane: human\n利用者は直すか頷くだけでよい。ここを通らないと、成功の形がAIの提案のまま確定する
+    %% duration[5_3]: 5
+    5_5[&quot;案の引っかかる所を言う&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[5_5]: 案が合わないときは「どこが引っかかるか」を言う。それが5_4への戻りの入力になる。何も言えないまま選び直させない
+    %% duration[5_5]: 10
+    5_6{&quot;採用する案が決まった?&lt;br/&gt;⏱ 5 分&quot;}
+    %% note[5_6]: 上限3往復。いいえのときは5_4へ戻って案を作り直す — 同じ一覧を見せて選び直させない。全部やろうとしない。選ぶのは利用者でAIが決めない
+    %% duration[5_6]: 5
+  end
+    5_1 --&gt; 5_2
+    5_2 -.-&gt; 5_3
+    5_4 -.-&gt; 5_5
+    5_7 --&gt; 5_10
+    5_7 --&gt; 5_9
+    5_8 --&gt; 5_11
+    5_8 --&gt; 5_7
+    5_3 -.-&gt; 5_4
+    5_5 --&gt; 5_6
+    5_6 -.-&gt;|&quot;いいえ&quot;| 5_4
+    5_6 -.-&gt;|&quot;はい&quot;| 5_7
+    5_6 -.-&gt;|&quot;3往復を超えた&quot;| 5_8</pre></details>
+<h3 id="d-5_4">子図 5_4 ECRS の順に一緒に考える<span class="tag">ノード 9・エッジ 9・レーン 3</span></h3>
+<div class="crumb"><span class="">5 改善案を出す</span><i>›</i><span class="here">5_4 ECRS の順に一緒に考える</span><span class="depth">階層 2</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="5_4_1" id="r-5_4_1"><td><span class="nid">5_4_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="5_4_2" id="r-5_4_2"><td><span class="nid">5_4_2</span></td><td>業務改善コンサルの役割を渡す<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 2 分</div></td><td><span class="s-d">設計のみ</span></td><td>役割を渡す（同じ1本の agent）</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 起動時に役割を渡されます</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_4_7" id="r-5_4_7"><td><span class="nid">5_4_7</span></td><td>一般例の印を付ける<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 3 分</div></td><td><span class="s-d">設計のみ</span></td><td>「一般例」の印</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## いちばん重要なこと — 補った箇所が分かる形で返す</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_4_8" id="r-5_4_8"><td><span class="nid">5_4_8</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="5_4_9" id="r-5_4_9"><td><span class="nid">5_4_9</span></td><td>改善案の候補<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>agent の返答（案の一覧）</td><td><span class="mech none">—</span></td><td>—</td><td>Task の結果。採用は利用者</td><td class="nw">図.md</td></tr>
+<tr data-node-id="5_4_3" id="r-5_4_3"><td><span class="nid">5_4_3</span></td><td>なくす・まとめる・並び替える・簡単にする を順に問う<div class="note" style="margin:2px 0 0">作業／process-expert／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>E→C→R→S の順に1問ずつ</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>## 業務改善コンサルの役割で呼ばれたとき</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_4_5" id="r-5_4_5"><td><span class="nid">5_4_5</span></td><td>4段階とも聞いた?<div class="note" style="margin:2px 0 0">分岐／process-expert／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>agent 本文の判断（4段階で必ず止まる）</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>同上</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_4_6" id="r-5_4_6"><td><span class="nid">5_4_6</span></td><td>推奨と理由を付けて案を並べる<div class="note" style="margin:2px 0 0">作業／process-expert／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>推奨・理由・やらないとどうなるか</td><td><span class="mech agent">agent</span></td><td><code>agents/process-expert.md</code></td><td>同上</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="5_4_4" id="r-5_4_4"><td><span class="nid">5_4_4</span></td><td>いまのやり方とできない理由を答える<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（答える）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 4-2. ECRS の順に一緒に考える</td><td class="nw">図.md 介入点の表</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    5_4_1([&quot;Start&quot;])
+    %% note[5_4_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:無し(案は親工程で利用者が選ぶ) / 実行:問いに答える / エスカレーション先:親工程と同じ / 基準の決定:判定基準ファイル
+    %% duration[5_4_1]: 0
+    5_4_2[&quot;業務改善コンサルの役割を渡す&lt;br/&gt;⏱ 2 分&quot;]
+    %% note[5_4_2]: 専門家役に「業務改善コンサル」の役割を渡す。エージェントは増やさない。工程の案出しで使ったのと同じ1本
+    %% duration[5_4_2]: 2
+    5_4_7[&quot;一般例の印を付ける&lt;br/&gt;⏱ 3 分&quot;]
+    %% note[5_4_7]: 利用者の答えから出た案には付けない。コンサル役が一般論から出した案にだけ「一般例。あなたの職場では違うかもしれない」と書く。印を付けてから書類にする — 印の無い版を先に見せない
+    %% duration[5_4_7]: 3
+    5_4_8([&quot;End&quot;])
+    %% duration[5_4_8]: 0
+    5_4_9@{ shape: doc, label: &quot;改善案の候補&quot; }
+    %% note[5_4_9]: 案の一覧。推奨と根拠と一般例の印が付いている。まだ採用は決まっていない
+    %% duration[5_4_9]: 0
+  end
+  subgraph sg_1 [&quot;process-expert&quot;]
+    direction TB
+    5_4_3[&quot;なくす・まとめる・並び替える・簡単にする を順に問う&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[5_4_3]: lane: agent\n4段階を1つずつ。E:この作業、そもそも要りますか / C:この2つ、一度にできませんか / R:順番か担当を変えられませんか / S:もっと簡単にできませんか。素人に「改善案を出して」と聞かない。工程3で付いたムダの印と、図に残る「未確認」の印を材料にする
+    %% duration[5_4_3]: 5
+    5_4_5{&quot;4段階とも聞いた?&lt;br/&gt;⏱ 1 分&quot;}
+    %% note[5_4_5]: 4段階なので必ず止まる。回数の上限は要らない
+    %% duration[5_4_5]: 1
+    5_4_6[&quot;推奨と理由を付けて案を並べる&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[5_4_6]: 案ごとに 推奨/理由/やらないとどうなるか の3点を付ける。推奨を並べるだけだと「はい・はい・はい」で流れて何も決まらない。あわせて どの段階から出た案か(なくす/まとめる/並び替える/簡単にする)を値として残す — あとで「なくす案だけ集める」ができる
+    %% duration[5_4_6]: 10
+  end
+  subgraph sg_2 [&quot;利用者&quot;]
+    direction TB
+    5_4_4[&quot;いまのやり方とできない理由を答える&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[5_4_4]: lane: human\n現場を知っているのは利用者だけ。「できない理由」も答えとして拾う — それが次の段階の入力になる
+    %% duration[5_4_4]: 10
+  end
+    5_4_1 --&gt; 5_4_2
+    5_4_2 -.-&gt; 5_4_3
+    5_4_7 --&gt; 5_4_9
+    5_4_7 --&gt; 5_4_8
+    5_4_3 -.-&gt; 5_4_4
+    5_4_5 --&gt;|&quot;いいえ&quot;| 5_4_3
+    5_4_5 --&gt;|&quot;はい&quot;| 5_4_6
+    5_4_6 -.-&gt; 5_4_7
+    5_4_4 -.-&gt; 5_4_5</pre></details>
+<h3 id="d-6">子図 6 AI化依頼書を作る<span class="tag">ノード 12・エッジ 13・レーン 3</span></h3>
+<div class="crumb"><span class="here">6 AI化依頼書を作る</span><span class="depth">階層 1</span></div>
+
+<div class="wrap wide"><table><thead><tr class="grp"><th colspan="3">図から（決定論）</th><th class="add" colspan="5">転記（実装.md・合格条件.md）</th></tr><tr><th>ノード</th><th>工程</th><th>状態</th><th class="add">何になったか</th><th class="add">仕組み</th><th class="add">実装先ファイル</th><th class="add">箇所</th><th class="add">転記元</th></tr></thead><tbody>
+<tr data-node-id="6_1" id="r-6_1"><td><span class="nid">6_1</span></td><td>Start<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—（親工程の内側）</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="6_2" id="r-6_2"><td><span class="nid">6_2</span></td><td>AIに任せる工程の任せ方を提案する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 12 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §5</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 5. AI化依頼書を作る（H1〜H5 の提案）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_4" id="r-6_4"><td><span class="nid">6_4</span></td><td>承認が要る操作を3種挙げる<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §5</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 承認が要るかを利用者が決める（3種を挙げる）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_6" id="r-6_6"><td><span class="nid">6_6</span></td><td>削減見込みを計算する<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>skill 本文 §5</td><td><span class="mech plea">指示</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 5. 削減見込み（H1・H2 だけ）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_8" id="r-6_8"><td><span class="nid">6_8</span></td><td>埋まらない行を保留に回す<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>保留への記録</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>3回埋め直しても残った行</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_9" id="r-6_9"><td><span class="nid">6_9</span></td><td>AI化依頼書を書き出す<div class="note" style="margin:2px 0 0">作業／process-improve／⏱ 5 分</div></td><td><span class="s-d">設計のみ</span></td><td>Write で書き出し、判定役に見せる</td><td><span class="mech agent">agent</span></td><td><code>agents/process-improve-reviewer.md</code></td><td>SKILL.md ### 判定役に見てもらう → <code>Task</code></td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_10" id="r-6_10"><td><span class="nid">6_10</span></td><td>End<div class="note" style="margin:2px 0 0">開始／終了／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>—</td><td><span class="mech none">—</span></td><td>—</td><td>—</td><td class="nw">—</td></tr>
+<tr data-node-id="6_11" id="r-6_11"><td><span class="nid">6_11</span></td><td>AI化依頼書<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech fence">柵</span></td><td><code>業務改善/AI化依頼書.md</code></td><td>柵を通った表だけ（<code>--list 業務一覧.md</code>）</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_12" id="r-6_12"><td><span class="nid">6_12</span></td><td>保留<div class="note" style="margin:2px 0 0">成果物／process-improve</div></td><td><span class="s-d">設計のみ</span></td><td>成果物ファイル</td><td><span class="mech plea">指示</span></td><td><code>業務改善/保留.md</code></td><td>次に呼んだときの入口</td><td class="nw">実装.md 1節</td></tr>
+<tr data-node-id="6_3" id="r-6_3"><td><span class="nid">6_3</span></td><td>任せ方に合意する<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（合意する）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>## 5. 任せ方に頷くか直す</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="6_5" id="r-6_5"><td><span class="nid">6_5</span></td><td>承認の有無を決める<div class="note" style="margin:2px 0 0">作業／利用者／⏱ 10 分</div></td><td><span class="s-d">設計のみ</span></td><td>利用者の実行（決める）</td><td><span class="mech ask">確認</span></td><td><code>skills/process-improve/SKILL.md</code></td><td>### 承認が要るかを利用者が決める【人にしかできない作業】</td><td class="nw">図.md 介入点の表</td></tr>
+<tr data-node-id="6_7" id="r-6_7"><td><span class="nid">6_7</span></td><td>記入漏れが0件か?<div class="note" style="margin:2px 0 0">分岐／PreToolUse hook（決定論）／⏱ 1 分</div></td><td><span class="s-d">設計のみ</span></td><td>PreToolUse hook → 依頼書の lint</td><td><span class="mech fence">柵</span></td><td><code>scripts/process-write-guard.js</code></td><td>Write/Edit/Bash の matcher → <code>process-table-lint.js --list</code></td><td class="nw">実装.md 2節・4節 #5</td></tr>
+</tbody></table></div>
+<details class="dsrc"><summary>Mermaid 原文（DrillSpark から取得。生成行 click／classDef／style／linkStyle は省略）</summary><pre class="mermaid">flowchart TD
+  subgraph sg_0 [&quot;process-improve&quot;]
+    direction TB
+    6_1([&quot;Start&quot;])
+    %% note[6_1]: lane: agent\n人間の介入点 — 起動:親工程の内側なので単独の起動を持たない / 承認ゲート:無し(依頼書は改善案から機械的に組み立てる) / 実行:任せ方に合意する・承認が要るかを決める / エスカレーション先:6_8で指名する相手 / 基準の決定:判定基準ファイル
+    %% duration[6_1]: 0
+    6_2[&quot;AIに任せる工程の任せ方を提案する&lt;br/&gt;⏱ 12 分&quot;]
+    %% note[6_2]: 改善案のうち「誰がやるか」が「AIに任せる」の行だけを取り出し、工程ごとにH1〜H5を提案する。H1:AIが単独 H2:最小限の指示 H3:対等(AIと人が交互にやる) H4:人が主導しAIが補助 H5:ずっと人が付く。業務単位で「経理を自動化」と言わせない(工程はノードIDで始める)。「聞いた相手」がAIの推測の業務は載せない
+    %% duration[6_2]: 12
+    6_4[&quot;承認が要る操作を3種挙げる&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[6_4]: 3種を必ず3つとも挙げる — 外部への送信/データの更新/金銭が動く。該当しないものは「該当なし」と書く。省くと見落としたのか無いのかが読み分けられない
+    %% duration[6_4]: 5
+    6_6[&quot;削減見込みを計算する&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[6_6]: H1とH2の工程だけ。H3〜H5に削減時間を書かない — 人が主導する作業の短縮は測れない(書くと検査が落ちる)
+    %% duration[6_6]: 5
+    6_8[&quot;埋まらない行を保留に回す&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[6_8]: 3回埋め直しても残った行は依頼書から外して保留に回す。そのとき初めて「これは誰に聞けますか」と尋ねて相手の名前を記録する。埋まった分だけでも依頼書として出す
+    %% duration[6_8]: 5
+    6_9[&quot;AI化依頼書を書き出す&lt;br/&gt;⏱ 5 分&quot;]
+    %% note[6_9]: 列は 業務名/工程/任せ方(H1〜H5)/承認が要る操作/削減見込み。Write で書く。harness-implementが入っている環境ではそのまま入力になる。判定役(process-improve-reviewer)に見せ、MUSTの差し戻しは該当のゲートを取り直す
+    %% duration[6_9]: 5
+    6_10([&quot;End&quot;])
+    %% duration[6_10]: 0
+    6_11@{ shape: doc, label: &quot;AI化依頼書&quot; }
+    %% note[6_11]: 業務改善/ に置く。AIに任せる工程だけが載る。hook の検査(記入漏れ・定義に無い値・業務単位・H3〜H5の見込み・AIの推測の業務)を通った表だけが書かれる
+    %% duration[6_11]: 0
+    6_12@{ shape: doc, label: &quot;保留&quot; }
+    %% note[6_12]: 埋まらなかった行と相談先。次に呼んだときの入口になる
+    %% duration[6_12]: 0
+  end
+  subgraph sg_1 [&quot;利用者&quot;]
+    direction TB
+    6_3[&quot;任せ方に合意する&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[6_3]: lane: human\n提案に頷くか直すだけでよい。任せ方を決めるのは利用者
+    %% duration[6_3]: 10
+    6_5[&quot;承認の有無を決める&lt;br/&gt;⏱ 10 分&quot;]
+    %% note[6_5]: 「承認なし」と決めるのは可。決めていないのが不合格。全部に承認を挟むと自動化の意味が消え、全部外すと責任が宙に浮く
+    %% duration[6_5]: 10
+  end
+  subgraph sg_2 [&quot;PreToolUse hook（決定論）&quot;]
+    direction TB
+    6_7{&quot;記入漏れが0件か?&lt;br/&gt;⏱ 1 分&quot;}
+    %% note[6_7]: lane: system\nscripts/process-write-guard.js → process-table-lint.js --list 業務一覧.md。上限3回。H1〜H5/承認3種の判断/H3〜H5の削減見込み/工程がノードIDか/定義に無い値/AIの推測の業務 を機械で数え、落ちれば書かせない。このハーネスの合格条件そのもの
+    %% duration[6_7]: 1
+  end
+    6_1 --&gt; 6_2
+    6_2 -.-&gt; 6_3
+    6_4 -.-&gt; 6_5
+    6_6 -.-&gt; 6_7
+    6_8 --&gt; 6_12
+    6_8 --&gt; 6_9
+    6_9 --&gt; 6_11
+    6_9 --&gt; 6_10
+    6_3 -.-&gt; 6_4
+    6_5 -.-&gt; 6_6
+    6_7 -.-&gt;|&quot;いいえ&quot;| 6_2
+    6_7 -.-&gt;|&quot;はい&quot;| 6_9
+    6_7 -.-&gt;|&quot;3回埋め直しても残った&quot;| 6_8</pre></details></div></section>
+<section data-section="介入点" id="s-gates"><h2>人間の介入点（5種）<span class="tag">転記元: 合格条件.md 5節・図.md</span></h2><div class="wrap"><table id="t-gates"><thead><tr><th>種別</th><th>図・ノード</th><th>どのファイルのどこで止まるか</th><th>仕組み</th><th>実測</th></tr></thead><tbody><tr><td><strong>起動</strong></td><td><a class="jump" href="#r-1" data-goto="r-1"><span class="nid">1</span></a></td><td>利用者が skill <code>process-improve</code> を呼ぶ。自動起動しない</td><td><span class="mech plea">指示</span></td><td><span class="s-d">設計のみ</span></td></tr><tr><td><strong>承認ゲート（3つ）</strong></td><td><a class="jump" href="#r-2_9" data-goto="r-2_9"><span class="nid">2_9</span></a> <a class="jump" href="#r-4_5" data-goto="r-4_5"><span class="nid">4_5</span></a> <a class="jump" href="#r-4_8" data-goto="r-4_8"><span class="nid">4_8</span></a></td><td><code>skills/process-improve/SKILL.md</code> の【止まる①】業務一覧／【止まる②】工程／【止まる③】作業。<code>AskUserQuestion</code> で出す</td><td><span class="mech ask">確認</span></td><td><span class="s-d">設計のみ</span></td></tr><tr><td><strong>実行（9つ）</strong></td><td><a class="jump" href="#r-2_6" data-goto="r-2_6"><span class="nid">2_6</span></a> <a class="jump" href="#r-3_4" data-goto="r-3_4"><span class="nid">3_4</span></a> <a class="jump" href="#r-4_4" data-goto="r-4_4"><span class="nid">4_4</span></a> <a class="jump" href="#r-4_7" data-goto="r-4_7"><span class="nid">4_7</span></a> <a class="jump" href="#r-5_3" data-goto="r-5_3"><span class="nid">5_3</span></a> <a class="jump" href="#r-5_5" data-goto="r-5_5"><span class="nid">5_5</span></a> <a class="jump" href="#r-5_6" data-goto="r-5_6"><span class="nid">5_6</span></a> <a class="jump" href="#r-6_3" data-goto="r-6_3"><span class="nid">6_3</span></a> <a class="jump" href="#r-6_5" data-goto="r-6_5"><span class="nid">6_5</span></a></td><td>人間がやる作業。エージェントに代行させない。<code>SKILL.md</code> の各節で問う</td><td><span class="mech ask">確認</span></td><td><span class="s-d">設計のみ</span></td></tr><tr><td><strong>エスカレーション先</strong></td><td><a class="jump" href="#r-2_9" data-goto="r-2_9"><span class="nid">2_9</span></a> <a class="jump" href="#r-3_6" data-goto="r-3_6"><span class="nid">3_6</span></a> <a class="jump" href="#r-4_9" data-goto="r-4_9"><span class="nid">4_9</span></a> <a class="jump" href="#r-5_8" data-goto="r-5_8"><span class="nid">5_8</span></a> <a class="jump" href="#r-6_8" data-goto="r-6_8"><span class="nid">6_8</span></a> （ループ上限の備考）</td><td>詰まった時点で利用者が指名する相手を <code>業務改善/保留.md</code> に記録。開始時には決めさせない</td><td><span class="mech plea">指示</span></td><td><span class="s-d">設計のみ</span></td></tr><tr><td><strong>基準の決定</strong></td><td><a class="jump" href="#r-1" data-goto="r-1"><span class="nid">1</span></a> <a class="jump" href="#r-2_1" data-goto="r-2_1"><span class="nid">2_1</span></a> <a class="jump" href="#r-3_1" data-goto="r-3_1"><span class="nid">3_1</span></a> <a class="jump" href="#r-4_1" data-goto="r-4_1"><span class="nid">4_1</span></a> <a class="jump" href="#r-5_1" data-goto="r-5_1"><span class="nid">5_1</span></a> <a class="jump" href="#r-6_1" data-goto="r-6_1"><span class="nid">6_1</span></a> <a class="jump" href="#r-4_3_1" data-goto="r-4_3_1"><span class="nid">4_3_1</span></a> <a class="jump" href="#r-5_4_1" data-goto="r-5_4_1"><span class="nid">5_4_1</span></a> （全図の Start の備考）</td><td><code>reference/business-improvement-criteria.md</code>。利用者も AI も決めない。判定役が毎回読む</td><td><span class="mech fence">柵</span></td><td><span class="s-d">設計のみ</span></td></tr></tbody></table></div><p class="note">数え合わせ: 図の宣言（root の Start）＝ 図.md の表 ＝ 実ファイル の3点で一致。承認ゲートは3つだけで、5_6「採用する案が決まった?」は選ぶ作業であって承認ではない（オーナー決定）。</p></section>
+<section data-section="合格条件" id="s-tests"><h2>合格条件<span class="tag">凍結 2026-08-31（第2版まで）</span></h2><p class="sub" style="margin:0 0 .6rem">正本は <code>docs/harness/process-improve/処理/業務を改善する/合格条件.md</code>。実行は <code>bash tests/run.sh</code> と <code>claude plugin validate . --strict</code>。</p><div class="wrap"><table><thead><tr><th>#</th><th>条件</th><th>テストデータ</th><th>期待</th><th>結果</th></tr></thead><tbody><tr><td class="nw">1</td><td>表の lint が違反サンプルで意図した指摘を1件だけ出す</td><td><code>tests/ng-table-*.md</code>（<code>expect:</code> 行）</td><td>exit 2・コードと件数が一致</td><td>未記録（評価レポート無し）</td></tr><tr><td class="nw">2</td><td>合格サンプルが通る</td><td><code>tests/ok-table-*.md</code></td><td>exit 0</td><td>未記録</td></tr><tr><td class="nw">3</td><td>ABC 分析が A/B/C と印の候補を根拠の語つきで出す</td><td><code>tests/ok-table-abc.md</code></td><td>標準出力に順位と印</td><td>未記録</td></tr><tr><td class="nw">4</td><td>柵が 業務改善/ への不正な書き込みを止め、正しい表を通す</td><td>PreToolUse の JSON（<code>tests/run.sh</code> の柵の検査）</td><td>止める入力で exit 2・通す入力で exit 0</td><td>未記録</td></tr><tr><td class="nw">5</td><td>プラグインのマニフェストが通る</td><td><code>claude plugin validate . --strict</code></td><td>exit 0</td><td>未記録</td></tr></tbody></table></div><p class="note">「未記録」は評価レポートが無いという意味で、落ちたという意味ではない。開発時の <code>tests/run.sh</code> は全件が期待どおり。</p></section>
+<section data-section="成果物" id="s-products"><h2>成果物<span class="tag">転記元: 実装.md 1節・合格条件.md 1節</span></h2><div class="wrap"><table><thead><tr><th>#</th><th>パス</th><th>種別</th><th>由来（レーン／ノード）</th><th>実際はどこになったか</th></tr></thead><tbody><tr><td class="nw">1</td><td><code>skills/process-improve/SKILL.md</code></td><td>skill</td><td><a class="jump" href="#r-2" data-goto="r-2"><span class="nid">2</span></a> <a class="jump" href="#r-3" data-goto="r-3"><span class="nid">3</span></a> <a class="jump" href="#r-4" data-goto="r-4"><span class="nid">4</span></a> <a class="jump" href="#r-5" data-goto="r-5"><span class="nid">5</span></a> <a class="jump" href="#r-6" data-goto="r-6"><span class="nid">6</span></a> <a class="jump" href="#r-7" data-goto="r-7"><span class="nid">7</span></a></td><td>5工程が §1〜§5。疎通確認は「始める前に」</td></tr><tr><td class="nw">2</td><td><code>skills/process-improve/assets/棚卸しシート.html</code></td><td>入力画面（Artifact）</td><td><a class="jump" href="#r-2_5" data-goto="r-2_5"><span class="nid">2_5</span></a> <a class="jump" href="#r-3_9" data-goto="r-3_9"><span class="nid">3_9</span></a></td><td>§1 と §2 から公開し、<code>read_db</code> で読み戻す</td></tr><tr><td class="nw">3</td><td><code>agents/process-expert.md</code></td><td>agent</td><td><a class="jump" href="#r-4_3" data-goto="r-4_3"><span class="nid">4_3</span></a> <a class="jump" href="#r-5_4" data-goto="r-5_4"><span class="nid">5_4</span></a></td><td>役割を起動時に渡す汎用1本。Task で2回呼ぶ</td></tr><tr><td class="nw">4</td><td><code>agents/process-improve-reviewer.md</code></td><td>agent</td><td><a class="jump" href="#r-6_9" data-goto="r-6_9"><span class="nid">6_9</span></a></td><td>§5 末尾で判定。図には無い（判定は図の外）</td></tr><tr><td class="nw">5</td><td><code>reference/business-improvement-criteria.md</code></td><td>判定基準</td><td><a class="jump" href="#r-1" data-goto="r-1"><span class="nid">1</span></a></td><td>全図の Start「基準の決定＝判定基準ファイル」</td></tr><tr><td class="nw">6</td><td><code>reference/business-improvement-tables.md</code></td><td>表の定義</td><td><a class="jump" href="#r-9" data-goto="r-9"><span class="nid">9</span></a> <a class="jump" href="#r-11" data-goto="r-11"><span class="nid">11</span></a> <a class="jump" href="#r-12" data-goto="r-12"><span class="nid">12</span></a> <a class="jump" href="#r-13" data-goto="r-13"><span class="nid">13</span></a></td><td>4つの表の列と入る値</td></tr><tr><td class="nw">7</td><td><code>scripts/process-table-lint.js</code></td><td>スクリプト</td><td><a class="jump" href="#r-2_8" data-goto="r-2_8"><span class="nid">2_8</span></a> <a class="jump" href="#r-6_7" data-goto="r-6_7"><span class="nid">6_7</span></a></td><td>柵から呼ばれる</td></tr><tr><td class="nw">8</td><td><code>scripts/process-abc.js</code></td><td>スクリプト</td><td><a class="jump" href="#r-3_2" data-goto="r-3_2"><span class="nid">3_2</span></a> <a class="jump" href="#r-3_8" data-goto="r-3_8"><span class="nid">3_8</span></a></td><td>ABC 分析と印の候補</td></tr><tr><td class="nw">9</td><td><code>scripts/process-coverage.js</code></td><td>スクリプト</td><td><a class="jump" href="#r-4_6" data-goto="r-4_6"><span class="nid">4_6</span></a></td><td>全工程に第二階層があるか（§3-2 の出口条件）</td></tr><tr><td class="nw">10</td><td><code>scripts/process-write-guard.js</code> ＋ <code>hooks/hooks.json</code></td><td>hook（PreToolUse）</td><td><a class="jump" href="#r-2_8" data-goto="r-2_8"><span class="nid">2_8</span></a> <a class="jump" href="#r-6_7" data-goto="r-6_7"><span class="nid">6_7</span></a> <a class="jump" href="#r-4_2" data-goto="r-4_2"><span class="nid">4_2</span></a></td><td>表の lint と、記録に無い図への <code>update_diagram</code> を止める</td></tr></tbody></table></div><p class="note">実装.md 1節の突き合わせ結果を転記。§3.3 の一覧と実物にズレは無い。</p></section>
+<section data-section="ファイル→ノード" id="s-files"><h2>ファイル → ノード（逆引き）</h2><div class="wrap"><table><thead><tr><th>ファイル</th><th>部分</th><th>担う作業（ノード）</th><th>仕組み</th></tr></thead><tbody><tr><td rowspan="33"><code>skills/process-improve/SKILL.md</code></td><td>frontmatter <code>description</code>・「始める前に」</td><td><a class="jump" href="#r-1" data-goto="r-1"><span class="nid">1</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 1. 業務の一覧を作る</td><td><a class="jump" href="#r-2" data-goto="r-2"><span class="nid">2</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 2. 改善する業務を選ぶ</td><td><a class="jump" href="#r-3" data-goto="r-3"><span class="nid">3</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 3. 業務を図にする</td><td><a class="jump" href="#r-4" data-goto="r-4"><span class="nid">4</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 4. 改善案を出す</td><td><a class="jump" href="#r-5" data-goto="r-5"><span class="nid">5</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 5. AI化依頼書を作る</td><td><a class="jump" href="#r-6" data-goto="r-6"><span class="nid">6</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 次の業務へ進むか決める</td><td><a class="jump" href="#r-7" data-goto="r-7"><span class="nid">7</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>## 始める前に — DrillSpark に繋がるか確かめる</td><td><a class="jump" href="#r-2_2" data-goto="r-2_2"><span class="nid">2_2</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>同上「繋がっていなければ」</td><td><a class="jump" href="#r-2_3" data-goto="r-2_3"><span class="nid">2_3</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 1. 業務の一覧を作る（書き出し）</td><td><a class="jump" href="#r-2_7" data-goto="r-2_7"><span class="nid">2_7</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 1.「仕事の目的」の3値と「不要」の提示</td><td><a class="jump" href="#r-2_6" data-goto="r-2_6"><span class="nid">2_6</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 【止まる①】業務一覧の確認</td><td><a class="jump" href="#r-2_9" data-goto="r-2_9"><span class="nid">2_9</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>## 2. 改善する業務を選ぶ（印の候補）</td><td><a class="jump" href="#r-3_3" data-goto="r-3_3"><span class="nid">3_3</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 2. 選んだ業務の残り4項目</td><td><a class="jump" href="#r-3_9" data-goto="r-3_9"><span class="nid">3_9</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>## 2. 選べたか</td><td><a class="jump" href="#r-3_5" data-goto="r-3_5"><span class="nid">3_5</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 2. 1〜2件を選んでもらう</td><td><a class="jump" href="#r-3_4" data-goto="r-3_4"><span class="nid">3_4</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 3-1. URL を「図の在りか」に書く。柵が他の図への書き換えを止める</td><td><a class="jump" href="#r-4_2" data-goto="r-4_2"><span class="nid">4_2</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td>### 3-2. 工程ごとの作業を第二階層に描く。<code>process-coverage.js</code> が exit 0 になるまで進まない</td><td><a class="jump" href="#r-4_6" data-goto="r-4_6"><span class="nid">4_6</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>### 3-1.「一般例」の印から話し合う</td><td><a class="jump" href="#r-4_4" data-goto="r-4_4"><span class="nid">4_4</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 【止まる②】工程の確認</td><td><a class="jump" href="#r-4_5" data-goto="r-4_5"><span class="nid">4_5</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 3-2. 工程ごとに見せて問う</td><td><a class="jump" href="#r-4_7" data-goto="r-4_7"><span class="nid">4_7</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 【止まる③】作業の確認</td><td><a class="jump" href="#r-4_8" data-goto="r-4_8"><span class="nid">4_8</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 4-1. 成功の形を先に決める</td><td><a class="jump" href="#r-5_2" data-goto="r-5_2"><span class="nid">5_2</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>### 4-4. 誰がやるかで分けて優先度を付ける</td><td><a class="jump" href="#r-5_7" data-goto="r-5_7"><span class="nid">5_7</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>### 4-1. 直すか頷くか</td><td><a class="jump" href="#r-5_3" data-goto="r-5_3"><span class="nid">5_3</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 4-3. 改善後の図を見比べる</td><td><a class="jump" href="#r-5_5" data-goto="r-5_5"><span class="nid">5_5</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 4-3. 採用する案</td><td><a class="jump" href="#r-5_6" data-goto="r-5_6"><span class="nid">5_6</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 4-2. ECRS の順に一緒に考える</td><td><a class="jump" href="#r-5_4_4" data-goto="r-5_4_4"><span class="nid">5_4_4</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>## 5. AI化依頼書を作る（H1〜H5 の提案）</td><td><a class="jump" href="#r-6_2" data-goto="r-6_2"><span class="nid">6_2</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>### 承認が要るかを利用者が決める（3種を挙げる）</td><td><a class="jump" href="#r-6_4" data-goto="r-6_4"><span class="nid">6_4</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 5. 削減見込み（H1・H2 だけ）</td><td><a class="jump" href="#r-6_6" data-goto="r-6_6"><span class="nid">6_6</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>## 5. 任せ方に頷くか直す</td><td><a class="jump" href="#r-6_3" data-goto="r-6_3"><span class="nid">6_3</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td>### 承認が要るかを利用者が決める【人にしかできない作業】</td><td><a class="jump" href="#r-6_5" data-goto="r-6_5"><span class="nid">6_5</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td rowspan="2"><code>業務改善/業務一覧.md</code></td><td>列の定義は <code>reference/business-improvement-tables.md</code>。書く前に柵</td><td><a class="jump" href="#r-9" data-goto="r-9"><span class="nid">9</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td>柵を通った表だけが書かれる</td><td><a class="jump" href="#r-2_11" data-goto="r-2_11"><span class="nid">2_11</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td rowspan="2"><code>業務改善/改善案.md</code></td><td>書く前に柵（process-table-lint）</td><td><a class="jump" href="#r-11" data-goto="r-11"><span class="nid">11</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td>先頭に「成功の形」と「案が出なかった段階」。柵を通った表だけ</td><td><a class="jump" href="#r-5_10" data-goto="r-5_10"><span class="nid">5_10</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td rowspan="2"><code>業務改善/AI化依頼書.md</code></td><td>書く前に柵（<code>--list 業務一覧.md</code>）</td><td><a class="jump" href="#r-12" data-goto="r-12"><span class="nid">12</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td>柵を通った表だけ（<code>--list 業務一覧.md</code>）</td><td><a class="jump" href="#r-6_11" data-goto="r-6_11"><span class="nid">6_11</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td rowspan="6"><code>業務改善/保留.md</code></td><td>列は 何が決まらなかったか／相談先／いつ</td><td><a class="jump" href="#r-13" data-goto="r-13"><span class="nid">13</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>相談先の名前を記録して終わる</td><td><a class="jump" href="#r-3_6" data-goto="r-3_6"><span class="nid">3_6</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>3往復を超えた点</td><td><a class="jump" href="#r-4_9" data-goto="r-4_9"><span class="nid">4_9</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>相談先の名前を記録</td><td><a class="jump" href="#r-5_8" data-goto="r-5_8"><span class="nid">5_8</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>次に呼んだときの入口</td><td><a class="jump" href="#r-5_11" data-goto="r-5_11"><span class="nid">5_11</span></a> <a class="jump" href="#r-6_12" data-goto="r-6_12"><span class="nid">6_12</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td>3回埋め直しても残った行</td><td><a class="jump" href="#r-6_8" data-goto="r-6_8"><span class="nid">6_8</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td rowspan="1"><code>reference/drillspark-setup.md</code></td><td>## 業務改善（process-improve）の利用者に案内するとき</td><td><a class="jump" href="#r-2_4" data-goto="r-2_4"><span class="nid">2_4</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td rowspan="1"><code>skills/process-improve/assets/棚卸しシート.html</code></td><td>SKILL.md ### 入力画面で書いてもらう</td><td><a class="jump" href="#r-2_5" data-goto="r-2_5"><span class="nid">2_5</span></a></td><td><span class="mech ask">確認</span></td></tr><tr><td rowspan="2"><code>scripts/process-write-guard.js</code></td><td>Write/Edit/Bash の matcher → <code>process-table-lint.js</code></td><td><a class="jump" href="#r-2_8" data-goto="r-2_8"><span class="nid">2_8</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td>Write/Edit/Bash の matcher → <code>process-table-lint.js --list</code></td><td><a class="jump" href="#r-6_7" data-goto="r-6_7"><span class="nid">6_7</span></a></td><td><span class="mech fence">柵</span></td></tr><tr><td rowspan="1"><code>scripts/process-abc.js</code></td><td>累積割合で A/B/C。<code>--abc 70,90</code></td><td><a class="jump" href="#r-3_2" data-goto="r-3_2"><span class="nid">3_2</span></a></td><td><span class="mech plea">指示</span></td></tr><tr><td rowspan="6"><code>agents/process-expert.md</code></td><td>## 工程の案を出す役割で呼ばれたとき</td><td><a class="jump" href="#r-4_3" data-goto="r-4_3"><span class="nid">4_3</span></a> <a class="jump" href="#r-4_3_5" data-goto="r-4_3_5"><span class="nid">4_3_5</span></a></td><td><span class="mech agent">agent</span></td></tr><tr><td>## 起動時に役割を渡されます</td><td><a class="jump" href="#r-4_3_2" data-goto="r-4_3_2"><span class="nid">4_3_2</span></a> <a class="jump" href="#r-5_4_2" data-goto="r-5_4_2"><span class="nid">5_4_2</span></a></td><td><span class="mech agent">agent</span></td></tr><tr><td>## いちばん重要なこと — 補った箇所が分かる形で返す</td><td><a class="jump" href="#r-4_3_6" data-goto="r-4_3_6"><span class="nid">4_3_6</span></a> <a class="jump" href="#r-5_4_7" data-goto="r-5_4_7"><span class="nid">5_4_7</span></a></td><td><span class="mech agent">agent</span></td></tr><tr><td>## 知識が足りなければ調べる</td><td><a class="jump" href="#r-4_3_3" data-goto="r-4_3_3"><span class="nid">4_3_3</span></a></td><td><span class="mech agent">agent</span></td></tr><tr><td>同上</td><td><a class="jump" href="#r-4_3_4" data-goto="r-4_3_4"><span class="nid">4_3_4</span></a> <a class="jump" href="#r-5_4_5" data-goto="r-5_4_5"><span class="nid">5_4_5</span></a> <a class="jump" href="#r-5_4_6" data-goto="r-5_4_6"><span class="nid">5_4_6</span></a></td><td><span class="mech agent">agent</span></td></tr><tr><td>## 業務改善コンサルの役割で呼ばれたとき</td><td><a class="jump" href="#r-5_4" data-goto="r-5_4"><span class="nid">5_4</span></a> <a class="jump" href="#r-5_4_3" data-goto="r-5_4_3"><span class="nid">5_4_3</span></a></td><td><span class="mech agent">agent</span></td></tr><tr><td rowspan="1"><code>agents/process-improve-reviewer.md</code></td><td>SKILL.md ### 判定役に見てもらう → <code>Task</code></td><td><a class="jump" href="#r-6_9" data-goto="r-6_9"><span class="nid">6_9</span></a></td><td><span class="mech agent">agent</span></td></tr></tbody></table></div></section>
+<section data-section="実ファイル" id="s-src"><h2>実ファイル<span class="tag">効いている部分の抜粋。1ファイル最大 40 行</span></h2><p class="note" style="margin:0 0 .5rem">部分をクリック（または Enter）すると図のノードと表の行が選択されて戻れる。</p><details class="file" id="f-skills-process-improve-SKILL-md"><summary>skills/process-improve/SKILL.md<span class="meta">抜粋 4 箇所（効いている部分だけ。全文は埋め込まない）</span></summary><pre class="src"><span class="part" id="p-skills-process-improve-SKILL-md-2_9-137" data-ref="2_9" data-label="ノード 2_9 承認ゲート① 業務一覧の確認（137〜145行）" tabindex="0" style="counter-reset: ln 136"><span class="ln">### 【止まる①】業務一覧の確認</span><span class="ln"></span><span class="ln">「仕事の目的」列が全行埋まった（保留を含む）時点で止まり、`AskUserQuestion` で</span><span class="ln">「この一覧で進める／直したい行がある」を問います。**上限3往復。** 3往復で決まらない行は</span><span class="ln">`保留：◯◯さんに聞く` にして先へ進みます。</span><span class="ln">通ったら `業務改善/進行.md` に `| ①業務一覧の確認 | 日付 | 利用者の言葉 |` を1行追記します（無ければ雛形 6節の形で作る）。</span><span class="ln"></span><span class="ln">---</span><span class="ln"></span></span><span class="part" id="p-skills-process-improve-SKILL-md-4_5-233" data-ref="4_5" data-label="ノード 4_5 承認ゲート② 工程の確認（233〜238行）" tabindex="0" style="counter-reset: ln 232"><span class="ln">### 【止まる②】工程の確認</span><span class="ln"></span><span class="ln">**上限3往復。** 骨格が違うと下の階層が全部無駄になるので、ここを固めてから作業に入ります。</span><span class="ln">3往復で合意に至らなければ、決まらなかった点を `業務改善/保留.md`（何が決まらなかったか／相談先／いつ）に書いて先へ進みます。</span><span class="ln">通ったら `業務改善/進行.md` に `| ②工程の確認（業務名） | 日付 | 利用者の言葉 |` を1行追記します。</span><span class="ln"></span></span><span class="part" id="p-skills-process-improve-SKILL-md-4_8-266" data-ref="4_8" data-label="ノード 4_8 承認ゲート③ 作業の確認（266〜277行）" tabindex="0" style="counter-reset: ln 265"><span class="ln">### 【止まる③】作業の確認</span><span class="ln"></span><span class="ln">**止まる③は、上の 3-2 で工程ごとに問うた確認そのものです**（工程の数だけ回る、1種類の止まる場所）。</span><span class="ln">全工程が exit 0 になったら、最後に1回だけ「全工程の作業を確認しました。図はこの形で進めます」と DrillSpark のリンクを添えて</span><span class="ln">伝えます — ここで作業をもう一度並べ直しません。決まらなかった点は `業務改善/保留.md` に書きます。</span><span class="ln">保留が残っていても図は完成してよいことにします。</span><span class="ln">通ったら `業務改善/進行.md` に `| ③作業の確認（業務名） | 日付 | 利用者の言葉 |` を1行追記します。</span><span class="ln"></span><span class="ln">承認された図は判定役も読みます（`get_diagram` で取る）。**mermaid をファイルに残す必要はありません。**</span><span class="ln"></span><span class="ln">---</span><span class="ln"></span></span><span class="part" id="p-skills-process-improve-SKILL-md-1-445" data-ref="1" data-label="ノード 1 人が止まる場所は3つだけ（445〜458行）" tabindex="0" style="counter-reset: ln 444"><span class="ln">## 人が止まる場所は3つだけ</span><span class="ln"></span><span class="ln">| | |</span><span class="ln">|---|---|</span><span class="ln">| **起動** | 利用者が呼ぶ。**自動で始まりません** |</span><span class="ln">| **確認**（止まって可否を問う） | ①業務一覧 ②各業務の工程 ③各業務の作業 の**3つ** |</span><span class="ln">| **人にしかできない作業**（止まらないが代行しない） | **9つ** — 仕事の目的を答える（§1）／ 改善する業務を選ぶ（§2）／&lt;br&gt;直したい所を言う（§3 の工程と作業）／ 成功の形に合意する（§4-1）／ 案の引っかかる所を言う（§4-3）／ 案を選ぶ（§4-3）／&lt;br&gt;任せ方に合意する（§5）／ **承認が要るかを決める（§5）** ／&lt;br&gt;**次の業務へ進むか決める**（末尾）。正本はプラグイン同梱の `${CLAUDE_PLUGIN_ROOT}/docs/harness/process-improve/処理/業務を改善する/合格条件.md` 5節 |</span><span class="ln">| **分からないときの相手** | **詰まった時点で指名してもらう。開始時には決めさせない** |</span><span class="ln">| **合否の線** | [`reference/business-improvement-criteria.md`](../../reference/business-improvement-criteria.md)。**利用者も AI も決めません** |</span><span class="ln"></span><span class="ln">**「確認」と「人にしかできない作業」は別物です。**</span><span class="ln">確認は**止まって可否を問う**場所で3つだけ。人にしかできない作業は**止まらないが代行しない**もので9つあります。</span><span class="ln">承認が要るかの判断と、次の業務へ進むかの判断は、**どちらも後者**です。</span><span class="ln"></span></span></pre></details>
+<details class="file" id="f-scripts-process-write-guard-js"><summary>scripts/process-write-guard.js<span class="meta">抜粋 1 箇所（効いている部分だけ。全文は埋め込まない）</span></summary><pre class="src"><span class="part" id="p-scripts-process-write-guard-js-2_8-1" data-ref="2_8" data-label="ノード 2_8 書く前に効く柵（ヘッダ）（1〜30行）" tabindex="0" style="counter-reset: ln 0"><span class="ln">#!/usr/bin/env node</span><span class="ln">/**</span><span class="ln"> * process-write-guard — 業務改善の表と1枚を書く瞬間に効く柵（PreToolUse hook）。</span><span class="ln"> *</span><span class="ln"> *   stdin: Claude Code の PreToolUse hook が渡す JSON（tool_name / tool_input / cwd）</span><span class="ln"> *   exit 0 = 通す / exit 2 = 止める（stderr の文面がそのままエージェントに渡る）</span><span class="ln"> *   環境変数 DRILLSPARK_HARNESS_GUARDS=off で柵を切る（全部 exit 0）</span><span class="ln"> *</span><span class="ln"> * 見るのは4つだけ。それ以外は素通し（他の skill の動作を邪魔しない）:</span><span class="ln"> *   1. `業務改善/` 配下（サブフォルダ含む）の .md / .markdown への Write / Edit —</span><span class="ln"> *      書いたあとの中身を process-table-lint に通し、落ちれば書かせない。</span><span class="ln"> *      `業務改善/` 直下に 業務一覧.md があれば突き合わせ（--list）も掛ける。</span><span class="ln"> *      プラグインの固定名（業務一覧.md・改善案.md・AI化依頼書.md・保留.md）は中身に関係なく必ず検査する。</span><span class="ln"> *      それ以外の .md は、表を持たない（教訓.md）か、業務改善の表を1つも認識できない（lint が SYNTAX を返す</span><span class="ln"> *      別件の議事録など。空行で切れた続きの ORPHAN_ROW が伴ってもよい）なら対象外</span><span class="ln"> *   2. `業務改善/` 配下の .html / .htm への Write / Edit — process-plan-lint に通す。</span><span class="ln"> *      上書きは止めない（1枚は上書きが設計）。固定名 改善計画-*.html は印が無くても必ず検査し、</span><span class="ln"> *      それ以外で `data-block=` を1つも持たない HTML はこのプラグインの1枚ではないので対象外</span><span class="ln"> *   3. Bash — 見るのは書き込みの宛先だけ。`業務改善/` へのリダイレクト（&gt; &gt;&gt; tee）、</span><span class="ln"> *      宛先が `業務改善/` の cp / mv / install と sed -i、それに cwd が 業務改善/ 配下か</span><span class="ln"> *      コマンドに `cd …業務改善` があるときのファイルへのリダイレクトを止める</span><span class="ln"> *      （表は Write で書く — hook が中身を見られるように）。語が含まれるだけでは止めない。</span><span class="ln"> *      加えて、`業務改善/` のパスを含む python / perl / ruby / php の実行、`node -e`、PowerShell の</span><span class="ln"> *      書き込みコマンドレット（Set-Content / Out-File / Add-Content）も止める — 実際に python のヒアドキュメントで</span><span class="ln"> *      業務一覧.md が書き換えられ、表の検査が走らなかった。`node &lt;ファイル&gt;` は lint の呼び方なので止めない</span><span class="ln"> *   4. DrillSpark の update_diagram — cwd に 業務改善/業務一覧.md か docs/harness/ があるとき、</span><span class="ln"> *      そのプロジェクトIDが 業務一覧.md（「図の在りか」列）にも docs/harness/ 配下の .md にも無ければ止める</span><span class="ln"> *      （他人が作ったプロジェクトを書き換えない、の柵）。自分で作った図は create_project の直後に URL を書く —</span><span class="ln"> *      process-improve は 業務一覧.md の「図の在りか」、harness-implement は 処理/&lt;処理名&gt;/図.md、</span><span class="ln"> *      harness-improve は 改善/&lt;日付&gt;.md。ハーネスの図の URL を 業務一覧.md に書くと、あの列の「改善後:」は</span></span></pre></details>
+<details class="file" id="f-scripts-process-abc-js"><summary>scripts/process-abc.js<span class="meta">抜粋 1 箇所（効いている部分だけ。全文は埋め込まない）</span></summary><pre class="src"><span class="part" id="p-scripts-process-abc-js-3_2-1" data-ref="3_2" data-label="ノード 3_2 ABC 分析（ヘッダ）（1〜12行）" tabindex="0" style="counter-reset: ln 0"><span class="ln">#!/usr/bin/env node</span><span class="ln">/**</span><span class="ln"> * process-abc — 業務一覧から ABC 分析（重点分析）を決定論で出す。</span><span class="ln"> *</span><span class="ln"> *   node &quot;$CLAUDE_PLUGIN_ROOT/scripts/process-abc.js&quot; 業務改善/業務一覧.md [--abc 70,90]</span><span class="ln"> *   標準入力から流す場合: ... | node &quot;$CLAUDE_PLUGIN_ROOT/scripts/process-abc.js&quot; - [--abc 70,90]</span><span class="ln"> *</span><span class="ln"> * 依存なし。exit 0 = 出せた / 1 = 実行エラー（表が無い・時間が1件も読めない）</span><span class="ln"> *</span><span class="ln"> * なぜ要るか:</span><span class="ln"> *   skill は「機械で計算する。利用者に判断させない」と書くが、計算する部品が無ければ</span><span class="ln"> *   LLM の暗算になる。累積割合の閾値判定は LLM が外す典型で、そこだけ決定論にする。</span></span></pre></details>
+<details class="file" id="f-agents-process-expert-md"><summary>agents/process-expert.md<span class="meta">抜粋 1 箇所（効いている部分だけ。全文は埋め込まない）</span></summary><pre class="src"><span class="part" id="p-agents-process-expert-md-4_3_6-35" data-ref="4_3_6" data-label="ノード 4_3_6 補った箇所が分かる形で返す（35〜48行）" tabindex="0" style="counter-reset: ln 34"><span class="ln">## いちばん重要なこと — 補った箇所が分かる形で返す</span><span class="ln"></span><span class="ln">あなたが出す案には2種類が混ざります。</span><span class="ln"></span><span class="ln">| 出どころ | 扱い |</span><span class="ln">|---|---|</span><span class="ln">| **利用者が答えたこと**から組み立てた部分 | そのまま |</span><span class="ln">| **あなたが一般論から補った部分** | **「一般例」と明示して返す** |</span><span class="ln"></span><span class="ln">**どれを補ったかを必ず区別して返してください。** 呼び出し側がその印を図に付けます。</span><span class="ln"></span><span class="ln">区別せずに返すと、**もっともらしく埋まった一般論が、確かめた事実として図に定着します。**</span><span class="ln">空欄なら気づかれますが、流暢な提案は気づかれません。**あなたの出力はそこが危険です。**</span><span class="ln"></span></span></pre></details></section>
+<section data-section="未完" id="s-open"><h2>未完</h2><ul><li>評価レポート（<code>評価/</code>）が無いため、全工程が「設計のみ」。実測が入れば状態が変わる</li><li>図の備考の逐語は DrillSpark にしかない（<code>図.md</code> の介入点表は後追いの記録）</li></ul><p>出典: <a href="https://drillspark.io/">DrillSpark</a></p></section>
+<footer>1ファイル完結・外部読み込みゼロ ／ 必須の節7つ＋任意の節3つ ／ <code>data-node-id</code> は表の行だけ（図と逆引きは <code>data-ref</code>）／ 生成: harness-view-build</footer>
+</main>
+<script>
+// このページ内だけで完結する（外部読み込みは無い）。
+// 1) 表の「実装先／箇所」→ 実ファイルの該当部分を開いて光らせる
+// 2) 図のノード → 表の行を選択して飛ぶ
+// 3) 実ファイルの部分 → 図のノードと表の行を選択して飛ぶ
+// 4) 状態で行を絞り込む
+(function () {
+  function flash(el) {
+    var prev = document.querySelector('.part.flash');
+    if (prev) prev.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+  function select(ref) {
+    document.querySelectorAll('.sel').forEach(function (e) { e.classList.remove('sel'); });
+    if (!ref) return;
+    // 属性名と = を分けて書く: lint は「data-node-id=」の並びを属性として拾うので、スクリプト内に並べない
+    document.querySelectorAll('[data-node-id' + '="' + ref + '"]').forEach(function (e) { e.classList.add('sel'); });
+    document.querySelectorAll('svg a[data-ref="' + ref + '"], .part[data-ref="' + ref + '"]').forEach(function (e) { e.classList.add('sel'); });
+  }
+  function goTo(id) {
+    var target = document.getElementById(id);
+    if (!target) return;
+    var d = target.closest('details');
+    if (d) d.open = true;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (target.classList.contains('part')) flash(target);
+    if (target.hasAttribute('tabindex')) target.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('click', function (e) {
+    var jump = e.target.closest ? e.target.closest('a.jump') : null;
+    if (jump) {
+      e.preventDefault();
+      var id = jump.getAttribute('data-goto');
+      var t = document.getElementById(id);
+      select(t && t.getAttribute('data-ref'));
+      goTo(id);
+      return;
+    }
+    var node = e.target.closest ? e.target.closest('svg a[data-ref]') : null;
+    if (node) {
+      e.preventDefault();
+      select(node.getAttribute('data-ref'));
+      goTo(node.getAttribute('href').slice(1));
+      return;
+    }
+    var part = e.target.closest ? e.target.closest('.part[data-ref]') : null;
+    if (part) {
+      var ref = part.getAttribute('data-ref');
+      select(ref);
+      goTo('r-' + ref);
+      return;
+    }
+    var btn = e.target.closest ? e.target.closest('.filter button') : null;
+    if (btn) {
+      var f = btn.getAttribute('data-filter');
+      btn.parentNode.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+      document.querySelectorAll('#t-steps tr[data-node-id], #t-gates tr[data-node-id]').forEach(function (tr) {
+        var st = tr.querySelector('.s-t, .s-s, .s-d');
+        tr.hidden = !!f && !(st && st.classList.contains(f));
+      });
+    }
+  });
+  // 実ファイルの部分は Enter でも飛べる（キーボード到達性）
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var part = e.target.closest ? e.target.closest('.part[data-ref]') : null;
+    if (!part) return;
+    e.preventDefault();
+    select(part.getAttribute('data-ref'));
+    goTo('r-' + part.getAttribute('data-ref'));
+  });
+})();
+</script>
+</body>
+</html>

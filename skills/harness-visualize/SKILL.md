@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Grep, Glob, Bash, mcp__drillspark__get_project, mcp_
 
 # harness-visualize — 処理1つを1枚の HTML にする
 
+両環境で共通の工程・承認・成果物の意味は [ワークフロー契約](../../reference/workflow-contract.md) を読む。
+
 **これは処理であって工程ではない。** `目的を考える → … → 評価する →（改善する）` の連鎖には入らない。
 `設計.md` を持つハーネスなら、**処理ごとに・いつでも**単独で呼べる。標準は〈評価する〉の直後。
 

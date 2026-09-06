@@ -2,6 +2,11 @@
 
 > English: [README.md](README.md)
 
+導入先を選べます。このページの手順は **Claude Code版** です。
+**[Codex preview版の導入はこちら](plugins/drillspark-harness-codex/README.md)**。
+業務の手順・評価基準・検証スクリプトは共通で、プラグインは別々に導入できます。
+Codexの実機での有効化・MCP作図は [公開前の確認表](docs/codex-release-checklist.md) で別途確認します。
+
 **Claude Code の設定を、先に業務の図を描いてから作る。作ったものは、作った AI とは別の AI が採点する。**
 
 ## どんな問題を解くか

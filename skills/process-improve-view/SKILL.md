@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Glob, Grep, Bash, AskUserQuestion, mcp__drillspark__
 
 # process-improve-view — 改善計画を1枚にする
 
+両環境で共通の工程・承認・成果物の意味は [ワークフロー契約](../../reference/workflow-contract.md) を読む。
+
 **業務ひとつを指定して単独で呼べます。** `process-improve` の連鎖には入りません。
 
 ```text

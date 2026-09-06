@@ -1,0 +1,164 @@
+{
+  "harness": "process-improve",
+  "process": "業務を改善する",
+  "date": "2026-09-05",
+  "materials": "可視化 1枚 ／ 処理「業務を改善する」／ 材料は <code>docs/harness/process-improve/</code> の設計・図・凍結した合格条件・実装の記録と、プラグインの実ファイル",
+  "banner": "評価レポート（<code>評価/</code>）が無い1枚。全工程の状態は「設計のみ ○」。実装先は実ファイルと突き合わせた実物。",
+  "purpose": "業務改善をやったことのない人が、自分の仕事を棚卸しし、図にして、AI に任せる部分を決められるようにする。成功指標: 記入漏れ 0 件 — AI化候補の H1〜H5 ／ 承認の有無 ／ 業務一覧の測り方（MUST）。",
+  "titles": { "root": "業務を改善する", "2": "業務の一覧を作る", "3": "改善する業務を選ぶ", "4": "業務を図にする", "4_3": "工程の案を出して聞く", "5": "改善案を出す", "5_4": "ECRS の順に一緒に考える", "6": "AI化依頼書を作る" },
+  "parent": { "4_3": "4", "5_4": "5" },
+  "harnessMap": {
+    "note": "このハーネス（プラグイン）は2つの処理でできている。この1枚は処理1。",
+    "cards": [
+      { "name": "1 業務を改善する", "short": "処理1", "me": true, "state": "実装済み（凍結 2026-08-31）", "start": "利用者が skill <code>process-improve</code> を呼ぶ", "products": "<code>業務改善/</code> に 業務一覧・改善案・AI化依頼書・保留 と DrillSpark の図", "gates": "起動 1／承認ゲート 3／実行 9" },
+      { "name": "2 改善計画を1枚にする", "short": "処理2", "me": false, "state": "実装済み", "start": "利用者が skill <code>process-improve-view</code> を呼ぶ", "products": "<code>業務改善/改善計画-&lt;業務&gt;.html</code>", "gates": "起動 1／承認ゲート 0／実行 0" }
+    ],
+    "shared": [
+      { "part": "判定基準", "where": "<code>reference/business-improvement-criteria.md</code>", "cols": ["判定役が毎回読む", "判定役が毎回読む"] },
+      { "part": "hook（PreToolUse）", "where": "<code>hooks/hooks.json</code> → <code>scripts/process-write-guard.js</code>", "cols": ["表と図の書き込みを止める", "1枚の書き込みを止める"] },
+      { "part": "専門家役", "where": "<code>agents/process-expert.md</code>", "cols": ["工程の案出し・ECRS の問いかけ", "呼ばない"] }
+    ],
+    "totals": "介入点の総数: 起動 2／承認ゲート 3／実行 9／エスカレーション先は利用者が指名／基準の決定は判定基準ファイル。"
+  },
+  "nodes": {
+    "1": { "what": "起動（利用者が skill を呼ぶ）", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "frontmatter <code>description</code>・「始める前に」", "src": "図.md 介入点の表", "status": "d" },
+    "2": { "what": "skill 本文 §1", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 1. 業務の一覧を作る", "src": "実装.md 1節", "status": "d" },
+    "3": { "what": "skill 本文 §2", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 2. 改善する業務を選ぶ", "src": "実装.md 1節", "status": "d" },
+    "9": { "what": "成果物ファイル", "mech": "fence", "file": "業務改善/業務一覧.md", "where": "列の定義は <code>reference/business-improvement-tables.md</code>。書く前に柵", "src": "実装.md 1節", "status": "d" },
+    "4": { "what": "skill 本文 §3", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 3. 業務を図にする", "src": "実装.md 1節", "status": "d" },
+    "10": { "what": "DrillSpark のプロジェクト（業務1つに1つ）", "mech": "fence", "file": "—", "where": "URL は 業務一覧「図の在りか」。無い図への <code>update_diagram</code> は柵が止める", "src": "図.md", "status": "d" },
+    "5": { "what": "skill 本文 §4", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 4. 改善案を出す", "src": "実装.md 1節", "status": "d" },
+    "6": { "what": "skill 本文 §5", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 5. AI化依頼書を作る", "src": "実装.md 1節", "status": "d" },
+    "7": { "what": "人間の判断（上限を置かないループ）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "## 次の業務へ進むか決める", "src": "図.md", "status": "d" },
+    "8": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "11": { "what": "成果物ファイル", "mech": "fence", "file": "業務改善/改善案.md", "where": "書く前に柵（process-table-lint）", "src": "実装.md 1節", "status": "d" },
+    "12": { "what": "成果物ファイル", "mech": "fence", "file": "業務改善/AI化依頼書.md", "where": "書く前に柵（<code>--list 業務一覧.md</code>）", "src": "実装.md 1節", "status": "d" },
+    "13": { "what": "成果物ファイル", "mech": "plea", "file": "業務改善/保留.md", "where": "列は 何が決まらなかったか／相談先／いつ", "src": "実装.md 1節", "status": "d" },
+
+    "2_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "2_2": { "what": "読み取り専用の呼び出し1回", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 始める前に — DrillSpark に繋がるか確かめる", "src": "実装.md 1節", "status": "d" },
+    "2_3": { "what": "skill 本文の判断", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "同上「繋がっていなければ」", "src": "実装.md 1節", "status": "d" },
+    "2_4": { "what": "案内文（正本は reference）", "mech": "plea", "file": "reference/drillspark-setup.md", "where": "## 業務改善（process-improve）の利用者に案内するとき", "src": "実装.md 1節", "status": "d" },
+    "2_5": { "what": "入力画面（Artifact）か1問ずつの面談", "mech": "ask", "file": "skills/process-improve/assets/棚卸しシート.html", "where": "SKILL.md ### 入力画面で書いてもらう", "src": "実装.md 1節", "status": "d" },
+    "2_7": { "what": "Write で表に書く", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 1. 業務の一覧を作る（書き出し）", "src": "実装.md 1節", "status": "d" },
+    "2_10": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "2_11": { "what": "成果物ファイル", "mech": "fence", "file": "業務改善/業務一覧.md", "where": "柵を通った表だけが書かれる", "src": "実装.md 1節", "status": "d" },
+    "2_6": { "what": "利用者の実行（答える）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "## 1.「仕事の目的」の3値と「不要」の提示", "src": "図.md 介入点の表", "status": "d" },
+    "2_8": { "what": "PreToolUse hook → 表の lint", "mech": "fence", "file": "scripts/process-write-guard.js", "where": "Write/Edit/Bash の matcher → <code>process-table-lint.js</code>", "src": "実装.md 2節・4節 #5", "status": "d" },
+    "2_9": { "what": "承認ゲート①（上限3回）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 【止まる①】業務一覧の確認", "src": "図.md 介入点の表", "status": "d" },
+
+    "3_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "3_2": { "what": "スクリプト（決定論）", "mech": "plea", "file": "scripts/process-abc.js", "where": "累積割合で A/B/C。<code>--abc 70,90</code>", "src": "実装.md 4節 #5", "status": "d" },
+    "3_3": { "what": "skill 本文 §2", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 2. 改善する業務を選ぶ（印の候補）", "src": "実装.md 1節", "status": "d" },
+    "3_9": { "what": "入力画面の詳細4欄（write_db selected）か面談", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "## 2. 選んだ業務の残り4項目", "src": "実装.md 1節", "status": "d" },
+    "3_5": { "what": "skill 本文の判断", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 2. 選べたか", "src": "実装.md 1節", "status": "d" },
+    "3_6": { "what": "保留への記録", "mech": "plea", "file": "業務改善/保留.md", "where": "相談先の名前を記録して終わる", "src": "実装.md 1節", "status": "d" },
+    "3_7": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "3_8": { "what": "スクリプトの出力（表は変えない）", "mech": "none", "file": "—", "where": "<code>process-abc.js</code> の標準出力", "src": "図.md", "status": "d" },
+    "3_4": { "what": "利用者の実行（選ぶ）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "## 2. 1〜2件を選んでもらう", "src": "図.md 介入点の表", "status": "d" },
+
+    "4_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "4_2": { "what": "create_project と URL の記録", "mech": "fence", "file": "skills/process-improve/SKILL.md", "where": "### 3-1. URL を「図の在りか」に書く。柵が他の図への書き換えを止める", "src": "実装.md 1節", "status": "d" },
+    "4_3": { "what": "サブエージェント（ドリルダウン）", "mech": "agent", "file": "agents/process-expert.md", "where": "## 工程の案を出す役割で呼ばれたとき", "src": "実装.md 1節", "status": "d" },
+    "4_6": { "what": "skill 本文 §3-2", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "### 3-2. 工程ごとの作業を第二階層に描く。<code>process-coverage.js</code> が exit 0 になるまで進まない", "src": "実装.md 1節", "status": "d" },
+    "4_9": { "what": "保留への記録", "mech": "plea", "file": "業務改善/保留.md", "where": "3往復を超えた点", "src": "実装.md 1節", "status": "d" },
+    "4_10": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "4_11": { "what": "DrillSpark のプロジェクト", "mech": "none", "file": "—", "where": "判定役は <code>get_diagram</code> で読む", "src": "図.md", "status": "d" },
+    "4_4": { "what": "利用者の実行（直したい所を言う）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 3-1.「一般例」の印から話し合う", "src": "図.md 介入点の表", "status": "d" },
+    "4_5": { "what": "承認ゲート②（上限3往復）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 【止まる②】工程の確認", "src": "図.md 介入点の表", "status": "d" },
+    "4_7": { "what": "利用者の実行（直したい所を言う）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 3-2. 工程ごとに見せて問う", "src": "図.md 介入点の表", "status": "d" },
+    "4_8": { "what": "承認ゲート③（上限3往復）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 【止まる③】作業の確認", "src": "図.md 介入点の表", "status": "d" },
+
+    "4_3_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "4_3_2": { "what": "役割を起動時に渡す", "mech": "agent", "file": "agents/process-expert.md", "where": "## 起動時に役割を渡されます", "src": "実装.md 1節", "status": "d" },
+    "4_3_6": { "what": "「一般例」の印", "mech": "agent", "file": "agents/process-expert.md", "where": "## いちばん重要なこと — 補った箇所が分かる形で返す", "src": "実装.md 1節", "status": "d" },
+    "4_3_7": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "4_3_3": { "what": "agent 本文の判断", "mech": "agent", "file": "agents/process-expert.md", "where": "## 知識が足りなければ調べる", "src": "実装.md 1節", "status": "d" },
+    "4_3_4": { "what": "Web 検索（知識が足りないときだけ）", "mech": "agent", "file": "agents/process-expert.md", "where": "同上", "src": "実装.md 1節", "status": "d" },
+    "4_3_5": { "what": "工程→作業の割り当て表を返す", "mech": "agent", "file": "agents/process-expert.md", "where": "## 工程の案を出す役割で呼ばれたとき", "src": "実装.md 1節", "status": "d" },
+    "4_3_8": { "what": "agent の返答（文章）", "mech": "none", "file": "—", "where": "Task の結果。ファイルには残さない", "src": "図.md", "status": "d" },
+
+    "5_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "5_2": { "what": "skill 本文 §4-1", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "### 4-1. 成功の形を先に決める", "src": "実装.md 1節", "status": "d" },
+    "5_4": { "what": "サブエージェント（ドリルダウン）", "mech": "agent", "file": "agents/process-expert.md", "where": "## 業務改善コンサルの役割で呼ばれたとき", "src": "実装.md 1節", "status": "d" },
+    "5_7": { "what": "skill 本文 §4-4", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "### 4-4. 誰がやるかで分けて優先度を付ける", "src": "実装.md 1節", "status": "d" },
+    "5_8": { "what": "保留への記録（決まった分は 5_7 へ合流）", "mech": "plea", "file": "業務改善/保留.md", "where": "相談先の名前を記録", "src": "実装.md 1節", "status": "d" },
+    "5_9": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "5_10": { "what": "成果物ファイル", "mech": "fence", "file": "業務改善/改善案.md", "where": "先頭に「成功の形」と「案が出なかった段階」。柵を通った表だけ", "src": "実装.md 1節", "status": "d" },
+    "5_11": { "what": "成果物ファイル", "mech": "plea", "file": "業務改善/保留.md", "where": "次に呼んだときの入口", "src": "実装.md 1節", "status": "d" },
+    "5_3": { "what": "利用者の実行（合意する）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 4-1. 直すか頷くか", "src": "図.md 介入点の表", "status": "d" },
+    "5_5": { "what": "利用者の実行（引っかかる所を言う）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 4-3. 改善後の図を見比べる", "src": "図.md 介入点の表", "status": "d" },
+    "5_6": { "what": "利用者の実行（選ぶ。上限3往復）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 4-3. 採用する案", "src": "図.md 介入点の表", "status": "d" },
+
+    "5_4_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "5_4_2": { "what": "役割を渡す（同じ1本の agent）", "mech": "agent", "file": "agents/process-expert.md", "where": "## 起動時に役割を渡されます", "src": "実装.md 1節", "status": "d" },
+    "5_4_7": { "what": "「一般例」の印", "mech": "agent", "file": "agents/process-expert.md", "where": "## いちばん重要なこと — 補った箇所が分かる形で返す", "src": "実装.md 1節", "status": "d" },
+    "5_4_8": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "5_4_9": { "what": "agent の返答（案の一覧）", "mech": "none", "file": "—", "where": "Task の結果。採用は利用者", "src": "図.md", "status": "d" },
+    "5_4_3": { "what": "E→C→R→S の順に1問ずつ", "mech": "agent", "file": "agents/process-expert.md", "where": "## 業務改善コンサルの役割で呼ばれたとき", "src": "実装.md 1節", "status": "d" },
+    "5_4_5": { "what": "agent 本文の判断（4段階で必ず止まる）", "mech": "agent", "file": "agents/process-expert.md", "where": "同上", "src": "実装.md 1節", "status": "d" },
+    "5_4_6": { "what": "推奨・理由・やらないとどうなるか", "mech": "agent", "file": "agents/process-expert.md", "where": "同上", "src": "実装.md 1節", "status": "d" },
+    "5_4_4": { "what": "利用者の実行（答える）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 4-2. ECRS の順に一緒に考える", "src": "図.md 介入点の表", "status": "d" },
+
+    "6_1": { "what": "—（親工程の内側）", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "6_2": { "what": "skill 本文 §5", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 5. AI化依頼書を作る（H1〜H5 の提案）", "src": "実装.md 1節", "status": "d" },
+    "6_4": { "what": "skill 本文 §5", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "### 承認が要るかを利用者が決める（3種を挙げる）", "src": "実装.md 1節", "status": "d" },
+    "6_6": { "what": "skill 本文 §5", "mech": "plea", "file": "skills/process-improve/SKILL.md", "where": "## 5. 削減見込み（H1・H2 だけ）", "src": "実装.md 1節", "status": "d" },
+    "6_8": { "what": "保留への記録", "mech": "plea", "file": "業務改善/保留.md", "where": "3回埋め直しても残った行", "src": "実装.md 1節", "status": "d" },
+    "6_9": { "what": "Write で書き出し、判定役に見せる", "mech": "agent", "file": "agents/process-improve-reviewer.md", "where": "SKILL.md ### 判定役に見てもらう → <code>Task</code>", "src": "実装.md 1節", "status": "d" },
+    "6_10": { "what": "—", "mech": "none", "file": "—", "where": "—", "src": "—", "status": "d" },
+    "6_11": { "what": "成果物ファイル", "mech": "fence", "file": "業務改善/AI化依頼書.md", "where": "柵を通った表だけ（<code>--list 業務一覧.md</code>）", "src": "実装.md 1節", "status": "d" },
+    "6_12": { "what": "成果物ファイル", "mech": "plea", "file": "業務改善/保留.md", "where": "次に呼んだときの入口", "src": "実装.md 1節", "status": "d" },
+    "6_3": { "what": "利用者の実行（合意する）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "## 5. 任せ方に頷くか直す", "src": "図.md 介入点の表", "status": "d" },
+    "6_5": { "what": "利用者の実行（決める）", "mech": "ask", "file": "skills/process-improve/SKILL.md", "where": "### 承認が要るかを利用者が決める【人にしかできない作業】", "src": "図.md 介入点の表", "status": "d" },
+    "6_7": { "what": "PreToolUse hook → 依頼書の lint", "mech": "fence", "file": "scripts/process-write-guard.js", "where": "Write/Edit/Bash の matcher → <code>process-table-lint.js --list</code>", "src": "実装.md 2節・4節 #5", "status": "d" }
+  },
+  "gates": [
+    { "kind": "起動", "nodes": ["1"], "where": "利用者が skill <code>process-improve</code> を呼ぶ。自動起動しない", "mech": "plea", "status": "d" },
+    { "kind": "承認ゲート（3つ）", "nodes": ["2_9", "4_5", "4_8"], "where": "<code>skills/process-improve/SKILL.md</code> の【止まる①】業務一覧／【止まる②】工程／【止まる③】作業。<code>AskUserQuestion</code> で出す", "mech": "ask", "status": "d" },
+    { "kind": "実行（9つ）", "nodes": ["2_6", "3_4", "4_4", "4_7", "5_3", "5_5", "5_6", "6_3", "6_5"], "where": "人間がやる作業。エージェントに代行させない。<code>SKILL.md</code> の各節で問う", "mech": "ask", "status": "d" },
+    { "kind": "エスカレーション先", "nodes": ["2_9", "3_6", "4_9", "5_8", "6_8"], "nodesNote": "（ループ上限の備考）", "where": "詰まった時点で利用者が指名する相手を <code>業務改善/保留.md</code> に記録。開始時には決めさせない", "mech": "plea", "status": "d" },
+    { "kind": "基準の決定", "nodes": ["1", "2_1", "3_1", "4_1", "5_1", "6_1", "4_3_1", "5_4_1"], "nodesNote": "（全図の Start の備考）", "where": "<code>reference/business-improvement-criteria.md</code>。利用者も AI も決めない。判定役が毎回読む", "mech": "fence", "status": "d" }
+  ],
+  "gatesNote": "数え合わせ: 図の宣言（root の Start）＝ 図.md の表 ＝ 実ファイル の3点で一致。承認ゲートは3つだけで、5_6「採用する案が決まった?」は選ぶ作業であって承認ではない（オーナー決定）。",
+  "tests": {
+    "tag": "凍結 2026-08-31（第2版まで）",
+    "note": "正本は <code>docs/harness/process-improve/処理/業務を改善する/合格条件.md</code>。実行は <code>bash tests/run.sh</code> と <code>claude plugin validate . --strict</code>。",
+    "rows": [
+      ["1", "表の lint が違反サンプルで意図した指摘を1件だけ出す", "<code>tests/ng-table-*.md</code>（<code>expect:</code> 行）", "exit 2・コードと件数が一致", "未記録（評価レポート無し）"],
+      ["2", "合格サンプルが通る", "<code>tests/ok-table-*.md</code>", "exit 0", "未記録"],
+      ["3", "ABC 分析が A/B/C と印の候補を根拠の語つきで出す", "<code>tests/ok-table-abc.md</code>", "標準出力に順位と印", "未記録"],
+      ["4", "柵が 業務改善/ への不正な書き込みを止め、正しい表を通す", "PreToolUse の JSON（<code>tests/run.sh</code> の柵の検査）", "止める入力で exit 2・通す入力で exit 0", "未記録"],
+      ["5", "プラグインのマニフェストが通る", "<code>claude plugin validate . --strict</code>", "exit 0", "未記録"]
+    ],
+    "footnote": "「未記録」は評価レポートが無いという意味で、落ちたという意味ではない。開発時の <code>tests/run.sh</code> は全件が期待どおり。"
+  },
+  "products": {
+    "rows": [
+      ["1", "<code>skills/process-improve/SKILL.md</code>", "skill", ["2", "3", "4", "5", "6", "7"], "5工程が §1〜§5。疎通確認は「始める前に」"],
+      ["2", "<code>skills/process-improve/assets/棚卸しシート.html</code>", "入力画面（Artifact）", ["2_5", "3_9"], "§1 と §2 から公開し、<code>read_db</code> で読み戻す"],
+      ["3", "<code>agents/process-expert.md</code>", "agent", ["4_3", "5_4"], "役割を起動時に渡す汎用1本。Task で2回呼ぶ"],
+      ["4", "<code>agents/process-improve-reviewer.md</code>", "agent", ["6_9"], "§5 末尾で判定。図には無い（判定は図の外）"],
+      ["5", "<code>reference/business-improvement-criteria.md</code>", "判定基準", ["1"], "全図の Start「基準の決定＝判定基準ファイル」"],
+      ["6", "<code>reference/business-improvement-tables.md</code>", "表の定義", ["9", "11", "12", "13"], "4つの表の列と入る値"],
+      ["7", "<code>scripts/process-table-lint.js</code>", "スクリプト", ["2_8", "6_7"], "柵から呼ばれる"],
+      ["8", "<code>scripts/process-abc.js</code>", "スクリプト", ["3_2", "3_8"], "ABC 分析と印の候補"],
+      ["9", "<code>scripts/process-coverage.js</code>", "スクリプト", ["4_6"], "全工程に第二階層があるか（§3-2 の出口条件）"],
+      ["10", "<code>scripts/process-write-guard.js</code> ＋ <code>hooks/hooks.json</code>", "hook（PreToolUse）", ["2_8", "6_7", "4_2"], "表の lint と、記録に無い図への <code>update_diagram</code> を止める"]
+    ],
+    "note": "実装.md 1節の突き合わせ結果を転記。§3.3 の一覧と実物にズレは無い。"
+  },
+  "excerpts": [
+    { "file": "skills/process-improve/SKILL.md", "from": 137, "to": 145, "ref": "2_9", "label": "ノード 2_9 承認ゲート① 業務一覧の確認" },
+    { "file": "skills/process-improve/SKILL.md", "from": 233, "to": 238, "ref": "4_5", "label": "ノード 4_5 承認ゲート② 工程の確認" },
+    { "file": "skills/process-improve/SKILL.md", "from": 266, "to": 277, "ref": "4_8", "label": "ノード 4_8 承認ゲート③ 作業の確認" },
+    { "file": "skills/process-improve/SKILL.md", "from": 445, "to": 458, "ref": "1", "label": "ノード 1 人が止まる場所は3つだけ" },
+    { "file": "scripts/process-write-guard.js", "from": 1, "to": 30, "ref": "2_8", "label": "ノード 2_8 書く前に効く柵（ヘッダ）" },
+    { "file": "scripts/process-abc.js", "from": 1, "to": 12, "ref": "3_2", "label": "ノード 3_2 ABC 分析（ヘッダ）" },
+    { "file": "agents/process-expert.md", "from": 35, "to": 48, "ref": "4_3_6", "label": "ノード 4_3_6 補った箇所が分かる形で返す" }
+  ],
+  "open": [
+    "評価レポート（<code>評価/</code>）が無いため、全工程が「設計のみ」。実測が入れば状態が変わる",
+    "図の備考の逐語は DrillSpark にしかない（<code>図.md</code> の介入点表は後追いの記録）"
+  ]
+}

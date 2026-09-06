@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 
 # harness-improve — ハーネス全体を改善する
 
+両環境で共通の工程・承認・成果物の意味は [ワークフロー契約](../../reference/workflow-contract.md) を読む。
+
 工程のうち**〈改善する〉**（工程の全体は harness-implement が定義する）。対応表も harness-implement と共有する
 → [MAPPING.md](../harness-implement/MAPPING.md)
 

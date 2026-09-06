@@ -1,0 +1,25 @@
+{
+  "name": "drillspark-harness-codex",
+  "version": "0.4.0-codex.1",
+  "description": "Design workflows in DrillSpark, improve human work, and build Codex configuration from approved diagrams. Japanese workflow instructions.",
+  "author": {
+    "name": "DrillSpark"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://drillspark.io/",
+  "repository": "https://github.com/drillspark-io/drillspark-harness",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "DrillSpark Harness — Codex",
+    "shortDescription": "業務を図で設計し、Codexの設定にする",
+    "longDescription": "業務の棚卸しからDrillSparkでの作図、承認済みの図に基づくCodex設定の生成と独立レビューまでを支援します。",
+    "developerName": "DrillSpark",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": "DrillSpark Harnessで私の業務を棚卸ししたい。"
+  }
+}

@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 
 # harness-implement — 目的から作図して設定に落とす
 
+両環境で共通の工程・承認・成果物の意味は [ワークフロー契約](../../reference/workflow-contract.md) を読む。
+
 工程は8つ。このスキルは**〈目的を考える〉〜〈実装する〉と〈評価する〉を担当**する。
 **〈統合する〉は `harness-compose`、〈改善する〉は `harness-improve`** へ渡す。
 

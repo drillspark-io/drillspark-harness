@@ -6,6 +6,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, Artif
 
 # process-improve — 業務を棚卸しして改善する
 
+両環境で共通の工程・承認・成果物の意味は [ワークフロー契約](../../reference/workflow-contract.md) を読む。
+
 **利用者は業務改善の専門家ではありません。** 一般の社員が、自分の仕事を1つずつ見直します。
 
 ```text

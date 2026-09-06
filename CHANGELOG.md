@@ -3,6 +3,22 @@
 The version is the `version` field in `.claude-plugin/plugin.json`; the marketplace entry
 carries no version of its own.
 
+## Unreleased — Codex preview
+
+- Add a separately installable Codex distribution under `plugins/drillspark-harness-codex`,
+  generated from shared criteria/scripts and explicit Codex skill/runtime definitions.
+- Add all six Codex skill entrypoints and independent reviewer instructions, native configuration
+  mapping, preview-only hook merging, and a repository marketplace.
+- Validate Codex `apply_patch` candidates with the existing three guards; reject protected
+  deletions/moves and ambiguous candidates before mutation.
+- Add Windows/Linux CI checks for generated package consistency, portable links, hook behavior
+  and preserving existing hook configuration. Keep the existing Claude regression suite.
+- Document live installation/MCP/approval/restart checks separately from automated validation.
+- Bundle the DrillSpark MCP endpoint and guide users through OAuth connection before offering API-key setup.
+- Add a private ChatGPT Sites inventory form template with automatic saving, monthly time calculation,
+  completion checks, and instructions for reading saved inputs back into the workflow.
+- Require document nodes for paperwork inputs and outputs, separately connected to the relevant tasks.
+
 ## 0.4.0
 
 ### Added

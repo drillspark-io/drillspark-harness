@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(apply_patch|Bash)$|^mcp__.*__update_diagram$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/scripts/codex-guard.js\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

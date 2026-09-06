@@ -22,3 +22,9 @@ jobs:
       - run: npm install -g @anthropic-ai/claude-code
       - run: bash tests/run.sh
         shell: bash
+      - name: Verify generated Codex distribution
+        run: node scripts/build-codex-plugin.js --check
+      - name: Validate Codex package links and hook wiring
+        run: node scripts/check-codex-package.js plugins/drillspark-harness-codex
+      - name: Test Codex guards, packaging and configuration integration
+        run: node --test tests/codex-guard.test.js tests/codex-package.test.js tests/codex-config.test.js
