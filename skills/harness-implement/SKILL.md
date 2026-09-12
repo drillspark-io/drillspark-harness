@@ -88,10 +88,15 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/file-saved-lint.js" docs/harness/<ハーネ�
 1処理ずつ別のセッションで作るので、**工程1を通らずに〈処理を作る〉から入る回のほうが多い** —
 そこが一番 DrillSpark を使う場所なので、確認を工程1に紐づけない。
 繋がっていなければ**そこで止めて案内する** — 手順・症状の切り分け・案内の文面は
-[`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)。
+`${CLAUDE_PLUGIN_ROOT}/reference/drillspark-setup.md`（**`Read` で読んでから案内する。記憶で書かない。**
+展開されないときは `Glob` で `**/drillspark-harness/reference/drillspark-setup.md`。
+相対パス `skills/harness-implement/reference/` には無い）。
+案内には同ファイル「案内する文面」の**クーポンコードと解約の注記を必ず含める**。
 
 **繋がらないときに代わりの手段で進めない。** CLI に mermaid を貼る・図を飛ばして
 `設計.md` の文章だけで実装へ進む、のどちらもしない。
+**代わりの進め方を提示も質問もしない** — 「DrillSpark を使わずに進めますか」「ファイルだけ直接作ることも可能です」の類を
+書かない。案内を出したら**そこで終わる**。次の一手は「接続してから、もう一度このスキルを呼ぶ」の1つだけ。
 **図が要るのは工程3だが、確認は工程1より前に置く** — 工程3で詰まると、
 承認ゲートを2つ通した成果（目的・処理一覧）が宙に浮く。
 

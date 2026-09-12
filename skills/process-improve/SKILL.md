@@ -21,7 +21,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Task, Artif
 **工程1に入る前に `list_projects()`（接頭辞は `mcp__drillspark__` か `mcp__claude_ai_DrillSpark__`） を1回だけ流します。**
 繋がっていれば**何も言わずに先へ進みます**（判断することが1つも無い報告は、承認の重みを削ります）。
 
-繋がっていなければ **[`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)** の案内を出して**一度終わります**。
+繋がっていなければ **`${CLAUDE_PLUGIN_ROOT}/reference/drillspark-setup.md` を `Read` で読み**、その「業務改善の利用者に案内するとき」の文面を出して**一度終わります**
+（展開されないときは `Glob` で `**/drillspark-harness/reference/drillspark-setup.md`。クーポンコードと解約の注記を必ず含め、代わりの進め方を提示も質問もしません）。
 
 **未登録は異常ではなく、普通の初期状態です。** 登録できたらまた呼んでもらえば続きから進みます。
 **同じ案内を繰り返しません。**

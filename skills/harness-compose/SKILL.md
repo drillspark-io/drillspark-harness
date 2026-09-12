@@ -47,7 +47,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 
 **DrillSpark に繋がるか確かめる。** `list_projects()`（接頭辞は `mcp__drillspark__` か `mcp__claude_ai_DrillSpark__`） を1回だけ流す。
 繋がっていれば何も言わずに進む。繋がらなければ止めて案内する
-（→ [`reference/drillspark-setup.md`](../../reference/drillspark-setup.md)）。
+（`${CLAUDE_PLUGIN_ROOT}/reference/drillspark-setup.md` を **`Read` で読んでから**案内する。展開されないときは
+`Glob` で `**/drillspark-harness/reference/drillspark-setup.md`。クーポンコードと解約の注記を必ず含め、代わりの進め方を提示も質問もしない）。
 統合そのものは図を書かないが、**介入点の照合で処理ごとの図を読む**ので必要。
 
 **読むのは `docs/harness/<ハーネス名>/` のファイル一式。**

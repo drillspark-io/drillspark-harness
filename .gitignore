@@ -6,3 +6,6 @@ Thumbs.db
 *.log
 .env
 .env.*
+
+# claude plugin eval の実行結果（毎回書かれる。配布物に入れない）
+evals/results/
