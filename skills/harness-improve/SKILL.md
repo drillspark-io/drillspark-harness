@@ -73,7 +73,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__drillspark__get_project
 |---|---|---|
 | 実ファイル | `.claude/{agents,skills,rules,tests}/`・`settings.json`・<br>`CLAUDE.md`・hooks が指すスクリプトの実体 | ここだけは必ず在る。**在るのがこれだけ、という状態があり得る** |
 | 設計書 | `docs/harness/<ハーネス名>/` 一式（索引 `設計.md`・`処理/<処理名>/図.md`・<br>`合格条件.md`・`実装.md`・`統合.md`・`評価/<日付>.md`） | 5節で**索引を作る**（改善の主要な成果物） |
-| 図 | `処理/<処理名>/図.md` のURL／索引のリンク／README／`.claude/` 内の DrillSpark URL | 2節で**新規に作る**。既存があっても他人のものは触らない |
+| 図 | `処理/<処理名>/図.md` のURL／索引のリンク／README／`.claude/` 内の DrillSpark URL | 2節で**新規に作る**。既存があっても取り違えを避けるため触らない |
 | 凍結した合格条件 | `.claude/tests/`、`処理/<処理名>/合格条件.md` | **在るなら絶対に触らない**（5節） |
 
 **自分で作ったハーネスでも数える。記憶で代用しない。** Glob と Read で済む。
@@ -156,7 +156,7 @@ skill / agent の frontmatter、コマンド定義 — 機械で拾える起動�
 1. **プロジェクトを新規に作る**（`create_project`）。処理1つに1つ。名前は `<ハーネス名> / <処理名>`。
    **直後に URL を `改善/<日付>.md` に書く**（描き終えてからではなく、作った直後）。プラグインの柵は、
    業務一覧の「図の在りか」にも `docs/harness/` の .md にも無いプロジェクトへの `update_diagram` を止める。
-   **他人のプロジェクトは読むだけ。** `update_diagram` は全置換で、図は git の外にあり、
+   **記録に無いプロジェクトは読むだけ。** `update_diagram` は全置換で、図は git の外にあり、
    書き戻しに失敗して復旧できるのは作った人だけ。`update_diagram` を使うのは
    **この節で自分が作ったプロジェクトに対してだけ**
 2. 実ファイルから読み取れた現状を描く。作図規約は `get_diagram_rules()`。

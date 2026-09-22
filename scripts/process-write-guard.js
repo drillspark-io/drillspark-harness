@@ -24,11 +24,19 @@
  *      書き込みコマンドレット（Set-Content / Out-File / Add-Content）も止める — 実際に python のヒアドキュメントで
  *      業務一覧.md が書き換えられ、表の検査が走らなかった。`node <ファイル>` は lint の呼び方なので止めない
  *   4. DrillSpark の update_diagram — cwd に 業務改善/業務一覧.md か docs/harness/ があるとき、
- *      そのプロジェクトIDが 業務一覧.md（「図の在りか」列）にも docs/harness/ 配下の .md にも無ければ止める
- *      （他人が作ったプロジェクトを書き換えない、の柵）。自分で作った図は create_project の直後に URL を書く —
+ *      **自分が create_project で作った図でもなく**、そのプロジェクトIDが
+ *      **リポジトリ内のどの .md にも** 書かれていなければ止める
+ *      （create_project の結果は PostToolUse で ~/.drillspark-harness/created-projects.json に控える。
+ *      設計書類を書くと決める前に図だけ直したい場面があるため。控えはホーム配下なのでセッションも日もまたぐ）
+ *      （取り違えて別の図を全置換しない、の柵。update_diagram は全置換で、図は git の外にある。
+ *      DrillSpark は認証で自分の図しか書き換えられないので「他人の図」は起きない）。
+ *      別の端末やセッションから直すことがあるなら、create_project の直後に URL を書いておく —
  *      process-improve は 業務一覧.md の「図の在りか」、harness-implement は 処理/<処理名>/図.md、
  *      harness-improve は 改善/<日付>.md。ハーネスの図の URL を 業務一覧.md に書くと、あの列の「改善後:」は
- *      業務の改善後の図として読まれるので、案内文で置き場を分けている
+ *      業務の改善後の図として読まれるので、案内文で置き場を分けている。
+ *      **それ以外の図（設計メモ・計画の図など）は、その図を説明している .md に URL を書けばよい** —
+ *      置き場をこのプラグインの2か所に限ると、無関係な図が「作れるが直せない」状態になり、
+ *      作り直しで図が散らかる（2026-09-22 実測）
  *
  * 「書いてよい場所は 業務改善/ だけ」は本文のお願いのまま（全 Write を止めると他の skill が動かない）。
  * この柵が守るのは「Write / Edit で 業務改善/ に置かれる表と1枚は検査を通ったものだけ」で、
@@ -38,8 +46,44 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+
+/** create_project で自分が作った図の控え。ホーム配下に置くのでセッションも日もリポジトリもまたぐ。
+ *  DRILLSPARK_HARNESS_CREATED_STORE で差し替えられる（テスト用）。 */
+const CREATED_STORE = process.env.DRILLSPARK_HARNESS_CREATED_STORE
+  || path.join(os.homedir(), '.drillspark-harness', 'created-projects.json');
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+
+/** create_project の結果からプロジェクトIDを拾って控える。失敗しても本体は止めない。 */
+function rememberCreated(resp, cwd) {
+  try {
+    const text = typeof resp === 'string' ? resp : JSON.stringify(resp || '');
+    const ids = new Set();
+    const keyed = text.match(/"id"\s*:\s*"[0-9a-f-]{36}"/gi) || [];
+    for (const k of keyed) { UUID.lastIndex = 0; const m = UUID.exec(k); if (m) ids.add(m[0].toLowerCase()); }
+    if (!ids.size) { UUID.lastIndex = 0; let m; while ((m = UUID.exec(text)) !== null) ids.add(m[0].toLowerCase()); }
+    if (!ids.size) return;
+    let store = {};
+    try { store = JSON.parse(fs.readFileSync(CREATED_STORE, 'utf8')) || {}; } catch { /* 初回は無い */ }
+    const at = new Date().toISOString();
+    for (const id of ids) store[id] = { cwd: String(cwd || ''), at };
+    const kept = Object.entries(store)
+      .sort((a, b) => String(b[1] && b[1].at).localeCompare(String(a[1] && a[1].at)))
+      .slice(0, 200);
+    fs.mkdirSync(path.dirname(CREATED_STORE), { recursive: true });
+    fs.writeFileSync(CREATED_STORE, JSON.stringify(Object.fromEntries(kept), null, 2));
+  } catch { /* 控えられなくても更新は止めない */ }
+}
+
+/** その ID を自分が create_project で作ったか */
+function wasCreatedByUs(id) {
+  try {
+    const store = JSON.parse(fs.readFileSync(CREATED_STORE, 'utf8'));
+    return !!store && Object.prototype.hasOwnProperty.call(store, String(id).toLowerCase());
+  } catch { return false; }
+}
 
 const MD = /(^|[\\/])業務改善[\\/].+\.(md|markdown)$/i;
 const HTML = /(^|[\\/])業務改善[\\/].+\.html?$/i;
@@ -108,6 +152,30 @@ function mdFilesUnder(dir, depth = 0) {
   return out;
 }
 
+/** リポジトリを歩くときに入らないディレクトリ（out/ や docs/ のような中身のある場所は除外しない） */
+const SKIP_WALK = new Set(['node_modules', 'dist', 'build', 'target', 'vendor', 'coverage', '.next', '__pycache__', 'venv']);
+
+/** cwd 配下のどこかの .md にその ID が書かれているか。
+ *  書いてあれば「記録済みの図」とみなして通す。守りたいのは「どこにも記録が無い図を取り違えて全置換すること」であって、
+ *  置き場をこのプラグインの2か所に縛ることではない。
+ *  深さ8まで・隠しディレクトリと SKIP_WALK は見ない・4000ファイルで打ち切る・見つかった時点で止める。 */
+function idRecordedUnder(dir, id, state, depth = 0) {
+  let entries = [];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return false; }
+  for (const e of entries) {
+    if (state.seen > 4000) return false;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (e.name.startsWith('.') || SKIP_WALK.has(e.name)) continue;
+      if (depth < 8 && idRecordedUnder(p, id, state, depth + 1)) return true;
+    } else if (/\.(md|markdown)$/i.test(e.name)) {
+      state.seen++;
+      try { if (fs.readFileSync(p, 'utf8').includes(id)) return true; } catch { /* 読めないものは無視 */ }
+    }
+  }
+  return false;
+}
+
 /** ファイルへ書くリダイレクトがあるか（2>&1・>&1・/dev/null 行きは「書く」ではない） */
 function writesToFile(cmd) {
   ANY_REDIRECT.lastIndex = 0;
@@ -147,10 +215,16 @@ function main() {
     process.exit(0);
   }
 
-  // 4. 他人の図を書き換えない
+  // 4. 取り違えて別の図を全置換しない
+  if (/create_project$/i.test(tool) && input.tool_response !== undefined) {
+    // PostToolUse。自分が作った図は自分の図なので、設計書類を書く前でも直せるように控えておく
+    rememberCreated(input.tool_response, cwd);
+    process.exit(0);
+  }
   if (/update_diagram$/i.test(tool)) {
     const id = String(ti.project_id || '');
     if (!id) process.exit(0);
+    if (wasCreatedByUs(id)) process.exit(0);
     const list = path.join(cwd, '業務改善', '業務一覧.md');
     const harness = path.join(cwd, 'docs', 'harness');
     const hasList = fs.existsSync(list);
@@ -158,12 +232,15 @@ function main() {
     if (!hasList && !hasHarness) process.exit(0);
     if (hasList && fs.readFileSync(list, 'utf8').includes(id)) process.exit(0);
     if (hasHarness && mdFilesUnder(harness).some((f) => fs.readFileSync(f, 'utf8').includes(id))) process.exit(0);
+    // プラグインの2か所に無くても、リポジトリ内のどこかの .md に URL が書いてあれば「記録済みの図」として通す
+    if (idRecordedUnder(cwd, id, { seen: 0 })) process.exit(0);
     stop([
-      'process-write-guard: このプロジェクトは 業務改善/業務一覧.md の「図の在りか」にも docs/harness/ の .md にも無い。他人が作った図は読むだけで書き換えない。',
-      '自分で作った図なら、create_project の直後にその URL を書いてから update_diagram を呼ぶ。置き場はスキルで違う —',
+      'process-write-guard: このプロジェクトの URL が、このリポジトリのどの .md にも書かれていない。update_diagram は全置換で、図は git の外にある。取り違えると戻しにくい。',
+      '自分で作った図なら、create_project の直後にその URL を .md に書いてから update_diagram を呼ぶ。置き場はスキルで違う —',
       '  process-improve: 業務改善/業務一覧.md の「図の在りか」列（改善後の図は「改善後:」）',
       '  harness-implement: docs/harness/<ハーネス名>/処理/<処理名>/図.md',
       '  harness-improve: docs/harness/<ハーネス名>/改善/<日付>.md',
+      '  それ以外（設計メモ・計画の図など）: その図を説明している .md にそのまま書けばよい',
       'ハーネスの図の URL を 業務一覧.md に書かない（あの列の「改善後:」は業務の改善後の図として読まれる）。',
     ]);
   }

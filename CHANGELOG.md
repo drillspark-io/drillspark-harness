@@ -5,6 +5,19 @@ carries no version of its own.
 
 ## Unreleased — Codex preview
 
+- `process-write-guard`: remember every project id returned by `create_project` (new `PostToolUse`
+  hook on `mcp__.*__create_project`) and let those diagrams be updated without any record in the
+  repository. A diagram you just made is yours, so you can iterate on it before deciding it deserves
+  a design note. The record lives in `~/.drillspark-harness/created-projects.json` (override with
+  `DRILLSPARK_HARNESS_CREATED_STORE`), keeps the newest 200 ids, and therefore survives across
+  sessions, days and repositories — unlike session state. The Codex distribution ships the same
+  script but has no `PostToolUse` wiring, so it keeps the stricter behaviour.
+- `process-write-guard`: accept a DrillSpark project whose URL is recorded in **any** Markdown file
+  under the repository, not only `業務改善/業務一覧.md` or `docs/harness/`. A repository that has
+  `docs/harness/` for one unrelated harness used to govern every diagram in it, so diagrams made for
+  planning or thinking could be created but never updated, and the workaround was to recreate them —
+  which scatters duplicates. The guard still denies a project id that is written nowhere in the
+  repository, so the "do not overwrite someone else's diagram" protection is unchanged.
 - Add a separately installable Codex distribution under `plugins/drillspark-harness-codex`,
   generated from shared criteria/scripts and explicit Codex skill/runtime definitions.
 - Add all six Codex skill entrypoints and independent reviewer instructions, native configuration
