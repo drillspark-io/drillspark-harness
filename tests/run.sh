@@ -266,16 +266,20 @@ guard_case "$PROC_GUARD" 0 "" "process: 無関係な表は空行で切れてい�
 guard_case "$PROC_GUARD" 2 "Write" "process: cd 業務改善; > も止める"                Bash - - - - "cd 業務改善; echo x > 表.md"
 guard_case "$PROC_GUARD" 2 "Write" "process: cp -r の宛先がフォルダ 業務改善 でも止める" Bash - - - - "cp -r src 業務改善"
 printf '| 業務名 | 図の在りか |\n|---|---|\n| a | https://example.test/editor?id=11111111-1111-4111-8111-111111111111 |\n' > "$T/業務改善/業務一覧.md"
-guard_case "$PROC_GUARD" 2 "書き換えない" "process: 一覧に無い図への update_diagram は止める" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
+guard_case "$PROC_GUARD" 2 "全置換" "process: 一覧に無い図への update_diagram は止める" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
 guard_case "$PROC_GUARD" 0 "" "process: 一覧にある図への update_diagram は通す"     mcp__drillspark__update_diagram - - - "$T" - 11111111-1111-4111-8111-111111111111
 guard_case "$PROC_GUARD" 0 "" "process: 一覧が無い場所からの update_diagram は通す"  mcp__drillspark__update_diagram - - - "$T/other" - 22222222-2222-4222-8222-222222222222
-guard_case "$PROC_GUARD" 2 "書き換えない" "process: 第3のサーバー名でも update_diagram を見る" mcp__ds__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
+guard_case "$PROC_GUARD" 2 "全置換" "process: 第3のサーバー名でも update_diagram を見る" mcp__ds__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
 # ハーネスの図は docs/harness/ の .md（図.md・改善/<日付>.md）に URL がある。業務一覧に無くても通す。案内は置き場を分けて示す
 mkdir -p "$T/docs/harness/h/処理/p" "$T/hz/docs/harness"
 printf '# p 図\n\n| DrillSpark | https://example.test/editor?id=33333333-3333-4333-8333-333333333333 |\n' > "$T/docs/harness/h/処理/p/図.md"
 guard_case "$PROC_GUARD" 0 "" "process: docs/harness の 図.md にある図への update_diagram は通す" mcp__drillspark__update_diagram - - - "$T" - 33333333-3333-4333-8333-333333333333
 guard_case "$PROC_GUARD" 2 "図.md" "process: 止めたときの案内に harness 側の置き場（図.md）が出る" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
-guard_case "$PROC_GUARD" 2 "書き換えない" "process: docs/harness だけの場所でも、どこにも無い図は止める" mcp__drillspark__update_diagram - - - "$T/hz" - 22222222-2222-4222-8222-222222222222
+guard_case "$PROC_GUARD" 2 "全置換" "process: docs/harness だけの場所でも、どこにも無い図は止める" mcp__drillspark__update_diagram - - - "$T/hz" - 22222222-2222-4222-8222-222222222222
+# 自分が create_project で作った図は、どこにも記録が無くても通す（控えはホーム配下。ここでは差し替えて確かめる）
+printf '{"22222222-2222-4222-8222-222222222222":{"cwd":"x","at":"2026-09-23T00:00:00.000Z"}}' > "$T/created.json"
+DRILLSPARK_HARNESS_CREATED_STORE="$T/created.json" \
+  guard_case "$PROC_GUARD" 0 "" "process: 自分が作った図への update_diagram は通す" mcp__drillspark__update_diagram - - - "$T/hz" - 22222222-2222-4222-8222-222222222222
 # スクリプトからの書き換え（python のヒアドキュメントで業務一覧が書き換えられた実例）
 guard_case "$PROC_GUARD" 2 "Write" "process: python から 業務改善/ を書くのは止める"   Bash - - - - "python - <<'PY'
 p='業務改善/業務一覧.md'
