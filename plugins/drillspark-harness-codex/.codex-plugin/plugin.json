@@ -1,6 +1,6 @@
 {
   "name": "drillspark-harness-codex",
-  "version": "0.4.0-codex.1",
+  "version": "0.5.0-codex.1",
   "description": "Design workflows in DrillSpark, improve human work, and build Codex configuration from approved diagrams. Japanese workflow instructions.",
   "author": {
     "name": "DrillSpark"
