@@ -109,6 +109,29 @@ test('MCP own-project check is preserved',()=>sandbox((dir,put)=>{
   ok(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'known-project'}));
   denied(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'someone-else'}),/process-write-guard/);
 }));
+test('a diagram we created is updatable before any design note exists',()=>sandbox((dir,put)=>{
+  // 設計書類を書くと決める前に図だけ直したい場面がある（2026-09-22 オーナー確認）。
+  // create_project の結果を控えて、以後その ID は素通しにする。控えはホーム配下＝セッションも日もまたぐ。
+  put('docs/harness/demo/処理/demo/図.md','https://drillspark.io/editor?id=known-project\n');
+  const store=path.join(dir,'created.json');
+  const env={DRILLSPARK_HARNESS_CREATED_STORE:store};
+  denied(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'11111111-2222-3333-4444-555555555555'},env),/process-write-guard/);
+  const post=spawnSync(process.execPath,[path.join(ROOT,'scripts/process-write-guard.js')],{cwd:dir,encoding:'utf8',
+    input:JSON.stringify({cwd:dir,tool_name:'mcp__drillspark__create_project',tool_input:{title:'x'},
+      tool_response:{data:{id:'11111111-2222-3333-4444-555555555555'}}}),
+    env:{...process.env,DRILLSPARK_HARNESS_GUARDS:'',...env},timeout:20000});
+  assert.equal(post.status,0,post.stderr);
+  ok(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'11111111-2222-3333-4444-555555555555'},env));
+  denied(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'99999999-8888-7777-6666-555555555555'},env),/process-write-guard/);
+}));
+test('diagram recorded outside the two plugin registries is updatable',()=>sandbox((dir,put)=>{
+  // docs/harness/ があるだけで無関係な図まで「作れるが直せない」状態になっていた（2026-09-22）。
+  // プラグインの置き場に無くても、リポジトリ内のどこかの .md に URL があれば通す。
+  put('docs/harness/demo/処理/demo/図.md','https://drillspark.io/editor?id=known-project\n');
+  put('out/計画/設計メモ.md','検討の図: https://drillspark.io/editor?id=plan-project\n');
+  ok(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'plan-project'}));
+  denied(run(dir,undefined,'mcp__drillspark__update_diagram',{project_id:'unrecorded-project'}),/process-write-guard/);
+}));
 test('explicit owner guard-disable remains supported, not enabled by adapter',()=>sandbox((dir,put)=>{
   put(frozen,freezeText);
   ok(run(dir,patch('*** Delete File: '+frozen),'apply_patch',{}, {DRILLSPARK_HARNESS_GUARDS:'off'}));

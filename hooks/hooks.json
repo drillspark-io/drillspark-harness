@@ -51,6 +51,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__.*__create_project",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/process-write-guard.js\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
