@@ -1,6 +1,6 @@
 {
   "generator": "scripts/build-codex-plugin.js",
-  "sourceVersion": "0.4.0",
+  "sourceVersion": "0.5.0",
   "generated": true,
   "files": [
     ".codex-plugin/plugin.json",
