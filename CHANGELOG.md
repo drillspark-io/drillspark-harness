@@ -3,7 +3,7 @@
 The version is the `version` field in `.claude-plugin/plugin.json`; the marketplace entry
 carries no version of its own.
 
-## Unreleased — Codex preview
+## 0.5.0 — Codex preview
 
 - `process-write-guard`: remember every project id returned by `create_project` (new `PostToolUse`
   hook on `mcp__.*__create_project`) and let those diagrams be updated without any record in the
