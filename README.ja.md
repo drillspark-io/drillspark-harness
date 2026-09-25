@@ -152,7 +152,7 @@ Claude Code に長い手順を書いても、そのとおりには動きませ�
 
 ### 柵（hook）
 
-インストールすると PreToolUse hook が3本入ります。`settings.json` には何も書きません。
+インストールすると、柵のスクリプト3本が PreToolUse hook として、DrillSpark の `create_project` の後に動く PostToolUse hook が1本入ります。`settings.json` には何も書きません。
 
 | 柵 | 止めるもの |
 |---|---|
@@ -161,6 +161,12 @@ Claude Code に長い手順を書いても、そのとおりには動きませ�
 | `harness-freeze-guard.js` | 凍結した合格条件の行の変更・削除 |
 
 対象外の操作は即座に通ります（`node` の起動1回、約 100 ms）。切るには `DRILLSPARK_HARNESS_GUARDS=off`。
+
+hook が読むもの・書くもの・送るもの:
+
+- **読む**: Claude Code が hook に渡すツールの入力（ファイルのパス・内容・コマンド・図のID）と、プラグイン自身の lint が検査するファイル
+- **書く**: 1ファイルだけ。DrillSpark の `create_project` の後、`process-write-guard.js` が作られた図のID・作業ディレクトリ・時刻を `~/.drillspark-harness/created-projects.json`（新しい順に200件）に控えます。`update_diagram` のときに、自分が作った図かどうかを見分けるためです。置き場所は `DRILLSPARK_HARNESS_CREATED_STORE` で変えられ、ファイルを消せば初期化されます
+- **送る**: 何も送りません。hook はネットワークに接続せず、プラグイン内のスクリプトを `node` で起動するだけです。図が DrillSpark に届くのは、利用者が自分で接続した MCP サーバー経由だけです
 
 ### スクリプト
 

@@ -173,7 +173,8 @@ Every agent reports findings and never edits files.
 
 ### Guards (hooks)
 
-Installing adds three PreToolUse hooks. Nothing is written to your `settings.json`.
+Installing adds three guard scripts, registered as PreToolUse hooks, plus one PostToolUse hook on
+DrillSpark `create_project`. Nothing is written to your `settings.json`.
 
 | Guard | Stops |
 |---|---|
@@ -183,6 +184,18 @@ Installing adds three PreToolUse hooks. Nothing is written to your `settings.jso
 
 Everything else passes immediately (one `node` start, about 100 ms). Switch off with
 `DRILLSPARK_HARNESS_GUARDS=off`.
+
+What the hooks read, write and send:
+
+- **Read**: the tool input Claude Code passes to the hook (file path, content, command, diagram ID),
+  and the files the plugin's own lints check.
+- **Write**: one file only. After DrillSpark `create_project`, `process-write-guard.js` records the
+  new project's ID, the working directory and a timestamp in
+  `~/.drillspark-harness/created-projects.json` (latest 200 entries), so it can tell your own
+  diagrams from someone else's on `update_diagram`. Override the path with
+  `DRILLSPARK_HARNESS_CREATED_STORE`. Delete the file to reset it.
+- **Send**: nothing. The hooks make no network requests; they start only `node` on the plugin's own
+  scripts. Diagrams reach DrillSpark only through the MCP server you connect yourself.
 
 ### Scripts
 
