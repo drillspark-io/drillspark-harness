@@ -3,6 +3,13 @@
 The version is the `version` field in `.claude-plugin/plugin.json`; the marketplace entry
 carries no version of its own.
 
+## Unreleased
+
+- README (en/ja): state what the hooks read, write and send — one local file
+  (`~/.drillspark-harness/created-projects.json`), no network requests — and count the
+  `PostToolUse` hook alongside the three `PreToolUse` guards. Prepared for the Claude directory
+  submission, whose security scan looks for behaviour a plugin doesn't disclose.
+
 ## 0.5.0 — Codex preview
 
 - `process-write-guard`: remember every project id returned by `create_project` (new `PostToolUse`
