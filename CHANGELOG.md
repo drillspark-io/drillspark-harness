@@ -5,8 +5,9 @@ carries no version of its own.
 
 ## Unreleased
 
-- `plugin.json`: add `icon` (`assets/icon.png`, the DrillSpark mark at 512×512) for the Claude
-  directory listing, which warned "No icon".
+- `plugin.json`: add `icon` (the DrillSpark mark at 512×512, in the assets folder) for the Claude
+  directory listing, which warned "No icon". `tests/run.sh` now allows exactly one validator
+  warning — `Unknown field 'icon'` — and still fails on any other warning.
 - README (en/ja): state what the hooks read, write and send — one local file
   (`~/.drillspark-harness/created-projects.json`), no network requests — and count the
   `PostToolUse` hook alongside the three `PreToolUse` guards. Prepared for the Claude directory

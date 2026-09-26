@@ -458,11 +458,17 @@ if [ "$got" -eq 0 ]; then echo "  PASS hooks/hooks.json  ($out)"; else echo "  F
 
 echo "== プラグインの検証 =="
 if command -v claude >/dev/null 2>&1; then
-  if claude plugin validate . --strict >/dev/null 2>&1; then
-    echo "  PASS claude plugin validate . --strict (exit 0)"
+  # --strict と同じ基準で、警告は1件を除いてすべて失敗にする。
+  # 例外は plugin.json の icon だけ。Claude Code（2.1.283〜）は「未知のフィールド。読み込み時に無視するので残してよい」と警告するが、
+  # Claude ディレクトリは icon を掲載に読む（開発者ポータルが "No icon" を警告し、icon を足すと
+  # "the directory reads a few of these (such as icon) for the listing" に変わった。2026-09-26 確認）。
+  vout=$(claude plugin validate . 2>&1); vgot=$?
+  others=$(printf '%s\n' "$vout" | grep '❯' | grep -v "plugin.json → icon: Unknown field 'icon'")
+  if [ "$vgot" -eq 0 ] && [ -z "$others" ]; then
+    echo "  PASS claude plugin validate .  (exit 0 / 警告は icon の1件まで)"
   else
-    echo "  FAIL claude plugin validate . --strict"
-    claude plugin validate . --strict 2>&1 | sed 's/^/        /'
+    echo "  FAIL claude plugin validate .  (exit $vgot)"
+    printf '%s\n' "$vout" | sed 's/^/        /'
     fail=1
   fi
 else
