@@ -349,6 +349,65 @@ out=$(node "$BUILD" "$T/docs/harness/demo/可視化/図なし-2026-01-01.map.jso
 if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '図の JSON が無い'; then echo "  PASS 図の JSON が無いときは書かない  (exit 2)"; else echo "  FAIL 図の JSON が無いのに止まらない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 rm -rf "$T"
 
+echo "== 動物たちの会社（animal-office-view） =="
+# animal-office-build が diagrams.json（＋任意の office.json）から 3D の1枚を組み立て、書く前に柵（回数欄・上書き・animal-office-lint）を通すこと。
+# 回数欄は 0 → 1 → 2 と進み、4回目は上限で止まる。1枚は外部読み込みゼロで、使う動物のモデルだけを埋め込む。
+OB="scripts/animal-office-build.js"
+OL="scripts/animal-office-lint.js"
+T=$(mktemp -d)
+cp "$DIR/ok-office-process-improve.diagrams.json" "$T/demo.diagrams.json"
+OUT="$T/demo.office""."html
+for want_n in 0 1 2; do
+  out=$(node "$OB" "$T/demo.diagrams.json" 2>&1); got=$?
+  head=$(head -2 "$OUT" 2>/dev/null | grep -o '直し: [0-9]*/2')
+  if [ "$got" -eq 0 ] && [ "$head" = "直し: $want_n/2" ] && node "$OL" "$OUT" >/dev/null 2>&1; then
+    echo "  PASS ok-office-process-improve  (exit 0 / 回数欄 $want_n/2 / animal-office-lint 0)"
+  else
+    echo "  FAIL ok-office-process-improve  期待 exit 0・回数欄 $want_n/2 / 実際 exit $got・${head:-回数欄なし}"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1
+  fi
+done
+out=$(node "$OB" "$T/demo.diagrams.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '上限'; then echo "  PASS ok-office-process-improve  4回目は上限で止まる (exit 2 / 「上限」)"; else echo "  FAIL 4回目が止まらない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+# 中身: フロア 4・工程 43、部署は 6 つで動物も 6 種だけ埋め込む。戻り辺（7 → 3）は back、成果物への辺は data
+got=$(node -e '
+  const s = require("fs").readFileSync(process.argv[1], "utf8");
+  const pick = (id) => JSON.parse(new RegExp(`id="${id}">([\\s\\S]*?)</script>`).exec(s)[1]);
+  const d = pick("office-data"), m = pick("office-models");
+  const f = d.floors.root, e = (a, b) => f.edges.find((x) => x.from === a && x.to === b);
+  const n = Object.values(d.floors).reduce((t, x) => t + x.nodes.length, 0);
+  process.stdout.write([Object.keys(d.floors).length, n, Object.keys(m).length, e("7", "3").back, e("2", "9").data, f.start, f.nodes.find((x) => x.id === "4").drill].join(","));
+' "$OUT")
+if [ "$got" = "4,43,6,true,true,1,true" ]; then echo "  PASS 図 → 会社の対応  (フロア 4・工程 43・動物 6・戻り辺・成果物の辺・開始・下の階)"; else echo "  FAIL 図 → 会社の対応  期待 4,43,6,true,true,1,true / 実際 $got"; fail=1; fi
+# 流れの途中にある書類（開始 → 書類 → 作業）は工程として回る。出ていく辺の無い書類だけが流れの外
+cp "$DIR/ok-office-doc-flow.diagrams.json" "$T/docflow.diagrams.json"
+node "$OB" "$T/docflow.diagrams.json" >/dev/null 2>&1
+got=$(node -e '
+  const s = require("fs").readFileSync(process.argv[1], "utf8");
+  const f = JSON.parse(/id="office-data">([\s\S]*?)<\/script>/.exec(s)[1]).floors.root;
+  const e = (a, b) => f.edges.find((x) => x.from === a && x.to === b);
+  process.stdout.write([e("1", "2").data, f.nodes.find((n) => n.id === "2").side, e("3", "4").data, f.nodes.find((n) => n.id === "4").side].join(","));
+' "$T/docflow.office""."html 2>/dev/null)
+if [ "$got" = "false,false,true,true" ]; then echo "  PASS ok-office-doc-flow  (流れの途中の書類は工程・行き止まりの書類は流れの外)"; else echo "  FAIL ok-office-doc-flow  期待 false,false,true,true / 実際 ${got:-読めない}"; fail=1; fi
+# lint: 外部読み込みを1本足した1枚は落ちる
+out=$(node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");process.stdout.write(s.replace("</head>","<script src=\"https://cdn.example.com/three.js\"></script></head>"))' "$OUT" | node "$OL" - 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q 'EXTERNAL_REF'; then echo "  PASS ng: 外部 script  (exit 2 / EXTERNAL_REF)"; else echo "  FAIL ng: 外部 script が通った (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+# 備考にメールアドレスがあると書かない。office.json の omitNotes で外せば書ける
+cp "$DIR/ng-office-private.diagrams.json" "$T/priv.diagrams.json"
+out=$(node "$OB" "$T/priv.diagrams.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q 'PRIVATE_INFO' && [ ! -e "$T/priv.office""."html ]; then echo "  PASS ng-office-private  (exit 2 / PRIVATE_INFO / 書かない)"; else echo "  FAIL ng-office-private  期待 exit 2・PRIVATE_INFO / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+printf '{ "title": "備考なし", "omitNotes": true, "animals": { "営業": "kitsune" } }\n' > "$T/priv.office.json"
+out=$(node "$OB" "$T/priv.office.json" 2>&1); got=$?
+if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q '営業=きつね'; then echo "  PASS omitNotes ＋ 配役の指定  (exit 0 / 営業=きつね)"; else echo "  FAIL omitNotes ＋ 配役  (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+printf '{ "animals": { "営業": "lion" } }\n' > "$T/bad.office.json"
+cp "$DIR/ng-office-private.diagrams.json" "$T/bad.diagrams.json"
+out=$(node "$OB" "$T/bad.office.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '無い動物'; then echo "  PASS ng: 無い動物の指定  (exit 2 / 「無い動物」)"; else echo "  FAIL ng: 無い動物の指定が通った (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+# 柵: 3D の1枚は生成スクリプト以外から書かせない（Write も Bash の cp も）
+guard_case "$VIEW_GUARD" 2 "手で書かない" "office: 1枚への Write は止める" Write "$OUT" "$DIR/ok-view-minimal.html" 0
+guard_case "$VIEW_GUARD" 2 "Write で書く" "office: Bash の cp で置くのは止める" Bash - - - - "cp a.html $T/x.office""."html
+guard_case "$VIEW_GUARD" 0 "" "office: office.json の Write は通す" Write "$T/x.office.json" "$DIR/ok-view-minimal.html"
+rm -rf "$T"
+
 echo "== 第二階層の網羅 =="
 # process-coverage が get_project の JSON から「全工程に第二階層があるか」を数えること。
 # 1つ描いたところで §4 に進む事故（実測）を、記憶でなく機械で止めるための1本。
@@ -508,6 +567,12 @@ for p in \
   scripts/harness-view-lint.js \
   scripts/harness-view-guard.js \
   scripts/harness-view-build.js \
+  skills/animal-office-view/SKILL.md \
+  scripts/animal-office-build.js \
+  scripts/animal-office-lint.js \
+  assets/animal-office/runtime.js \
+  assets/animal-office/models/staff_neko.glb \
+  assets/animal-office/models/staff_fukurou.glb \
   skills/process-improve/SKILL.md \
   skills/process-improve/assets/棚卸しシート.html \
   skills/process-improve-view/SKILL.md \

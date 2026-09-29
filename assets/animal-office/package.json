@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "name": "animal-office-runtime",
+  "description": "開発時だけ使う。src/ と three.js を runtime.js（IIFE・minify）1本にまとめる。利用者は npm を使わない",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": { "esbuild": "0.25.10", "three": "0.160.0" }
+}

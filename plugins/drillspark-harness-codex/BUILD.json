@@ -36,6 +36,7 @@
     "reference/visualization-map.md",
     "reference/workflow-contract.md",
     "reference/設計.md.template",
+    "scripts/animal-office-lint.js",
     "scripts/check-codex-package.js",
     "scripts/codex-guard.js",
     "scripts/diagram-lint.js",

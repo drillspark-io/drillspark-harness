@@ -53,7 +53,7 @@ function files() {
   for (const file of ['LICENSE','NOTICE']) copy(file);
   const scripts = ['codex-guard','diagram-lint','file-saved-lint','harness-freeze-guard','harness-view-build',
     'harness-view-guard','harness-view-lint','process-abc','process-coverage','process-plan-lint',
-    'process-table-lint','process-write-guard','check-codex-package','merge-codex-hooks','prepare-inventory-site'];
+    'process-table-lint','process-write-guard','animal-office-lint','check-codex-package','merge-codex-hooks','prepare-inventory-site'];
   for (const name of scripts) copy('scripts/'+name+'.js');
   for (const name of ['business-improvement-tables.md','business-improvement-criteria.md','workflow-contract.md','ecrs-proposals.md','delegation-proposal.md']) {
     set('reference/'+name, project(read('reference/'+name)));

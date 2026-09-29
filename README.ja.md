@@ -137,6 +137,7 @@ Claude Code に長い手順を書いても、そのとおりには動きませ�
 | `harness-visualize` | 処理1つの図・設計・実行記録を HTML 1枚で見たい |
 | `process-improve` | 自分の（誰かの）仕事を棚卸しして、AI に任せる部分を決めたい |
 | `process-improve-view` | 改善計画を HTML 1枚にしたい |
+| `animal-office-view` | 図を「動物たちの会社」の 3D で見せたい（部署ごとの動物が書類を回し、サブプロセスは下の階へ潜る） |
 
 ### agent
 
