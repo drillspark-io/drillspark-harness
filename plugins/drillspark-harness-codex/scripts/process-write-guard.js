@@ -28,7 +28,9 @@
  *      （他人が作ったプロジェクトを書き換えない、の柵）。自分で作った図は create_project の直後に URL を書く —
  *      process-improve は 業務一覧.md の「図の在りか」、harness-implement は 処理/<処理名>/図.md、
  *      harness-improve は 改善/<日付>.md。ハーネスの図の URL を 業務一覧.md に書くと、あの列の「改善後:」は
- *      業務の改善後の図として読まれるので、案内文で置き場を分けている
+ *      業務の改善後の図として読まれるので、案内文で置き場を分けている。
+ *      業務でもハーネスでもない図（調査の図解など）は、cwd 配下の設計書類（名前に「設計」を含む .md か 図.md）に
+ *      ID があれば通す。任意の .md では通さない（log.md やメモが他人の図の URL を引用しただけで通るのを防ぐ）
  *
  * 「書いてよい場所は 業務改善/ だけ」は本文のお願いのまま（全 Write を止めると他の skill が動かない）。
  * この柵が守るのは「Write / Edit で 業務改善/ に置かれる表と1枚は検査を通ったものだけ」で、
@@ -108,6 +110,41 @@ function mdFilesUnder(dir, depth = 0) {
   return out;
 }
 
+/** 図の設計書類の名前。「成果物の隣に設計書類を置く」運用で、業務でもハーネスでもない図の URL はここに書かれる */
+const DESIGN_DOC = /^図\.(md|markdown)$|設計[^\\/]*\.(md|markdown)$/i;
+
+/**
+ * cwd 配下の設計書類（名前に「設計」を含む .md か、図.md）にプロジェクトIDが書かれているか。
+ * 任意の .md にしないのは、log.md やメモが他人の図の URL を引用しただけで通してしまわないため。
+ * git の作業ツリーなら git grep（追跡外も含む）、そうでなければ深さ6・5,000件までを歩く。
+ */
+function designDocMentions(cwd, id) {
+  // -z: 日本語のパスを "\346…" に引用・エスケープさせず、NUL 区切りのまま受ける
+  const r = spawnSync('git', ['grep', '-l', '-z', '-F', '--untracked', '-e', id, '--', '*.md', '*.markdown'],
+    { cwd, encoding: 'utf8', timeout: 15000, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } });
+  if (r.status === 0 || r.status === 1) {
+    return String(r.stdout || '').split('\0').filter(Boolean)
+      .some((f) => DESIGN_DOC.test(path.basename(f)));
+  }
+  let seen = 0;
+  const walk = (dir, depth) => {
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return false; }
+    for (const e of entries) {
+      if (seen > 5000) return false;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (depth < 6 && !e.name.startsWith('.') && e.name !== 'node_modules' && walk(p, depth + 1)) return true;
+      } else if (DESIGN_DOC.test(e.name)) {
+        seen++;
+        try { if (fs.readFileSync(p, 'utf8').includes(id)) return true; } catch { /* 読めないものは数えない */ }
+      }
+    }
+    return false;
+  };
+  return walk(cwd, 0);
+}
+
 /** ファイルへ書くリダイレクトがあるか（2>&1・>&1・/dev/null 行きは「書く」ではない） */
 function writesToFile(cmd) {
   ANY_REDIRECT.lastIndex = 0;
@@ -158,12 +195,14 @@ function main() {
     if (!hasList && !hasHarness) process.exit(0);
     if (hasList && fs.readFileSync(list, 'utf8').includes(id)) process.exit(0);
     if (hasHarness && mdFilesUnder(harness).some((f) => fs.readFileSync(f, 'utf8').includes(id))) process.exit(0);
+    if (designDocMentions(cwd, id)) process.exit(0);
     stop([
-      'process-write-guard: このプロジェクトは 業務改善/業務一覧.md の「図の在りか」にも docs/harness/ の .md にも無い。他人が作った図は読むだけで書き換えない。',
+      'process-write-guard: このプロジェクトは 業務改善/業務一覧.md の「図の在りか」にも docs/harness/ の .md にも、設計書類（名前に「設計」を含む .md・図.md）にも無い。他人が作った図は読むだけで書き換えない。',
       '自分で作った図なら、create_project の直後にその URL を書いてから update_diagram を呼ぶ。置き場はスキルで違う —',
       '  process-improve: 業務改善/業務一覧.md の「図の在りか」列（改善後の図は「改善後:」）',
       '  harness-implement: docs/harness/<ハーネス名>/処理/<処理名>/図.md',
       '  harness-improve: docs/harness/<ハーネス名>/改善/<日付>.md',
+      '  それ以外の図: 図の隣の設計書類（例: <フォルダ>/設計.md）',
       'ハーネスの図の URL を 業務一覧.md に書かない（あの列の「改善後:」は業務の改善後の図として読まれる）。',
     ]);
   }

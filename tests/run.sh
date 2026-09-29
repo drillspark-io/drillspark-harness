@@ -276,6 +276,18 @@ printf '# p 図\n\n| DrillSpark | https://example.test/editor?id=33333333-3333-4
 guard_case "$PROC_GUARD" 0 "" "process: docs/harness の 図.md にある図への update_diagram は通す" mcp__drillspark__update_diagram - - - "$T" - 33333333-3333-4333-8333-333333333333
 guard_case "$PROC_GUARD" 2 "図.md" "process: 止めたときの案内に harness 側の置き場（図.md）が出る" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
 guard_case "$PROC_GUARD" 2 "書き換えない" "process: docs/harness だけの場所でも、どこにも無い図は止める" mcp__drillspark__update_diagram - - - "$T/hz" - 22222222-2222-4222-8222-222222222222
+# 業務でもハーネスでもない図は、図の隣の設計書類（名前に「設計」を含む .md・図.md）にあれば通す。ログやメモの引用だけでは通さない
+mkdir -p "$T/out/調査の図"
+printf '# 図の設計\n\n**図**: https://example.test/editor?id=44444444-4444-4444-8444-444444444444\n' > "$T/out/調査の図/設計.md"
+printf '## ログ\n- 参照した図 https://example.test/editor?id=55555555-5555-4555-8555-555555555555\n' > "$T/log.md"
+guard_case "$PROC_GUARD" 0 "" "process: 設計書類（設計.md）にある図への update_diagram は通す" mcp__drillspark__update_diagram - - - "$T" - 44444444-4444-4444-8444-444444444444
+guard_case "$PROC_GUARD" 2 "書き換えない" "process: 設計書類でない .md（log.md）にしか無い図は止める" mcp__drillspark__update_diagram - - - "$T" - 55555555-5555-4555-8555-555555555555
+guard_case "$PROC_GUARD" 2 "設計書類" "process: 止めたときの案内に設計書類の置き場が出る" mcp__drillspark__update_diagram - - - "$T" - 22222222-2222-4222-8222-222222222222
+# git の作業ツリーでは git grep で探す。git は日本語のパスを "\346…" に引用するので、-z で受けないと設計書類を見落とす
+G="$T/gitrepo"; mkdir -p "$G/成果物/調査の図" "$G/docs/harness"
+git -C "$G" init -q 2>/dev/null
+printf '**図**: https://example.test/editor?id=66666666-6666-4666-8666-666666666666\n' > "$G/成果物/調査の図/設計.md"
+guard_case "$PROC_GUARD" 0 "" "process: git 管理下の日本語パスの設計書類にある図は通す" mcp__drillspark__update_diagram - - - "$G" - 66666666-6666-4666-8666-666666666666
 # スクリプトからの書き換え（python のヒアドキュメントで業務一覧が書き換えられた実例）
 guard_case "$PROC_GUARD" 2 "Write" "process: python から 業務改善/ を書くのは止める"   Bash - - - - "python - <<'PY'
 p='業務改善/業務一覧.md'

@@ -5,6 +5,15 @@ carries no version of its own.
 
 ## Unreleased — Codex preview
 
+- **`process-write-guard` accepts a diagram's design document as proof of ownership.**
+  A diagram that is neither a business-improvement diagram nor a harness diagram (e.g. a
+  research visualization) had nowhere to record its URL, so `update_diagram` on the author's own
+  project was refused in any repository that has `docs/harness/`. The guard now also passes when
+  the project ID appears in a design document under the working directory — a `.md` whose name
+  contains 「設計」, or `図.md`. Other `.md` files (logs, memos quoting someone else's URL) still
+  do not count. Paths are read with `git grep -z` so Japanese paths are not escaped; outside a
+  git work tree the guard walks the tree (depth 6, 5,000 files). Four guard cases added.
+
 - Add a separately installable Codex distribution under `plugins/drillspark-harness-codex`,
   generated from shared criteria/scripts and explicit Codex skill/runtime definitions.
 - Add all six Codex skill entrypoints and independent reviewer instructions, native configuration
