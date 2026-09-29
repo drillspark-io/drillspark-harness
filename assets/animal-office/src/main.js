@@ -102,48 +102,6 @@ async function boot() {
   controls.keyPanSpeed = 25;
   controls.zoomSpeed = 1.6;
 
-  // 操作ログ（URL に ?log を付けたとき）: 届いた入力とカメラの変化を window.__aoLog に貯め、右下に件数を出す。
-  // マウス・パッドの機種ごとの癖（中ボタンでホイールが届く、ピンチの量）を実物で確かめるため
-  const logOn = new URLSearchParams(location.search).has('log');
-  if (logOn) {
-    const log = (window.__aoLog = []);
-    const badge = document.createElement('div');
-    badge.className = 'ao-logbadge';
-    app.append(badge);
-    const cam = () => ({
-      dist: +camera.position.distanceTo(controls.target).toFixed(2),
-      target: controls.target.toArray().map((v) => +v.toFixed(2)),
-    });
-    let lastMove = 0;
-    const push = (o) => {
-      log.push({ t: Math.round(performance.now()), ...o });
-      if (log.length > 800) log.shift();
-      badge.textContent = `記録中 ${log.length} 件`;
-    };
-    const el = renderer.domElement;
-    for (const type of ['pointerdown', 'pointerup']) {
-      el.addEventListener(type, (e) => push({ type, button: e.button, buttons: e.buttons, pt: e.pointerType }), true);
-    }
-    el.addEventListener('pointermove', (e) => {
-      if (!e.buttons || performance.now() - lastMove < 100) return;
-      lastMove = performance.now();
-      push({ type: 'move', buttons: e.buttons, pt: e.pointerType });
-    }, true);
-    window.addEventListener('wheel', (e) => push({
-      type: 'wheel', dy: +e.deltaY.toFixed(2), dx: +e.deltaX.toFixed(2), mode: e.deltaMode, ctrl: e.ctrlKey, buttons: e.buttons,
-    }), { capture: true, passive: true });
-    let lastCam = '';
-    let lastCamT = 0;
-    controls.addEventListener('change', () => {
-      const c = JSON.stringify(cam());
-      if (c === lastCam) return;
-      lastCam = c;
-      if (performance.now() - lastCamT < 150) return; // 慣性で毎コマ届くので間引く
-      lastCamT = performance.now();
-      push({ type: 'cam', ...cam() });
-    });
-  }
-
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.minDistance = 3;
   controls.maxDistance = 120;
