@@ -185,6 +185,7 @@ export function createHud(app, handlers) {
       get follow() { return follow.checked; },
     },
     setTitle(t) { h1.textContent = t; document.title = t; },
+    setFollow(on) { follow.checked = on; },
     setCrumb(chain, currentKey, onJump) {
       crumb.replaceChildren();
       chain.forEach((c, i) => {

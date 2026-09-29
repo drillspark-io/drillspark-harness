@@ -38,6 +38,8 @@ async function boot() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   app.append(renderer.domElement);
+  // タッチのピンチ・ドラッグはブラウザに渡さず 3D の操作にする（2 本指 = 拡大縮小と平行移動、1 本指 = 回転）
+  renderer.domElement.style.touchAction = 'none';
   const css2d = new CSS2DRenderer();
   css2d.domElement.className = 'ao-css2d';
   app.append(css2d.domElement);
@@ -48,6 +50,13 @@ async function boot() {
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
+  // 地図と同じ操作: 左ドラッグ／1 本指 = 平行移動（床に沿って）、右ドラッグ = 回転、ホイール／ピンチ = 拡大縮小、矢印キー = 移動
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+  controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  controls.screenSpacePanning = false;
+  controls.zoomToCursor = true; // ホイール・ピンチはカーソル（指）の位置へ寄る
+  controls.listenToKeyEvents(window);
+  controls.keyPanSpeed = 25;
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.minDistance = 3;
   controls.maxDistance = 120;
@@ -70,6 +79,7 @@ async function boot() {
     onPlay() {
       if (!player.running) {
         clock.paused = false;
+        useFollowDistance();
         player.play(data.rootKey).catch((e) => { if (e !== CANCELLED) console.error(e); });
       } else {
         clock.paused = !clock.paused;
@@ -82,9 +92,13 @@ async function boot() {
       const off = camera.position.clone().sub(controls.target);
       const len = THREE.MathUtils.clamp(off.length() * k, controls.minDistance, controls.maxDistance);
       camera.position.copy(controls.target).add(off.setLength(len));
-      followDist = THREE.MathUtils.clamp(followDist * k, controls.minDistance, controls.maxDistance); // 追従中も寄り具合を保つ
+      zoomScale = len / baseDist; // 寄り具合を覚える（階が変わっても保つ）
     },
-    onFit() { if (current) fitCamera(current); },
+    onFit() {
+      zoomScale = 1;
+      stopFollowByUser();
+      if (current) fitCamera(current);
+    },
   });
   hud.setTitle(data.title);
   // 今の工程（札の重なりを間引くとき最優先で残す）
@@ -116,16 +130,38 @@ async function boot() {
     controls.target.copy(target);
     camera.position.set(target.x, target.y + dist * Math.sin(ELEV), target.z + dist * Math.cos(ELEV));
   }
-  let followDist = 20;
-  // ホイール・ピンチで寄ったら、追従カメラもその距離を保つ（引き戻さない）
-  controls.addEventListener('end', () => { followDist = camera.position.distanceTo(controls.target); });
+  // カメラの距離 = 基準の距離 × 利用者の寄り具合（zoomScale）。基準は、止まっているときは全景、再生中は部署が全部入る程度。
+  // 寄り具合は ＋／－・ホイール・ピンチで変わり、階が変わっても保つ。「全体」で 1 に戻す。
+  // 追従中にカメラが距離を勝手に変えることはしない（毎コマ引き戻していて「勝手に縮小される」と言われた）
+  let zoomScale = 1;
+  /** 利用者がカメラを動かしたら追従を止める（再生中に引き戻さない）。右上のチェックで戻せる */
+  function stopFollowByUser() {
+    if (!player || !player.running || !hud.opts.follow) return;
+    hud.setFollow(false);
+    hud.toast('カメラの追従を止めました（右上の「カメラが書類を追う」で戻せます）');
+  }
+  let baseDist = 20;
+  controls.addEventListener('end', () => { zoomScale = camera.position.distanceTo(controls.target) / baseDist; });
+  const overviewOf = (f) => {
+    const visW = Math.min(f.width, Math.max(46, f.depth * 2.2));
+    return { visW, dist: distanceFor(visW, f.depth) };
+  };
+  const followBaseOf = (f) => { const o = overviewOf(f); return Math.min(o.dist, Math.max(14, distanceFor(22, f.depth))); };
+
+  /** 再生を始めるとき: 基準を「追従の距離」に切り替え、寄り具合はそのまま */
+  function useFollowDistance() {
+    if (!current) return;
+    baseDist = followBaseOf(current);
+    const off = camera.position.clone().sub(controls.target);
+    camera.position.copy(controls.target).add(off.setLength(THREE.MathUtils.clamp(baseDist * zoomScale, controls.minDistance, controls.maxDistance)));
+  }
 
   function fitCamera(f) {
     // 横に長い階は全体を入れると豆粒になる。約 46m 幅（机 10 列ほど）までに絞り、開始（左端）から見せる（部署名は左に張り付く）
-    const visW = Math.min(f.width, Math.max(46, f.depth * 2.2));
+    const { visW, dist } = overviewOf(f);
     const cx = f.width <= visW ? f.center.x : f.bounds.minX - 2.5 + visW / 2;
-    placeCamera(new THREE.Vector3(cx, 0, f.center.z), distanceFor(visW, f.depth));
-    followDist = Math.min(distanceFor(visW, f.depth), Math.max(14, distanceFor(22, f.depth)));
+    baseDist = player && player.running ? followBaseOf(f) : dist;
+    placeCamera(new THREE.Vector3(cx, 0, f.center.z), THREE.MathUtils.clamp(baseDist * zoomScale, controls.minDistance, controls.maxDistance));
     const s = f.span / 2 + 4;
     Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: s * 4 + 40 });
     sun.shadow.camera.updateProjectionMatrix();
@@ -222,7 +258,9 @@ async function boot() {
     }
     clock.paused = false;
     hud.showInfo(null);
-    player.play(data.rootKey, { key, id }).catch((e) => { if (e !== CANCELLED) console.error(e); });
+    const run = player.play(data.rootKey, { key, id });
+    useFollowDistance();
+    run.catch((e) => { if (e !== CANCELLED) console.error(e); });
   }
 
   function reset() {
@@ -239,6 +277,21 @@ async function boot() {
   const ray = new THREE.Raycaster();
   let downAt = null;
   renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (downAt && e.buttons && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) stopFollowByUser();
+  });
+  // ダブルクリックした床の場所へ寄る（見たい所へすぐ行けるように）
+  renderer.domElement.addEventListener('dblclick', (e) => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    const p = new THREE.Vector3();
+    if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p)) return;
+    stopFollowByUser();
+    const off = camera.position.clone().sub(controls.target).multiplyScalar(0.7);
+    controls.target.copy(p);
+    camera.position.copy(p).add(off);
+    zoomScale = off.length() / baseDist;
+  });
   renderer.domElement.addEventListener('pointerup', (e) => {
     if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5 || !current) return;
     const r = renderer.domElement.getBoundingClientRect();
@@ -313,10 +366,6 @@ async function boot() {
       const delta = tmp.sub(controls.target).multiplyScalar(k);
       controls.target.add(delta);
       camera.position.add(delta);
-      // 距離は部署が全部入る程度まで寄る
-      const off = camera.position.clone().sub(controls.target);
-      const len = off.length();
-      camera.position.copy(controls.target).add(off.setLength(len + (followDist - len) * Math.min(1, raw * 1.5)));
     }
     controls.update();
     if (current && (++frame % 3 === 0)) stickLaneTags(current);
