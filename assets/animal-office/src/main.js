@@ -43,6 +43,17 @@ async function boot() {
   // 中ボタンを押すと Windows の Chrome は自動スクロールを始める。3D の上では止めて、回転に使う
   renderer.domElement.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
   renderer.domElement.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+  // ホイールを押し込んだまま動かすと、マウスによってはホイールの回転も一緒に届き、回転のつもりが拡大縮小になった。
+  // 中ボタンを押している間と離した直後はホイールを無視する
+  let middleUntil = 0;
+  window.addEventListener('pointerdown', (e) => { if (e.button === 1) middleUntil = Infinity; }, true);
+  window.addEventListener('pointerup', (e) => { if (e.button === 1) middleUntil = performance.now() + 250; }, true);
+  renderer.domElement.addEventListener('wheel', (e) => {
+    if (performance.now() < middleUntil || (e.buttons & 4)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true, passive: false });
   const css2d = new CSS2DRenderer();
   css2d.domElement.className = 'ao-css2d';
   app.append(css2d.domElement);
