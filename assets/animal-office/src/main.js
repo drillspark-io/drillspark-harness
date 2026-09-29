@@ -57,6 +57,7 @@ async function boot() {
   controls.zoomToCursor = true; // ホイール・ピンチはカーソル（指）の位置へ寄る
   controls.listenToKeyEvents(window);
   controls.keyPanSpeed = 25;
+  controls.zoomSpeed = 1.6;
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.minDistance = 3;
   controls.maxDistance = 120;
@@ -286,6 +287,30 @@ async function boot() {
   renderer.domElement.addEventListener('pointermove', (e) => {
     if (downAt && e.buttons && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) stopFollowByUser();
   });
+  /** 画面の (x, y) の床の点に向かって、距離を k 倍にする（寄る: k<1）。寄り具合は覚える */
+  function zoomAt(clientX, clientY, k) {
+    const r = renderer.domElement.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), camera);
+    const off = camera.position.clone().sub(controls.target);
+    const len = off.length();
+    const next = THREE.MathUtils.clamp(len * k, controls.minDistance, controls.maxDistance);
+    const ratio = next / len;
+    const p = new THREE.Vector3();
+    if (ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p)) {
+      controls.target.copy(p).add(controls.target.clone().sub(p).multiplyScalar(ratio));
+    }
+    camera.position.copy(controls.target).add(off.multiplyScalar(ratio));
+    zoomScale = next / baseDist;
+  }
+  // タッチパッドのピンチは Ctrl 付きのホイールとして届き、1 回の量がごく小さい。
+  // OrbitControls の感度では「ピンチが効かない」ので、ここで先に受け取って指の位置へ大きめに寄せる（普通のホイールは OrbitControls に任せる）
+  renderer.domElement.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    zoomAt(e.clientX, e.clientY, Math.exp(THREE.MathUtils.clamp(e.deltaY, -50, 50) * 0.015));
+  }, { capture: true, passive: false });
+
   // ダブルクリックした床の場所へ寄る（見たい所へすぐ行けるように）
   renderer.domElement.addEventListener('dblclick', (e) => {
     const r = renderer.domElement.getBoundingClientRect();
