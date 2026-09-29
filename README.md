@@ -158,6 +158,7 @@ To try it for one session without installing: `claude --plugin-dir ./drillspark-
 | `harness-visualize` | You want one workflow's diagram, design and run record on a single HTML page |
 | `process-improve` | You want to inventory a job and decide what to hand to AI |
 | `process-improve-view` | You want the improvement plan on one HTML page |
+| `animal-office-view` | You want a diagram shown as a 3D "company of animals": one animal per lane carries the paper from desk to desk, and sub-processes are floors below |
 
 ### Agents
 

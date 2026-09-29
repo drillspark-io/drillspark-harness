@@ -5,6 +5,17 @@ carries no version of its own.
 
 ## Unreleased
 
+- New skill `animal-office-view`: turns a DrillSpark project into a single self-contained 3D page
+  (three.js 0.160 and the animal models embedded, no network). Each lane becomes a department with one
+  animal (the same lane name keeps the same animal on every floor), tasks become desks, decisions
+  signposts, sub-processes elevators to the floor below, and `%% duration` sets how long each animal
+  works. Playback walks the paper along the flow, asks at each decision (or picks the first non-loop
+  edge in auto mode), and totals the minutes. Built by `scripts/animal-office-build.js`, checked by
+  `scripts/animal-office-lint.js`; `harness-view-guard` now also blocks hand-writing `*.office.html`.
+  The 14 animal models are released under CC0 (see `NOTICE`). Sub-processes are stairs in the floor:
+  the animal walks down and vanishes, a curtain names the floor below, and it comes down the arrival
+  stairs there. A task whose label names another lane as its counterpart (`ユーザーと話す`, `YCに応募`)
+  brings that lane's animal to the desk, or a guest if the lane is not on this floor.
 - `plugin.json`: add `icon` (the DrillSpark mark at 512×512, in the assets folder) for the Claude
   directory listing, which warned "No icon". `tests/run.sh` now allows exactly one validator
   warning — `Unknown field 'icon'` — and still fails on any other warning.

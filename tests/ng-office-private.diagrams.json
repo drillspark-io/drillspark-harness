@@ -1,0 +1,3 @@
+{
+  "root": "flowchart LR\n  %% duration[1]: 0\n  %% duration[2]: 30\n  %% note[2]: 問い合わせは taro@example.com へ\n  %% duration[3]: 10\n  %% duration[4]: 0\n  subgraph grp1 [\"営業\"]\n    1([\"Start\"])\n    2[\"見積もりを作る\"]\n    3{\"承認された?\"}\n    4([\"End\"])\n  end\n  1 --> 2\n  2 --> 3\n  3 -->|\"はい\"| 4\n  3 -.->|\"いいえ\"| 2\n"
+}

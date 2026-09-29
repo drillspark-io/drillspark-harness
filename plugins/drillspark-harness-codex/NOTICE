@@ -2,3 +2,10 @@ drillspark-harness
 Copyright 2026 つむぎや株式会社 (Tsumugiya)
 
 Licensed under the Apache License, Version 2.0. See LICENSE.
+
+This product bundles third-party software and assets in assets/animal-office/:
+
+- three.js 0.160.0 (inside runtime.js) — Copyright © 2010-2024 three.js authors.
+  MIT License: https://github.com/mrdoob/three.js/blob/r160/LICENSE
+- models/staff_*.glb (14 animal characters) — Copyright 2026 つむぎや株式会社 (Tsumugiya).
+  Released under CC0 1.0 Universal (public domain dedication).

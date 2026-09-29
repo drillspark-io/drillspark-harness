@@ -1,0 +1,3 @@
+{
+  "root": "flowchart TD\n  subgraph sg_0 [\"創業者\"]\n    1([\"開始\"])\n    %% duration[1]: 0\n    2@{ shape: doc, label: \"課題帳に書き留める<br/>⏱ 60 分\" }\n    %% duration[2]: 60\n    3[\"アイデアを選ぶ<br/>⏱ 30 分\"]\n    %% duration[3]: 30\n    4@{ shape: doc, label: \"リーンキャンバス\" }\n    %% duration[4]: 20\n    5([\"終了\"])\n    %% duration[5]: 0\n  end\n  1 --> 2\n  2 --> 3\n  3 --> 4\n  3 --> 5\n"
+}
