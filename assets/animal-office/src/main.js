@@ -78,6 +78,13 @@ async function boot() {
     },
     onReset: reset,
     onSpeed(v) { clock.speed = v; },
+    onZoom(k) {
+      const off = camera.position.clone().sub(controls.target);
+      const len = THREE.MathUtils.clamp(off.length() * k, controls.minDistance, controls.maxDistance);
+      camera.position.copy(controls.target).add(off.setLength(len));
+      followDist = THREE.MathUtils.clamp(followDist * k, controls.minDistance, controls.maxDistance); // 追従中も寄り具合を保つ
+    },
+    onFit() { if (current) fitCamera(current); },
   });
   hud.setTitle(data.title);
   // 今の工程（札の重なりを間引くとき最優先で残す）
@@ -110,6 +117,8 @@ async function boot() {
     camera.position.set(target.x, target.y + dist * Math.sin(ELEV), target.z + dist * Math.cos(ELEV));
   }
   let followDist = 20;
+  // ホイール・ピンチで寄ったら、追従カメラもその距離を保つ（引き戻さない）
+  controls.addEventListener('end', () => { followDist = camera.position.distanceTo(controls.target); });
 
   function fitCamera(f) {
     // 横に長い階は全体を入れると豆粒になる。約 46m 幅（机 10 列ほど）までに絞り、開始（左端）から見せる（部署名は左に張り付く）
@@ -191,7 +200,8 @@ async function boot() {
       camera.position.add(delta);
     }
     const canEnter = n.drill && data.floors[id] && !player.running;
-    hud.showInfo(current.data, n, canEnter ? () => browseTo(id) : null);
+    const key = current.key;
+    hud.showInfo(current.data, n, canEnter ? () => browseTo(id) : null, n.side ? null : () => playFrom(key, id));
     hud.markCurrent(id);
   }
 
@@ -201,7 +211,19 @@ async function boot() {
     opts: hud.opts,
     goFloor: (k, mode) => goFloor(k, mode),
     hasFloor: (k) => !!data.floors[k],
+    parentOf: (k) => data.floors[k].parent,
   });
+
+  /** 選んだ工程から再生する（再生中なら止めてから） */
+  async function playFrom(key, id) {
+    if (player.running) {
+      reset();
+      await player.idle();
+    }
+    clock.paused = false;
+    hud.showInfo(null);
+    player.play(data.rootKey, { key, id }).catch((e) => { if (e !== CANCELLED) console.error(e); });
+  }
 
   function reset() {
     clock.cancelAll();

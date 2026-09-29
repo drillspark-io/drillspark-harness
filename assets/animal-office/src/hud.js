@@ -24,13 +24,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; fon
 .ao-ctrl .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ao-ctrl button, .ao-ctrl select { font: inherit; border: 1px solid var(--ao-line); background: var(--ao-chip); color: var(--ao-fg); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 .ao-ctrl button.primary { background: var(--ao-accent); border-color: var(--ao-accent); color: var(--ao-accent-fg); font-weight: 600; min-width: 6.5rem; }
+.ao-zoom-l { font-size: 12px; color: var(--ao-muted); margin-right: 2px; }
 .ao-ctrl label { display: flex; gap: 6px; align-items: center; font-size: 12.5px; cursor: pointer; }
 .ao-elapsed { font-variant-numeric: tabular-nums; color: var(--ao-muted); font-size: 12.5px; }
-.ao-cap { left: 50%; bottom: 14px; transform: translateX(-50%); max-width: min(44rem, calc(100vw - 24px)); text-align: center; }
+.ao-cap { pointer-events: auto; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: min(44rem, calc(100vw - 24px)); text-align: center; }
 .ao-cap[hidden], .ao-choice[hidden], .ao-info[hidden] { display: none; }
 .ao-cap b { font-size: 15px; }
+.ao-cap.open .ao-cap-note { -webkit-line-clamp: unset; display: block; max-height: 45vh; overflow: auto; }
+.ao-cap-more { display: block; font-size: 11px; color: var(--ao-accent); margin-top: 2px; cursor: pointer; }
 .ao-cap small { display: block; color: var(--ao-muted); margin-top: 2px; }
-.ao-cap-note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px;
+.ao-cap-note { display: -webkit-box; -webkit-line-clamp: 3; cursor: pointer; white-space: pre-wrap; line-height: 1.55; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px;
   font-size: 12px; color: var(--ao-fg); text-align: left; border-top: 1px solid var(--ao-line); padding-top: 4px; }
 .ao-choice button.ao-colored { color: #fff; border-color: transparent; font-weight: 700; }
 .ao-tag .ao-note { margin-left: 3px; }
@@ -47,9 +50,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; fon
 .ao-list li button:hover, .ao-list li button:focus-visible, .ao-list li button.cur { background: var(--ao-chip); outline: 1px solid var(--ao-line); }
 .ao-list .id { font: 600 11px ui-monospace, Consolas, monospace; color: var(--ao-muted); min-width: 2.4rem; }
 .ao-list .min { margin-left: auto; color: var(--ao-muted); white-space: nowrap; }
-.ao-info { right: 12px; bottom: 14px; width: 19rem; max-height: 40vh; overflow: auto; }
+.ao-info { right: 12px; bottom: 14px; width: min(26rem, calc(100vw - 24px)); max-height: 60vh; overflow: auto; }
 .ao-info h2 { font-size: 14px; margin: 0 0 4px; }
 .ao-info p { margin: 4px 0; white-space: pre-wrap; color: var(--ao-muted); font-size: 12.5px; }
+.ao-info .ao-info-note { color: var(--ao-fg); font-size: 13.5px; line-height: 1.7; background: var(--ao-chip); border-radius: 6px; padding: 8px 10px; }
 .ao-info button { font: inherit; margin-top: 6px; border: 1px solid var(--ao-accent); background: var(--ao-accent); color: var(--ao-accent-fg); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
 .ao-toast { position: absolute; z-index: 11; left: 50%; top: 18%; transform: translateX(-50%); background: var(--ao-fg); color: var(--ao-bg);
   padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; pointer-events: none; transition: opacity .4s; }
@@ -130,7 +134,16 @@ export function createHud(app, handlers) {
   const elapsed = el('div', 'ao-elapsed', '経過 0分');
   const row1 = el('div', 'row');
   row1.append(playBtn, resetBtn, speed);
-  ctrl.append(row1, autoL, subL, folL, elapsed);
+  // 拡大縮小（ホイール・ピンチでもできるが、気づかれにくいのでボタンも置く。キーは + − 0）
+  const zoomIn = el('button', '', '＋');
+  const zoomOut = el('button', '', '－');
+  const fitBtn = el('button', '', '全体');
+  zoomIn.setAttribute('aria-label', '拡大');
+  zoomOut.setAttribute('aria-label', '縮小');
+  fitBtn.title = 'この階の全体を見る';
+  const row2 = el('div', 'row');
+  row2.append(el('span', 'ao-zoom-l', '表示'), zoomIn, zoomOut, fitBtn);
+  ctrl.append(row1, row2, autoL, subL, folL, elapsed);
 
   const cap = el('div', 'ao-panel ao-cap');
   cap.hidden = true;
@@ -153,6 +166,15 @@ export function createHud(app, handlers) {
   playBtn.addEventListener('click', () => handlers.onPlay());
   resetBtn.addEventListener('click', () => handlers.onReset());
   speed.addEventListener('change', () => handlers.onSpeed(Number(speed.value)));
+  zoomIn.addEventListener('click', () => handlers.onZoom(0.75));
+  zoomOut.addEventListener('click', () => handlers.onZoom(1 / 0.75));
+  fitBtn.addEventListener('click', () => handlers.onFit());
+  window.addEventListener('keydown', (e) => {
+    if (e.target && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName)) return;
+    if (e.key === '+' || e.key === ';' || e.key === '=') handlers.onZoom(0.75);
+    else if (e.key === '-') handlers.onZoom(1 / 0.75);
+    else if (e.key === '0') handlers.onFit();
+  });
 
   let pendingReject = null;
 
@@ -189,13 +211,18 @@ export function createHud(app, handlers) {
     markCurrent(id) {
       for (const b of ol.querySelectorAll('button')) b.classList.toggle('cur', b.dataset.nodeId === id);
     },
-    showInfo(floor, node, onEnter) {
+    showInfo(floor, node, onEnter, onPlayFrom) {
       if (!node) { info.hidden = true; return; }
       info.replaceChildren();
       const lane = floor.lanes.find((l) => l.name === node.lane);
       info.append(el('h2', '', `${node.id}  ${node.label}`));
       info.append(el('p', '', `${lane ? `${lane.name}（${lane.animalName}）` : ''}${node.dur ? ` ・ ⏱ ${formatMinutes(node.dur)}` : ''}`));
-      if (node.note) info.append(el('p', '', node.note));
+      if (node.note) info.append(el('p', 'ao-info-note', `📝 ${node.note}`)); // 備考は全文（パネルが長ければスクロール）
+      if (onPlayFrom) {
+        const p = el('button', '', '▶ ここから再生');
+        p.addEventListener('click', onPlayFrom);
+        info.append(p, document.createTextNode(' '));
+      }
       if (onEnter) {
         const b = el('button', '', '▼ 階段でこの工程の中（下の階）へ');
         b.addEventListener('click', onEnter);
@@ -214,7 +241,17 @@ export function createHud(app, handlers) {
         el('b', '', `${node.id}  ${node.label}`),
         el('small', '', `${who}${node.dur ? ` ・ ⏱ ${formatMinutes(node.dur)}` : ''}`),
       );
-      if (node.note) cap.append(el('span', 'ao-cap-note', `📝 ${node.note}`)); // 再生中は備考もここに出す
+      if (node.note) {
+        // 再生中は備考もここに出す。3 行を超える分はクリックで全文
+        cap.classList.remove('open');
+        const note = el('span', 'ao-cap-note', `📝 ${node.note}`);
+        const more = el('span', 'ao-cap-more', '▼ 全文を読む');
+        const toggle = () => { const o = cap.classList.toggle('open'); more.textContent = o ? '▲ たたむ' : '▼ 全文を読む'; };
+        note.addEventListener('click', toggle);
+        more.addEventListener('click', toggle);
+        cap.append(note, more);
+        requestAnimationFrame(() => { if (note.scrollHeight <= note.clientHeight + 2) more.remove(); });
+      }
       cap.hidden = false;
       this.markCurrent(node.id);
     },

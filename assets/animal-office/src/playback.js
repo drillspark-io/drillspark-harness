@@ -176,29 +176,44 @@ export function createPlayer(ctx) {
     return outs[i];
   }
 
-  async function playFloor(key, viaStairs) {
-    const f = await ctx.goFloor(key, viaStairs ? 'down' : null);
-    let cur = f.data.start;
+  /**
+   * 1つの階を流す。o.viaStairs: 上の階から階段で下りてきた ／ o.startAt: その工程から始める（その場に書類を持って立つ）／
+   * o.resumeAfter: 下の階から戻ってきて、その工程の次から続ける ／ o.returnUp: 終わったら EXIT から階段で上の階へ戻る
+   */
+  async function playFloor(key, o = {}) {
+    const f = await ctx.goFloor(key, o.viaStairs ? 'down' : o.resumeAfter ? 'up' : o.startAt ? true : null);
+    let cur = o.resumeAfter || o.startAt || f.data.start;
     if (!cur) return;
     carrier = f.animalOf(cur);
     f.paper.visible = true;
     carrier.hold(f.paper);
-    if (viaStairs) await arrive(f, carrier, cur);
-    else await carrier.walk([f.spot(cur)]);
+    let resumed = false;
+    if (o.viaStairs) await arrive(f, carrier, cur);
+    else if (o.resumeAfter) {
+      hud.setStep(f.data, f.nodes.get(cur), carrier.info);
+      await comeUp(f, f.nodes.get(cur), carrier);
+      resumed = true;
+    } else if (o.startAt) {
+      carrier.root.visible = true;
+      carrier.root.position.copy(f.spot(cur));
+    } else await carrier.walk([f.spot(cur)]);
     for (;;) {
       const node = f.nodes.get(cur);
-      hud.setStep(f.data, node, carrier.info, partnersOf(f, node).map((p) => p.info));
-      const dive = node.drill && ctx.opts.enterSub && ctx.hasFloor(node.id);
-      await doNode(f, node, dive);
-      if (dive) {
-        const back = carrier;
-        await goDown(f, node);
-        await playFloor(node.id, true);
-        await ctx.goFloor(key, 'up');
-        carrier = back;
-        hud.setStep(f.data, node, carrier.info);
-        await comeUp(f, node, carrier);
+      if (!resumed) {
+        hud.setStep(f.data, node, carrier.info, partnersOf(f, node).map((p) => p.info));
+        const dive = node.drill && ctx.opts.enterSub && ctx.hasFloor(node.id);
+        await doNode(f, node, dive);
+        if (dive) {
+          const back = carrier;
+          await goDown(f, node);
+          await playFloor(node.id, { viaStairs: true, returnUp: true });
+          await ctx.goFloor(key, 'up');
+          carrier = back;
+          hud.setStep(f.data, node, carrier.info);
+          await comeUp(f, node, carrier);
+        }
       }
+      resumed = false;
       const e = await nextEdge(f, node);
       if (!e) break;
       const nextAnimal = f.animalOf(e.to);
@@ -216,7 +231,7 @@ export function createPlayer(ctx) {
       }
       cur = e.to;
     }
-    if (viaStairs) {
+    if (o.viaStairs || o.returnUp) {
       await leave(f, carrier, cur); // 書類を持ったまま上の階へ
       return;
     }
@@ -226,14 +241,30 @@ export function createPlayer(ctx) {
     f.paper.scale.setScalar(1);
   }
 
-  async function play(rootKey) {
-    if (running) return;
+  /**
+   * 再生する。startAt を渡すと、その階のその工程から始める。下の階から始めたときは、その階を終えたら
+   * 階段で上の階へ戻り、親の工程の次から続けて、1F の終わりまで流す
+   */
+  let runP = Promise.resolve();
+  function play(rootKey, from) {
+    if (running) return runP;
+    runP = run(rootKey, from);
+    return runP;
+  }
+  async function run(rootKey, from) {
     running = true;
     elapsed = 0;
     hud.setElapsed(formatMinutes(0));
     hud.setPlaying(true);
     try {
-      await playFloor(rootKey);
+      if (!from) await playFloor(rootKey);
+      else {
+        const parent = ctx.parentOf(from.key);
+        await playFloor(from.key, { startAt: from.id, returnUp: !!parent });
+        for (let child = from.key, p = parent; p; child = p, p = ctx.parentOf(p)) {
+          await playFloor(p, { resumeAfter: child, returnUp: !!ctx.parentOf(p) });
+        }
+      }
       hud.toast(`完了 — 合計 ${formatMinutes(elapsed)}`);
     } catch (err) {
       if (err !== CANCELLED) throw err;
@@ -247,6 +278,8 @@ export function createPlayer(ctx) {
 
   return {
     play,
+    /** 止めた再生が片付くまで待つ（「最初から」の直後に別の工程から始めるとき） */
+    idle: () => runP.catch(() => {}),
     get running() { return running; },
     get carrier() { return carrier; },
   };
