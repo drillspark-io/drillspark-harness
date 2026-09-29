@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-const SCALE = 1.5;
+const SCALE = 1.8; // 机（高さ 0.7m）越しに顔と体が見える大きさ
 const WALK_SPEED = 1.6; // m/秒（再生速度 1 のとき）
 
 function b64ToBuffer(b64) {
@@ -71,7 +71,7 @@ export function makeAnimal(tpl, info, clock) {
   root.add(makeShadow());
 
   const hand = new THREE.Group(); // 書類を持つ位置
-  hand.position.set(0, 0.95, 0.42);
+  hand.position.set(0, 1.12, 0.5);
   body.add(hand);
 
   const mixer = new THREE.AnimationMixer(model);
@@ -108,7 +108,7 @@ export function makeAnimal(tpl, info, clock) {
   bubble.className = 'ao-bubble';
   bubble.hidden = true;
   const bubbleObj = new CSS2DObject(bubble);
-  bubbleObj.position.set(0, 2.05, 0);
+  bubbleObj.position.set(0, 2.35, 0);
   bubbleObj.center.set(0.5, 1); // 下辺を頭の上に（CSS の transform は CSS2DRenderer に上書きされるので center で付ける）
   root.add(bubbleObj);
 
@@ -166,12 +166,18 @@ export function makeAnimal(tpl, info, clock) {
     }
   }
 
-  async function work(sec, text) {
-    say(text);
+  /**
+   * 作業する。card を渡すと頭の上に作業カード（工程番号・工程名・時間・進み具合の帯）を出す。
+   * 文字列なら吹き出し（一緒に作業する相手の「〜も一緒に」など）
+   */
+  async function work(sec, card) {
+    let bar = null;
+    if (card && typeof card === 'object') bar = showCard(card);
+    else say(card);
     working = 0.01;
     if (tilt && sec > 2) tilt.reset().play();
     try {
-      await clock.wait(sec);
+      await clock.run(sec, (t) => { if (bar) bar.style.width = `${Math.round(t * 100)}%`; });
     } finally {
       working = 0;
     }
@@ -183,8 +189,28 @@ export function makeAnimal(tpl, info, clock) {
   }
 
   function say(text) {
+    bubble.className = 'ao-bubble';
     bubble.textContent = text;
     bubble.hidden = !text;
+  }
+
+  /** 作業カード: { id, title, meta }。進み具合の帯の要素を返す */
+  function showCard(card) {
+    bubble.className = 'ao-bubble ao-card';
+    const head = document.createElement('div');
+    head.className = 'ao-card-id';
+    head.textContent = `${card.id}  ${card.meta || ''}`;
+    const title = document.createElement('div');
+    title.className = 'ao-card-title';
+    title.textContent = card.title;
+    const track = document.createElement('div');
+    track.className = 'ao-card-track';
+    const bar = document.createElement('div');
+    bar.className = 'ao-card-bar';
+    track.append(bar);
+    bubble.replaceChildren(head, title, track);
+    bubble.hidden = false;
+    return bar;
   }
 
   function greet() {

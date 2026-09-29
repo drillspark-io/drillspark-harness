@@ -162,8 +162,8 @@ export function createPlayer(ctx) {
       await clock.wait(0.6);
       return;
     }
-    // 工程名は机の札にあるので、吹き出しは今の様子と時間だけ（同じ文が2つ並んで見にくかった）
-    const text = node.type === 'decision' ? '考え中…' : `作業中${node.dur ? ` ⏱${formatMinutes(node.dur)}` : ''}`;
+    // 頭の上に作業カード（工程番号・工程名・時間・進み具合）。そのあいだ机の札は隠す（main.js の cullTags）
+    const text = { id: node.id, title: node.label, meta: node.type === 'decision' ? '考え中…' : (node.dur ? `⏱ ${formatMinutes(node.dur)}` : '作業中') };
     await workTogether(f, node, node.type === 'decision' ? 1.2 : workSeconds(node.dur), text);
   }
 

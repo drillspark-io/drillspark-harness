@@ -60,9 +60,20 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; fon
 .ao-loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: #33415c; }
 /* 家具の札。CSS2DObject.center で下辺中央を家具の真上に付け、下向きの三角で指す（transform は CSS2DRenderer が上書きするので使わない） */
 .ao-tag { position: relative; background: rgba(255,255,255,.95); color: #1f2328; border: 1px solid #c9d1d9; border-radius: 6px; padding: 2px 7px;
-  font-size: 12px; line-height: 1.3; max-width: 8rem; margin-bottom: 7px; pointer-events: none; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  font-size: 12px; line-height: 1.3; max-width: 8rem; margin-bottom: 7px; pointer-events: auto; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.ao-tag:hover { border-color: var(--ao-accent); box-shadow: 0 0 0 2px rgba(9,105,218,.35); }
 .ao-tag::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0;
   border-top-color: rgba(255,255,255,.95); }
+.ao-tag-below { margin: 7px 0 0; }
+.ao-tag-below.ao-tag-odd { margin-top: 34px; }
+.ao-tag-below.ao-tag-odd::after { top: -7px; }
+.ao-tag-below::after { bottom: auto; top: -7px; border: 6px solid transparent; border-top: 0; border-bottom-color: rgba(255,255,255,.95); }
+.ao-css2d .ao-busy { visibility: hidden; }
+.ao-bubble.ao-card { white-space: normal; overflow: visible; max-width: 13rem; text-align: left; padding: 6px 10px 8px; border-radius: 10px; }
+.ao-card-id { font: 600 11px ui-monospace, Consolas, monospace; color: #0550ae; }
+.ao-card-title { font-size: 13px; line-height: 1.35; margin: 2px 0 6px; }
+.ao-card-track { height: 5px; background: #e6eaef; border-radius: 3px; overflow: hidden; }
+.ao-card-bar { height: 100%; width: 0; background: #2e9d57; }
 .ao-tag .ao-l { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ao-tag-sm { font-size: 10.5px; color: #59636e; background: rgba(255,255,255,.85); max-width: 7rem; }
 .ao-tag .ao-id { display: block; font: 600 10px ui-monospace, Consolas, monospace; color: #59636e; }

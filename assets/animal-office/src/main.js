@@ -273,6 +273,12 @@ async function boot() {
     goFloor(data.rootKey, true);
   }
 
+  // 札をクリックしても工程を選ぶ（札は家具の上に浮いているので、押しても家具に当たらなかった）
+  css2d.domElement.addEventListener('click', (e) => {
+    const tag = e.target.closest && e.target.closest('.ao-tag');
+    if (tag && tag.dataset.nodeId) pick(tag.dataset.nodeId, false);
+  });
+
   // クリックで工程を選ぶ（ドラッグと区別する）
   const ray = new THREE.Raycaster();
   let downAt = null;
@@ -341,6 +347,8 @@ async function boot() {
       if (!el.isConnected || el.style.display === 'none') continue;
       el.classList.remove('ao-cull');
       const id = el.dataset.nodeId;
+      // 再生中の今の工程は、頭の上の作業カードに出ているので机の札は隠す
+      el.classList.toggle('ao-busy', !!(player.running && id === focusId));
       const pri = id === focusId ? 0 : t.userData.priority;
       items.push({ el, pri, r: el.getBoundingClientRect() });
     }

@@ -178,11 +178,19 @@ export function buildFloor(floor, templates, clock) {
       tag.element.style.borderLeft = `5px solid ${accentOf(laneOf.color)}`; // 札の左の帯 = 部署の色
       tag.element.title = `${laneOf.name}（${laneOf.animalName}）`;
     }
-    // 札の下辺の中央を家具の真上に付ける（下向きの三角で指す）。高いと奥の部署の札に見えた
-    tag.center.set(0.5, 1);
-    // 隣の段の札と横に重ならないよう、段ごとに高さを互い違いにする（奇数段を 0.75m 上げる）
-    const lift = small ? 0 : ((n.rank || 0) % 2) * 0.75;
-    tag.position.set(0, (small ? 0.75 : n.type === 'terminal' ? 2.4 : n.drill ? 1.75 : 1.15) + lift, 0);
+    // 机・案内板・書類の札は家具の手前に吊り下げる（上に浮かせると、机の奥に立つ動物にかぶって見えなかった）。
+    // 扉と階段は背が高く手前が通路なので、上に付けて下向きの三角で指す
+    const below = !n.drill && n.type !== 'terminal';
+    if (below) {
+      tag.element.classList.add('ao-tag-below');
+      tag.center.set(0.5, 0);
+      // 隣の段の札と横に重ならないよう、奇数段は画面上で下へずらす（床の奥行きでずらすと隣の部署の帯に入り込んだ）
+      if (!small && (n.rank || 0) % 2) tag.element.classList.add('ao-tag-odd');
+      tag.position.set(0, 0.05, small ? 0.3 : 0.45);
+    } else {
+      tag.center.set(0.5, 1);
+      tag.position.set(0, n.type === 'terminal' ? 2.4 : 1.75, 0);
+    }
     tag.element.dataset.nodeId = n.id;
     // 重なりを間引くときの順位（小さいほど残す）。分岐・開始／終了・階段は流れの骨なので工程より先に残す
     tag.userData.priority = small ? 2 : n.type === 'decision' || n.type === 'terminal' || n.drill ? 0.5 : 1;
