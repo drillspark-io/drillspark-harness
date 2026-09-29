@@ -43,7 +43,10 @@ allowed-tools: Read, Write, Glob, Bash, mcp__drillspark__list_projects, mcp__dri
 2. **どのプロジェクトかを決める。** 利用者が名前か URL を言っていればそれ。言っていなければ `list_projects` の結果を見せて1回だけ聞く
 3. **図を写す。** `get_project` が返した `content.diagrams`（`{ "root": "flowchart …", "2": … }`）を**そのまま**
    `drillspark-office/<名前>-<YYYY-MM-DD>.diagrams.json` に Write する（`<名前>` はファイル名に使える短い英数字かかな。
-   置き場は利用者が言えばそこ）。**手で編集しない — 原文が正。** ノード・レーン・辺はスクリプトが機械で拾う
+   置き場は利用者が言えばそこ）。**手で編集しない — 原文が正。** ノード・レーン・辺はスクリプトが機械で拾う。
+   **図が大きいと `get_project` の結果は会話に出ず、ファイルに保存される**（「exceeds maximum allowed tokens」）。
+   そのときは中身を読み直して書き写さず、保存されたファイルを**そのまま** `.diagrams.json` の名前で写す
+   （`cp <保存先> drillspark-office/<名前>-<日付>.diagrams.json`）。生成スクリプトが応答の包み（`success` / `data` / `text`）を剥がす
 4. **配役を書く（任意）。** 次のどれかがあるときだけ、同じ basename の `.office.json` を Write する。無ければ書かない
 
    ```json

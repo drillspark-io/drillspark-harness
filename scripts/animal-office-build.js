@@ -356,7 +356,13 @@ function main() {
   if (!fs.existsSync(diagPath)) fail([`animal-office-build: ${path.basename(diagPath)} が無い。get_project の content.diagrams をそのまま Write する`]);
   let diagrams;
   try { diagrams = JSON.parse(fs.readFileSync(diagPath, 'utf8')); } catch (e) { fail([`animal-office-build: diagrams.json が読めない: ${e.message}`]); }
-  if (diagrams && diagrams.content && diagrams.content.diagrams) diagrams = diagrams.content.diagrams; // get_project の data ごと写した場合
+  // get_project の応答をそのまま写した場合も読む（大きい図は応答がファイルに保存されるので、手で書き直さずに済むように）
+  //   [{ type: "text", text: "{…}" }] ／ { success, data: { content: { diagrams } } } ／ { content: { diagrams } }
+  if (Array.isArray(diagrams) && diagrams[0] && typeof diagrams[0].text === 'string') {
+    try { diagrams = JSON.parse(diagrams[0].text); } catch (e) { fail([`animal-office-build: 応答の text が JSON として読めない: ${e.message}`]); }
+  }
+  if (diagrams && diagrams.data && diagrams.data.content) diagrams = diagrams.data;
+  if (diagrams && diagrams.content && diagrams.content.diagrams) diagrams = diagrams.content.diagrams;
   if (!diagrams || typeof diagrams !== 'object' || Array.isArray(diagrams)) fail(['animal-office-build: diagrams.json は { "root": "flowchart …", … } の形にする']);
   let office = {};
   if (fs.existsSync(officePath)) {

@@ -388,6 +388,10 @@ got=$(node -e '
   process.stdout.write([e("1", "2").data, f.nodes.find((n) => n.id === "2").side, e("3", "4").data, f.nodes.find((n) => n.id === "4").side].join(","));
 ' "$T/docflow.office""."html 2>/dev/null)
 if [ "$got" = "false,false,true,true" ]; then echo "  PASS ok-office-doc-flow  (流れの途中の書類は工程・行き止まりの書類は流れの外)"; else echo "  FAIL ok-office-doc-flow  期待 false,false,true,true / 実際 ${got:-読めない}"; fail=1; fi
+# get_project の応答をそのまま写したファイル（[{text}] の包み）も読める。大きい図は応答がファイルに保存されるため
+node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));fs.writeFileSync(process.argv[2],JSON.stringify([{type:"text",text:JSON.stringify({success:true,data:{title:"t",content:{diagrams:d}}})}]))' "$DIR/ok-office-doc-flow.diagrams.json" "$T/wrapped.diagrams.json"
+out=$(node "$OB" "$T/wrapped.diagrams.json" 2>&1); got=$?
+if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q '工程 5'; then echo "  PASS 応答の包みごと写した diagrams.json  (exit 0 / 工程 5)"; else echo "  FAIL 応答の包みが読めない (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 # lint: 外部読み込みを1本足した1枚は落ちる
 out=$(node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");process.stdout.write(s.replace("</head>","<script src=\"https://cdn.example.com/three.js\"></script></head>"))' "$OUT" | node "$OL" - 2>&1); got=$?
 if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q 'EXTERNAL_REF'; then echo "  PASS ng: 外部 script  (exit 2 / EXTERNAL_REF)"; else echo "  FAIL ng: 外部 script が通った (exit $got)"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
