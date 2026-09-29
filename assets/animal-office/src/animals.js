@@ -108,7 +108,8 @@ export function makeAnimal(tpl, info, clock) {
   bubble.className = 'ao-bubble';
   bubble.hidden = true;
   const bubbleObj = new CSS2DObject(bubble);
-  bubbleObj.position.set(0, 2.2, 0);
+  bubbleObj.position.set(0, 2.05, 0);
+  bubbleObj.center.set(0.5, 1); // 下辺を頭の上に（CSS の transform は CSS2DRenderer に上書きされるので center で付ける）
   root.add(bubbleObj);
 
   let walking = 0; // 歩いている間の位相

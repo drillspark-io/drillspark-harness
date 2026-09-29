@@ -69,30 +69,102 @@ export function signpost() {
   return g;
 }
 
-/** 開始・終了（terminal）: ドア。start は緑、end は赤みの枠 */
+/**
+ * 開始・終了（terminal）: ドア。start は緑、end は赤みの枠。
+ * 扉は左の蝶番で手前（+Z）へ開く。userData.setOpen(0〜1)（下の階では、奥の階段との出入りで開け閉めする）
+ */
 export function door(isEnd) {
   const g = new THREE.Group();
   const frame = isEnd ? '#c9605a' : '#4f9d69';
   g.add(box(1.1, 0.1, 0.16, frame, 0, 2.0, 0));
   g.add(box(0.1, 2.0, 0.16, frame, -0.5, 0, 0));
   g.add(box(0.1, 2.0, 0.16, frame, 0.5, 0, 0));
-  g.add(box(0.9, 1.98, 0.06, '#f3ead8', 0, 0, 0));
-  g.add(cyl(0.035, 0.08, '#b89b4a', 0.3, 1.0, 0.06));
+  const hinge = new THREE.Group();
+  hinge.position.set(-0.45, 0, 0);
+  hinge.add(box(0.9, 1.98, 0.06, '#f3ead8', 0.45, 0, 0));
+  hinge.add(cyl(0.035, 0.08, '#b89b4a', 0.75, 1.0, 0.06));
+  g.add(hinge);
   const plate = textPlate(isEnd ? 'EXIT' : 'START', 0.8, 0.22, frame, '#ffffff');
   plate.position.set(0, 2.25, 0.02);
   g.add(plate);
+  g.userData.setOpen = (t) => { hinge.rotation.y = -1.5 * t; };
   return g;
 }
 
-/** サブプロセス（subroutine）: エレベーター。子図があれば下向き ▼ が光る */
-export function elevator(hasChild) {
+// ---------- 階段（子図のある工程 = 下の階へ下りる入口） ----------
+/** 下り階段の床の穴（原点からの相対）。床と敷物にこの形の穴を開ける（floor.js） */
+export const STAIR_HOLE = { x0: -0.65, x1: 0.65, z0: -0.75, z1: 0.5 }; // 奥の通路（z-0.95）を塞がない奥行き
+const STEPS = 10;
+const RISE = 0.2;
+const RUN = 0.12;
+
+function rail(x0, z0, x1, z1) {
   const g = new THREE.Group();
-  g.add(box(1.4, 2.3, 0.3, '#8d99a6', 0, 0, -0.05, { metalness: 0.4, roughness: 0.4 }));
-  g.add(box(0.58, 2.0, 0.04, '#c5cdd6', -0.3, 0, 0.12, { metalness: 0.6, roughness: 0.3 }));
-  g.add(box(0.58, 2.0, 0.04, '#c5cdd6', 0.3, 0, 0.12, { metalness: 0.6, roughness: 0.3 }));
-  const ind = textPlate(hasChild ? '▼' : '■', 0.34, 0.24, '#1d2430', hasChild ? '#ffcf4a' : '#667080');
-  ind.position.set(0, 2.1, 0.16);
-  g.add(ind);
+  const len = Math.hypot(x1 - x0, z1 - z0);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, len), mat('#6d5a44'));
+  bar.position.set((x0 + x1) / 2, 0.9, (z0 + z1) / 2);
+  bar.rotation.y = Math.atan2(x1 - x0, z1 - z0);
+  g.add(bar);
+  for (const [x, z] of [[x0, z0], [x1, z1]]) g.add(cyl(0.03, 0.9, '#6d5a44', x, 0, z, 8));
+  return g;
+}
+
+/**
+ * 下り階段: 床の穴の中を奥（-Z）へ下りていく段と、穴の下の竪穴（暗い壁）、三方の手すり、▼ の札。
+ * userData.path は動物が辿る点（床の手前 → 段を下りて床下へ消える）
+ */
+export function stairsDown(caption) {
+  const g = new THREE.Group();
+  const { x0, x1, z0, z1 } = STAIR_HOLE;
+  const w = x1 - x0;
+  // 段と竪穴は影を受けない（床の厚板の影で真っ黒な穴に見え、階段だと分からなくなった）
+  const unshadowed = (m) => { m.castShadow = false; m.receiveShadow = false; return m; };
+  for (let i = 0; i < STEPS; i += 1) {
+    const top = -(i + 1) * RISE;
+    const z = z1 - 0.1 - i * RUN;
+    g.add(unshadowed(box(w - 0.04, 0.12, RUN + 0.02, i % 2 ? '#e2cda9' : '#f0dfc0', 0, top - 0.12, z - RUN / 2)));
+    g.add(unshadowed(box(w - 0.04, 0.02, 0.03, '#8a6a4a', 0, top - 0.02, z - 0.015))); // 段鼻
+  }
+  // 竪穴: 穴の縁から下へ明るい壁（床下が空洞に見えないように）
+  const depth = STEPS * RISE + 0.6;
+  g.add(unshadowed(box(w, depth, 0.05, '#d6cab6', 0, -depth, z0)));
+  g.add(unshadowed(box(0.05, depth, z1 - z0, '#cbbfa9', x0, -depth, (z0 + z1) / 2)));
+  g.add(unshadowed(box(0.05, depth, z1 - z0, '#cbbfa9', x1, -depth, (z0 + z1) / 2)));
+  g.add(unshadowed(box(w, 0.05, z1 - z0, '#8d8070', 0, -depth, (z0 + z1) / 2)));
+  // 穴の縁に黄色い線（床の開口だと一目で分かるように）
+  for (const [bw, bd, bx, bz] of [[w + 0.1, 0.06, 0, z1 + 0.03], [0.06, z1 - z0, x0 - 0.03, (z0 + z1) / 2], [0.06, z1 - z0, x1 + 0.03, (z0 + z1) / 2]]) {
+    g.add(unshadowed(box(bw, 0.012, bd, '#f2c94c', bx, 0.006, bz)));
+  }
+  g.add(rail(x0 - 0.04, z1, x0 - 0.04, z0));
+  g.add(rail(x1 + 0.04, z1, x1 + 0.04, z0));
+  g.add(rail(x0 - 0.04, z0 - 0.04, x1 + 0.04, z0 - 0.04));
+  const sign = textPlate(caption || '▼', 1.2, 0.42, '#2d6a4f', '#ffffff');
+  sign.position.set(0, 1.3, z0 - 0.04);
+  g.add(sign, cyl(0.03, 1.1, '#6d5a44', 0.58, 0, z0 - 0.04, 8), cyl(0.03, 1.1, '#6d5a44', -0.58, 0, z0 - 0.04, 8));
+  const path = [new THREE.Vector3(0, 0, z1 + 0.35), new THREE.Vector3(0, 0, z1 - 0.05)];
+  for (let i = 0; i < STEPS; i += 1) path.push(new THREE.Vector3(0, -(i + 1) * RISE, z1 - 0.1 - (i + 0.5) * RUN));
+  g.userData.path = path;
+  return g;
+}
+
+/** 上り階段（下の階の出入口。START／EXIT のドアの奥に置く）: 奥へ上っていく段と手すり、▲ の札。userData.path は上から下りてくる点（最上段 → ドアのすぐ奥） */
+export function stairsUp(caption) {
+  const g = new THREE.Group();
+  const w = 1.0;
+  const pts = [];
+  for (let i = 0; i < STEPS; i += 1) {
+    const top = (i + 1) * RISE;
+    const z = 0.4 - i * RUN;
+    g.add(box(w, top, RUN, i % 2 ? '#c9b18f' : '#d8c3a2', 0, 0, z - RUN / 2));
+    pts.push(new THREE.Vector3(0, top, z - RUN / 2));
+  }
+  const zTop = 0.4 - STEPS * RUN;
+  g.add(rail(-w / 2 - 0.04, 0.4, -w / 2 - 0.04, zTop));
+  g.add(rail(w / 2 + 0.04, 0.4, w / 2 + 0.04, zTop));
+  const sign = textPlate(caption || '▲', 0.9, 0.3, '#2d6a4f', '#ffffff');
+  sign.position.set(0, STEPS * RISE + 0.5, zTop);
+  g.add(sign);
+  g.userData.path = [...pts.reverse(), new THREE.Vector3(0, 0, 0.42)];
   return g;
 }
 
@@ -148,10 +220,10 @@ export function propFor(node) {
   switch (node.type) {
     case 'decision': return signpost();
     case 'terminal': return door(node.isEnd);
-    case 'subroutine': return elevator(node.drill);
+    case 'subroutine': return node.drill ? stairsDown(node.stairLabel) : desk();
     case 'database': return cabinet();
     case 'io': return counter();
     case 'document': return tray();
-    default: return node.drill ? elevator(true) : desk();
+    default: return node.drill ? stairsDown(node.stairLabel) : desk();
   }
 }

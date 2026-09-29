@@ -80,6 +80,10 @@ async function boot() {
     onSpeed(v) { clock.speed = v; },
   });
   hud.setTitle(data.title);
+  // 今の工程（札の重なりを間引くとき最優先で残す）
+  let focusId = null;
+  const setStep = hud.setStep;
+  hud.setStep = (f, n, ...rest) => { focusId = n ? n.id : null; return setStep.call(hud, f, n, ...rest); };
 
   /** 階をシーンから外す。CSS2D の札は子孫には removed が届かず DOM に残るので、ここで外す（戻れば描画時に付け直される） */
   function detach(f) {
@@ -92,11 +96,27 @@ async function boot() {
     return floors.get(key);
   }
 
+  const ELEV = THREE.MathUtils.degToRad(52); // 見下ろす角度。浅いと部署の列が重なって見えた
+  /** 幅 w・奥行き d が画面に収まる距離（横は水平画角、奥行きは見下ろした分の見かけの高さで） */
+  function distanceFor(w, d) {
+    const vHalf = THREE.MathUtils.degToRad(camera.fov / 2);
+    const hHalf = Math.atan(Math.tan(vHalf) * (camera.aspect || 1));
+    const byW = (w / 2) / Math.tan(hHalf);
+    const byD = ((d * Math.sin(ELEV)) / 2) / Math.tan(vHalf);
+    return Math.max(byW, byD) * 1.12; // 上下の操作盤の分だけ余白
+  }
+  function placeCamera(target, dist) {
+    controls.target.copy(target);
+    camera.position.set(target.x, target.y + dist * Math.sin(ELEV), target.z + dist * Math.cos(ELEV));
+  }
+  let followDist = 20;
+
   function fitCamera(f) {
-    const aspect = camera.aspect || 1;
-    const dist = f.span * (aspect < 1 ? 1.1 / aspect : 0.78) + 4;
-    controls.target.copy(f.center);
-    camera.position.set(f.center.x, dist * 0.62, f.center.z + dist * 0.8);
+    // 横に長い階は全体を入れると豆粒になる。約 46m 幅（机 10 列ほど）までに絞り、開始（左端）から見せる（部署名は左に張り付く）
+    const visW = Math.min(f.width, Math.max(46, f.depth * 2.2));
+    const cx = f.width <= visW ? f.center.x : f.bounds.minX - 2.5 + visW / 2;
+    placeCamera(new THREE.Vector3(cx, 0, f.center.z), distanceFor(visW, f.depth));
+    followDist = Math.min(distanceFor(visW, f.depth), Math.max(14, distanceFor(22, f.depth)));
     const s = f.span / 2 + 4;
     Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: s * 4 + 40 });
     sun.shadow.camera.updateProjectionMatrix();
@@ -116,31 +136,38 @@ async function boot() {
     hud.showInfo(null);
   }
 
-  async function goFloor(key, instant) {
-    if (current && current.key === key) return current;
-    const next = getFloor(key);
-    const prev = current;
+  function swapTo(next, prev) {
     current = next;
+    if (prev) detach(prev);
     scene.add(next.group);
     showFloorUi(next);
     fitCamera(next);
-    if (!prev || instant || reduceMotion) {
-      next.group.position.y = 0;
-      if (prev) detach(prev);
+  }
+
+  /**
+   * 階を移る。mode: true = すぐ（最初から）／ 'down' 'up' = 階段で下りる・上る ／ 省略 = 深さで向きを決める。
+   * 暗幕を下ろし、「▼ 階段で B1F へ」と行き先を大きく出してから階を替え、幕を上げる
+   */
+  async function goFloor(key, mode) {
+    if (current && current.key === key) return current;
+    const next = getFloor(key);
+    const prev = current;
+    if (!prev || mode === true) {
+      swapTo(next, prev);
       return next;
     }
-    const dy = next.data.depth >= prev.data.depth ? 1 : -1; // 深い階へ＝床が上へ抜けていく
-    hud.toast(`${next.data.floorName} ${next.data.title}`);
+    const down = mode ? mode === 'down' : next.data.depth > prev.data.depth;
+    const head = down ? `▼ 階段で ${next.data.floorName} へ下りる` : `▲ 階段で ${next.data.floorName} へ戻る`;
+    const sub = down ? `「${next.data.title}」の中` : `「${next.data.title}」`;
+    const curtain = hud.curtain(head, sub);
+    const fade = reduceMotion ? 0.05 : 0.45;
     try {
-      await clock.run(1.1, (t) => {
-        const e = ease(t);
-        prev.group.position.y = 14 * dy * e;
-        next.group.position.y = -14 * dy * (1 - e);
-      });
+      await clock.run(fade, (t) => curtain.set(ease(t)));
+      swapTo(next, prev);
+      await clock.wait(reduceMotion ? 0.3 : 0.7);
+      await clock.run(fade, (t) => curtain.set(1 - ease(t)));
     } finally {
-      detach(prev);
-      prev.group.position.y = 0;
-      next.group.position.y = 0;
+      curtain.remove(); // 途中で「最初から」に止められたときは reset が階を作り直す
     }
     return next;
   }
@@ -172,7 +199,7 @@ async function boot() {
     clock,
     hud,
     opts: hud.opts,
-    goFloor: (k) => goFloor(k),
+    goFloor: (k, mode) => goFloor(k, mode),
     hasFloor: (k) => !!data.floors[k],
   });
 
@@ -212,23 +239,68 @@ async function boot() {
 
   const timer = new THREE.Clock();
   const tmp = new THREE.Vector3();
+  let frame = 0;
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const ndc = new THREE.Vector3();
+  const hitPt = new THREE.Vector3();
+
+  /** 部署名の札を、左端が画面外なら画面の左端へ張り付かせる（表計算の行見出しのように） */
+  function stickLaneTags(f) {
+    for (const lt of f.laneTags) {
+      ndc.set(controls.target.x, 0, lt.z).project(camera);
+      ray.setFromCamera({ x: -0.97, y: ndc.y }, camera);
+      const x = ray.ray.intersectPlane(ground, hitPt) ? hitPt.x : lt.homeX;
+      lt.tag.position.x = Math.min(Math.max(lt.homeX, x), f.bounds.maxX);
+    }
+  }
+
+  /**
+   * 札の重なりを間引く。今の工程・選んだ工程を先に、次に工程の札（左から）、最後に書類の小札。
+   * 重なった後ろ側は visibility で隠す（CSS2DRenderer が display を使うので触らない）。遠いときは時間の行を省く
+   */
+  function cullTags(f) {
+    css2d.domElement.classList.toggle('ao-far', camera.position.distanceTo(controls.target) > 30);
+    const items = [];
+    for (const t of f.nodeTags) {
+      const el = t.element;
+      if (!el.isConnected || el.style.display === 'none') continue;
+      el.classList.remove('ao-cull');
+      const id = el.dataset.nodeId;
+      const pri = id === focusId ? 0 : t.userData.priority;
+      items.push({ el, pri, r: el.getBoundingClientRect() });
+    }
+    items.sort((p, q) => p.pri - q.pri || p.r.left - q.r.left);
+    const kept = [];
+    for (const it of items) {
+      const hit = kept.some((k) => it.r.left < k.right - 2 && it.r.right > k.left + 2 && it.r.top < k.bottom - 2 && it.r.bottom > k.top + 2);
+      if (hit) it.el.classList.add('ao-cull');
+      else kept.push(it.r);
+    }
+  }
   renderer.setAnimationLoop(() => {
     const raw = timer.getDelta();
     clock.tick(raw);
     const scaled = clock.paused ? 0 : Math.min(raw, 0.1) * clock.speed;
     for (const f of floors.values()) f.update(scaled, raw);
-    if (player.running && hud.opts.follow && player.carrier && !clock.paused) {
+    if (player.running && hud.opts.follow && player.carrier && player.carrier.root.visible && !clock.paused && current) {
       player.carrier.root.getWorldPosition(tmp);
-      const delta = tmp.setY(0).sub(controls.target).multiplyScalar(Math.min(1, raw * 2.5));
+      tmp.setY(0);
+      // 奥行きが浅い階（部署が3つ程度まで）は横だけ追い、全部の部署を画面に残す（寄りすぎて渡し先が映らなかった）
+      if (current.depth <= 16) tmp.z = current.center.z;
+      const k = Math.min(1, raw * 2.5);
+      const delta = tmp.sub(controls.target).multiplyScalar(k);
       controls.target.add(delta);
       camera.position.add(delta);
-      // 追っている間は寄る（全景のままだと動物が豆粒になる）
+      // 距離は部署が全部入る程度まで寄る
       const off = camera.position.clone().sub(controls.target);
-      if (off.length() > 15) camera.position.copy(controls.target).add(off.multiplyScalar(1 - Math.min(1, raw * 1.5) * 0.5));
+      const len = off.length();
+      camera.position.copy(controls.target).add(off.setLength(len + (followDist - len) * Math.min(1, raw * 1.5)));
     }
     controls.update();
+    if (current && (++frame % 3 === 0)) stickLaneTags(current);
     renderer.render(scene, camera);
     css2d.render(scene, camera);
+    if (current && frame % 8 === 0) cullTags(current);
   });
 }
 

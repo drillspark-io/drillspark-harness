@@ -10,9 +10,9 @@ const CSS = `
 html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; font-family: var(--ao-font); color: var(--ao-fg); }
 #app { position: fixed; inset: 0; }
 #app canvas { display: block; }
-.ao-css2d { position: absolute; inset: 0; pointer-events: none; }
+.ao-css2d { position: absolute; inset: 0; pointer-events: none; z-index: 1; } /* 札の z-index は CSS2DRenderer が振るので、入れ物で閉じ込める */
 .ao-panel { position: absolute; background: var(--ao-bg); border: 1px solid var(--ao-line); border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.12); padding: 10px 12px; font-size: 13px; backdrop-filter: blur(6px); }
+  box-shadow: 0 2px 10px rgba(0,0,0,.12); padding: 10px 12px; font-size: 13px; backdrop-filter: blur(6px); z-index: 2; }
 .ao-top { left: 12px; top: 12px; max-width: min(46rem, calc(100vw - 24px)); }
 .ao-top h1 { font-size: 16px; margin: 0 0 6px; }
 .ao-crumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -30,7 +30,11 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; fon
 .ao-cap[hidden], .ao-choice[hidden], .ao-info[hidden] { display: none; }
 .ao-cap b { font-size: 15px; }
 .ao-cap small { display: block; color: var(--ao-muted); margin-top: 2px; }
-.ao-choice { left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; min-width: 18rem; }
+.ao-cap-note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px;
+  font-size: 12px; color: var(--ao-fg); text-align: left; border-top: 1px solid var(--ao-line); padding-top: 4px; }
+.ao-choice button.ao-colored { color: #fff; border-color: transparent; font-weight: 700; }
+.ao-tag .ao-note { margin-left: 3px; }
+.ao-choice { z-index: 12; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; min-width: 18rem; }
 .ao-choice p { margin: 0 0 8px; font-weight: 600; }
 .ao-choice button { display: block; width: 100%; margin: 6px 0 0; font: inherit; padding: 6px 12px; border-radius: 6px;
   border: 1px solid var(--ao-accent); background: var(--ao-chip); color: var(--ao-fg); cursor: pointer; }
@@ -47,26 +51,36 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; fon
 .ao-info h2 { font-size: 14px; margin: 0 0 4px; }
 .ao-info p { margin: 4px 0; white-space: pre-wrap; color: var(--ao-muted); font-size: 12.5px; }
 .ao-info button { font: inherit; margin-top: 6px; border: 1px solid var(--ao-accent); background: var(--ao-accent); color: var(--ao-accent-fg); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
-.ao-toast { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); background: var(--ao-fg); color: var(--ao-bg);
+.ao-toast { position: absolute; z-index: 11; left: 50%; top: 18%; transform: translateX(-50%); background: var(--ao-fg); color: var(--ao-bg);
   padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; pointer-events: none; transition: opacity .4s; }
 .ao-loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: #33415c; }
-.ao-tag { background: rgba(255,255,255,.93); color: #1f2328; border: 1px solid #c9d1d9; border-radius: 6px; padding: 2px 7px; font-size: 12px;
-  line-height: 1.35; white-space: nowrap; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; transform: translateY(-50%); pointer-events: none; }
-.ao-tag-sm { font-size: 10.5px; color: #59636e; background: rgba(255,255,255,.82); }
-.ao-tag .ao-id { font: 600 10px ui-monospace, Consolas, monospace; color: #59636e; margin-right: 4px; }
+/* 家具の札。CSS2DObject.center で下辺中央を家具の真上に付け、下向きの三角で指す（transform は CSS2DRenderer が上書きするので使わない） */
+.ao-tag { position: relative; background: rgba(255,255,255,.95); color: #1f2328; border: 1px solid #c9d1d9; border-radius: 6px; padding: 2px 7px;
+  font-size: 12px; line-height: 1.3; max-width: 8rem; margin-bottom: 7px; pointer-events: none; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.ao-tag::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0;
+  border-top-color: rgba(255,255,255,.95); }
+.ao-tag .ao-l { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ao-tag-sm { font-size: 10.5px; color: #59636e; background: rgba(255,255,255,.85); max-width: 7rem; }
+.ao-tag .ao-id { display: block; font: 600 10px ui-monospace, Consolas, monospace; color: #59636e; }
 .ao-tag .ao-dur { display: block; font-size: 10.5px; color: #0550ae; }
-.ao-tag .ao-drill { display: block; font-size: 10.5px; color: #9a6700; font-weight: 600; }
 .ao-tag.hit { outline: 2px solid #0969da; }
-.ao-lane { text-align: right; pointer-events: none; }
-.ao-lane-name { display: block; font-weight: 700; font-size: 13px; color: #33415c; text-shadow: 0 1px 0 #fff; }
+.ao-css2d .ao-cull { visibility: hidden; }
+.ao-css2d.ao-far .ao-dur, .ao-css2d.ao-far .ao-tag-sm { display: none; }
+.ao-lane { pointer-events: none; background: rgba(255,255,255,.9); border-radius: 0 6px 6px 0; padding: 3px 9px 3px 7px; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.ao-lane-name { display: block; font-weight: 700; font-size: 13px; color: #33415c; }
 .ao-lane-animal { display: block; font-size: 11px; color: #59636e; }
 .ao-edge { font-size: 11px; background: #fff7e0; border: 1px solid #e3b341; color: #6b4e00; border-radius: 999px; padding: 0 7px; pointer-events: none; }
+.ao-edge.ao-branch { font-size: 13px; font-weight: 700; color: #fff; border: 2px solid #fff; padding: 1px 10px; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .ao-bubble { background: #fff; color: #1f2328; border: 2px solid #33415c; border-radius: 12px; padding: 4px 10px; font-size: 12.5px; font-weight: 600;
-  white-space: nowrap; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; transform: translateY(-100%); pointer-events: none; }
+  white-space: nowrap; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .ao-fallback { padding: 1.5rem; overflow: auto; height: 100%; box-sizing: border-box; background: #fff; color: #1f2328; }
 .ao-fallback table { border-collapse: collapse; margin: .5rem 0 1.5rem; font-size: 13px; }
 .ao-fallback th, .ao-fallback td { border-bottom: 1px solid #d1d9e0; padding: 4px 10px; text-align: left; }
 @media (max-width: 640px) { .ao-list { display: none; } .ao-info { left: 12px; right: 12px; width: auto; } .ao-ctrl { top: auto; bottom: 90px; } }
+.ao-curtain { position: absolute; inset: 0; background: rgba(20,24,32,.92); color: #fff; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; pointer-events: none; z-index: 10; text-align: center; padding: 0 16px; }
+.ao-curtain-head { font-size: clamp(22px, 4vw, 36px); font-weight: 700; letter-spacing: .04em; }
+.ao-curtain-sub { font-size: clamp(14px, 2.2vw, 18px); color: #cfd8e3; }
 @media (prefers-reduced-motion: reduce) { .ao-toast { transition: none; } }
 `;
 
@@ -183,7 +197,7 @@ export function createHud(app, handlers) {
       info.append(el('p', '', `${lane ? `${lane.name}（${lane.animalName}）` : ''}${node.dur ? ` ・ ⏱ ${formatMinutes(node.dur)}` : ''}`));
       if (node.note) info.append(el('p', '', node.note));
       if (onEnter) {
-        const b = el('button', '', '▼ この工程の中（下の階）へ');
+        const b = el('button', '', '▼ 階段でこの工程の中（下の階）へ');
         b.addEventListener('click', onEnter);
         info.append(b);
       }
@@ -193,12 +207,14 @@ export function createHud(app, handlers) {
       info.append(close);
       info.hidden = false;
     },
-    setStep(floor, node, animal) {
+    setStep(floor, node, animal, partners = []) {
       if (!floor || !node) { cap.hidden = true; this.markCurrent(null); return; }
+      const who = [`${node.lane}（${animal ? animal.name : ''}）`, ...partners.map((p) => `${p.lane}（${p.name}）`)].join(' ＋ ');
       cap.replaceChildren(
         el('b', '', `${node.id}  ${node.label}`),
-        el('small', '', `${node.lane}（${animal ? animal.name : ''}）${node.dur ? ` ・ ⏱ ${formatMinutes(node.dur)}` : ''}`),
+        el('small', '', `${who}${node.dur ? ` ・ ⏱ ${formatMinutes(node.dur)}` : ''}`),
       );
+      if (node.note) cap.append(el('span', 'ao-cap-note', `📝 ${node.note}`)); // 再生中は備考もここに出す
       cap.hidden = false;
       this.markCurrent(node.id);
     },
@@ -210,7 +226,8 @@ export function createHud(app, handlers) {
         pendingReject = reject;
         choice.replaceChildren(el('p', '', node.label));
         options.forEach((o, i) => {
-          const b = el('button', '', `${o.back ? '↩ ' : '→ '}${o.label}`);
+          const b = el('button', o.color ? 'ao-colored' : '', `${o.back ? '↩ ' : '→ '}${o.label}`);
+          if (o.color) b.style.background = o.color; // 床の線と同じ色
           b.addEventListener('click', () => { choice.hidden = true; pendingReject = null; resolve(i); });
           choice.append(b);
         });
@@ -222,6 +239,15 @@ export function createHud(app, handlers) {
       choice.hidden = true;
       if (pendingReject) pendingReject(CANCELLED);
       pendingReject = null;
+    },
+    /** 階を移るときの暗幕。set(0〜1) で濃さ、remove() で片付ける */
+    curtain(head, sub) {
+      const c = el('div', 'ao-curtain');
+      c.setAttribute('role', 'status');
+      c.append(el('div', 'ao-curtain-head', head), el('div', 'ao-curtain-sub', sub));
+      c.style.opacity = '0';
+      app.append(c);
+      return { set(o) { c.style.opacity = String(o); }, remove() { c.remove(); } };
     },
     toast(text) {
       const t = el('div', 'ao-toast', text);

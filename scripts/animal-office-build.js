@@ -16,7 +16,7 @@
  *
  * 図 → 会社の対応:
  *   図1枚 = フロア（root が 1F、子図は B1F・B2F…）／レーン = 部署の島（部署に動物1匹。同じ名前のレーンは全フロアで同じ動物）
- *   作業 = 机／分岐 = 案内板／開始・終了 = ドア／子図を持つ工程 = エレベーター／データストア = 書庫／入出力 = 受付／成果物 = 書類トレイ
+ *   作業 = 机／分岐 = 案内板／開始・終了 = ドア／子図を持つ工程 = 床の下り階段（下の階は上り階段から始まる）／データストア = 書庫／入出力 = 受付／成果物 = 書類トレイ
  *   座標はここで決める（部署 = 奥行きの列、工程 = 最長路の段で横）。ページは並べ方を持たない。
  *
  * 依存なし（Node 標準の fs / path / child_process だけ）。three.js と動物モデルは同梱の
@@ -38,7 +38,7 @@ const ANIMALS = [
 const ANIMAL_NAME = Object.fromEntries(ANIMALS);
 const LANE_COLORS = ['#dcebd6', '#f6e3c8', '#dfe4f5', '#f5dde3', '#e3f0f0', '#efe9d2', '#e8def0', '#f0e0d0'];
 const NO_LANE = '（担当なし）';
-const X_STEP = 3.4;
+const X_STEP = 4.2; // 札（約 8rem）が隣の机の札と横に重ならない間隔
 const LANE_DEPTH = 4.2;
 const SIDE = new Set(['document', 'database']);
 
@@ -161,6 +161,46 @@ function parseMmd(src) {
   return { nodes: [...nodes.values()], edges, lanes, unparsed };
 }
 
+// ---------- 一緒に作業する相手 ----------
+/** レーン名から、工程名に出てきたら「その部署の人」とみなす語を取る。「ユーザー（見込み客）」→ ユーザー・見込み客、「友人・共同創業者候補」→ 友人・共同創業者候補 */
+function laneWords(name) {
+  const words = new Set();
+  const inner = [...name.matchAll(/[（(]([^）)]*)[）)]/g)].map((m) => m[1]);
+  for (const part of [name.replace(/[（(][^）)]*[）)]/g, ''), ...inner]) {
+    for (const w of part.split(/[・、,，/／]/)) {
+      const t = w.trim();
+      if (t.length >= 2) words.add(t);
+    }
+  }
+  return [...words];
+}
+
+/**
+ * 工程名に別の部署の語が「相手」として出てくれば（直後が と・に・へ・から）、その部署の動物も作業に加わる。
+ * 「ユーザーと話す」「YCに応募する」は加わり、「仕入先を選ぶ」（相手が目的語なだけ）は加わらない。2匹まで。担当部署と同じ語は数えない
+ */
+const PARTNER_PARTICLE = /^(?:と|に|へ|から)/;
+function companions(node, allLanes, laneAnimal) {
+  const own = new Set(laneWords(node.lane));
+  const out = [];
+  const asPartner = (w) => {
+    for (let i = node.label.indexOf(w); i >= 0; i = node.label.indexOf(w, i + 1)) {
+      if (PARTNER_PARTICLE.test(node.label.slice(i + w.length))) return true;
+    }
+    return false;
+  };
+  for (const lane of allLanes) {
+    if (lane === node.lane || lane === NO_LANE) continue;
+    const hit = laneWords(lane).some((w) => !own.has(w) && ![...own].some((o) => o.includes(w)) && asPartner(w));
+    if (!hit) continue;
+    const animal = laneAnimal.get(lane);
+    if (out.some((x) => x.animal === animal) || animal === laneAnimal.get(node.lane)) continue;
+    out.push({ lane, animal, animalName: ANIMAL_NAME[animal] });
+    if (out.length === 2) break;
+  }
+  return out;
+}
+
 // ---------- 並べる ----------
 function layout(d, laneAnimal, opts) {
   const lanes = [...d.lanes];
@@ -222,7 +262,7 @@ function layout(d, laneAnimal, opts) {
     const k = slots.get(key) || 0;
     slots.set(key, k + 1);
     const hasOut = outs.get(n.id).length > 0;
-    out.push({ ...n, side: false, x: r * X_STEP + (k ? 0.9 : 0), z: laneZ.get(n.lane) + k * 1.7, drill: opts.isDiagram(n.id), isEnd: n.type === 'terminal' && !hasOut && n.id !== start });
+    out.push({ ...n, side: false, rank: r, x: r * X_STEP + (k ? 0.9 : 0), z: laneZ.get(n.lane) + k * 1.7, drill: opts.isDiagram(n.id), isEnd: n.type === 'terminal' && !hasOut && n.id !== start });
   }
   const pos = new Map(out.map((n) => [n.id, n]));
   const perSource = new Map();
@@ -236,7 +276,14 @@ function layout(d, laneAnimal, opts) {
     const z = anchor ? anchor.z + 1.45 : laneZ.get(n.lane);
     out.push({ ...n, side: true, x, z, drill: false, isEnd: false });
   }
-  for (const n of out) if (opts.omitNotes) n.note = '';
+  for (const n of out) {
+    if (opts.omitNotes) n.note = '';
+    if (n.drill) n.stairLabel = `▼ B${opts.depth + 1}F`;
+    if (!n.side && n.type !== 'terminal') {
+      const w = companions(n, opts.allLanes, laneAnimal);
+      if (w.length) n.with = w;
+    }
+  }
 
   const xs = out.map((n) => n.x);
   const zs = out.map((n) => n.z);
@@ -245,7 +292,7 @@ function layout(d, laneAnimal, opts) {
     nodes: out,
     edges: edges.map(({ from, to, label, dashed, back, data }) => ({ from, to, label, dashed, back, data })),
     start,
-    bounds: { minX: Math.min(0, ...xs) - 1, maxX: Math.max(0, ...xs) + 1, minZ: Math.min(0, ...zs) - 2.4, maxZ: Math.max(0, ...zs) + 2 },
+    bounds: { minX: Math.min(0, ...xs) - 1, maxX: Math.max(0, ...xs) + 1, minZ: Math.min(0, ...zs) - 2.4, maxZ: Math.max(0, ...zs) + 0.6 },
   };
 }
 
@@ -297,6 +344,8 @@ function build(diagrams, office, baseName) {
   const title = office.title || baseName;
   const floors = {};
   const depthOf = (k) => { let d = 0; for (let p = parentOf(k, keys); p; p = parentOf(p, keys)) d += 1; return d; };
+  const floorName = (depth) => (depth === 0 ? '1F' : `B${depth}F`);
+  const allLanes = [...laneAnimal.keys()];
   for (const k of order) {
     const parent = parentOf(k, keys);
     const parentNode = parent ? parsed[parent].nodes.find((n) => n.id === k) : null;
@@ -305,9 +354,10 @@ function build(diagrams, office, baseName) {
       key: k,
       parent,
       depth,
-      floorName: depth === 0 ? '1F' : `B${depth}F`,
+      floorName: floorName(depth),
+      parentFloorName: parent ? floorName(depth - 1) : null,
       title: k === 'root' ? title : (parentNode ? parentNode.label : k),
-      ...layout(parsed[k], laneAnimal, { isDiagram: (id) => id !== 'root' && keys.includes(id), omitNotes: !!office.omitNotes }),
+      ...layout(parsed[k], laneAnimal, { isDiagram: (id) => id !== 'root' && keys.includes(id), omitNotes: !!office.omitNotes, depth, allLanes }),
     };
   }
   const models = {};
