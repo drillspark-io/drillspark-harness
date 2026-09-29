@@ -57,6 +57,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; fon
 .ao-info button { font: inherit; margin-top: 6px; border: 1px solid var(--ao-accent); background: var(--ao-accent); color: var(--ao-accent-fg); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
 .ao-toast { position: absolute; z-index: 11; left: 50%; top: 18%; transform: translateX(-50%); background: var(--ao-fg); color: var(--ao-bg);
   padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; pointer-events: none; transition: opacity .4s; }
+.ao-logbadge { position: absolute; right: 12px; bottom: 6px; z-index: 11; font-size: 11px; color: #fff; background: #d1495b; border-radius: 999px; padding: 1px 8px; pointer-events: none; }
 .ao-loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: #33415c; }
 /* 家具の札。CSS2DObject.center で下辺中央を家具の真上に付け、下向きの三角で指す（transform は CSS2DRenderer が上書きするので使わない） */
 .ao-tag { position: relative; background: rgba(255,255,255,.95); color: #1f2328; border: 1px solid #c9d1d9; border-radius: 6px; padding: 2px 7px;

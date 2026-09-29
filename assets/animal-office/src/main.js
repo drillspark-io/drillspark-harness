@@ -54,6 +54,34 @@ async function boot() {
       e.stopImmediatePropagation();
     }
   }, { capture: true, passive: false });
+
+  // ホイール（Ctrl なし）は OrbitControls に任せず、ここで受け取る。操作ログで分かったこと:
+  //   ・ThinkPad などは「中ボタン＋移動」をドライバがスクロールに変えて送り、ブラウザには中ボタンが届かない
+  //   ・その量は 1 回で数百〜数千と大きく、縦スクロールの拡大縮小が 41m→120m→3m と飛んだ
+  //   ・中ボタンでの上下の操作は 1 回で 20 回以上届き、1 回ずつに上限を付けても大きく寄り引きした
+  // そこで、マウスのホイールの目盛り（1 目盛り = wheelDelta 120 の倍数）だけを拡大縮小にし、
+  // それ以外のなめらかなスクロール（中ボタン＋移動・パッドの 2 本指）は 横 = 周りを回る、縦 = 見下ろす角度 にする
+  renderer.domElement.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) return; // ピンチは別の受け口
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const off = camera.position.clone().sub(controls.target);
+    const notch = e.deltaMode === 1 || (e.wheelDeltaY && e.wheelDeltaY % 120 === 0 && !e.deltaX);
+    if (notch) {
+      const next = THREE.MathUtils.clamp(off.length() * (e.deltaY > 0 ? 1.15 : 1 / 1.15), controls.minDistance, controls.maxDistance);
+      camera.position.copy(controls.target).add(off.setLength(next));
+      zoomScale = next / baseDist;
+      return;
+    }
+    const dx = THREE.MathUtils.clamp(e.deltaX, -120, 120);
+    const dy = THREE.MathUtils.clamp(e.deltaY, -120, 120);
+    const sph = new THREE.Spherical().setFromVector3(off);
+    sph.theta -= dx * 0.004;
+    sph.phi = THREE.MathUtils.clamp(sph.phi + dy * 0.003, 0.12, controls.maxPolarAngle);
+    camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
+    camera.lookAt(controls.target);
+    stopFollowByUser();
+  }, { capture: true, passive: false });
   const css2d = new CSS2DRenderer();
   css2d.domElement.className = 'ao-css2d';
   app.append(css2d.domElement);
@@ -73,6 +101,49 @@ async function boot() {
   controls.listenToKeyEvents(window);
   controls.keyPanSpeed = 25;
   controls.zoomSpeed = 1.6;
+
+  // 操作ログ（URL に ?log を付けたとき）: 届いた入力とカメラの変化を window.__aoLog に貯め、右下に件数を出す。
+  // マウス・パッドの機種ごとの癖（中ボタンでホイールが届く、ピンチの量）を実物で確かめるため
+  const logOn = new URLSearchParams(location.search).has('log');
+  if (logOn) {
+    const log = (window.__aoLog = []);
+    const badge = document.createElement('div');
+    badge.className = 'ao-logbadge';
+    app.append(badge);
+    const cam = () => ({
+      dist: +camera.position.distanceTo(controls.target).toFixed(2),
+      target: controls.target.toArray().map((v) => +v.toFixed(2)),
+    });
+    let lastMove = 0;
+    const push = (o) => {
+      log.push({ t: Math.round(performance.now()), ...o });
+      if (log.length > 800) log.shift();
+      badge.textContent = `記録中 ${log.length} 件`;
+    };
+    const el = renderer.domElement;
+    for (const type of ['pointerdown', 'pointerup']) {
+      el.addEventListener(type, (e) => push({ type, button: e.button, buttons: e.buttons, pt: e.pointerType }), true);
+    }
+    el.addEventListener('pointermove', (e) => {
+      if (!e.buttons || performance.now() - lastMove < 100) return;
+      lastMove = performance.now();
+      push({ type: 'move', buttons: e.buttons, pt: e.pointerType });
+    }, true);
+    window.addEventListener('wheel', (e) => push({
+      type: 'wheel', dy: +e.deltaY.toFixed(2), dx: +e.deltaX.toFixed(2), mode: e.deltaMode, ctrl: e.ctrlKey, buttons: e.buttons,
+    }), { capture: true, passive: true });
+    let lastCam = '';
+    let lastCamT = 0;
+    controls.addEventListener('change', () => {
+      const c = JSON.stringify(cam());
+      if (c === lastCam) return;
+      lastCam = c;
+      if (performance.now() - lastCamT < 150) return; // 慣性で毎コマ届くので間引く
+      lastCamT = performance.now();
+      push({ type: 'cam', ...cam() });
+    });
+  }
+
   controls.maxPolarAngle = Math.PI * 0.47;
   controls.minDistance = 3;
   controls.maxDistance = 120;
