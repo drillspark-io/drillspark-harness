@@ -40,6 +40,9 @@ async function boot() {
   app.append(renderer.domElement);
   // タッチのピンチ・ドラッグはブラウザに渡さず 3D の操作にする（2 本指 = 拡大縮小と平行移動、1 本指 = 回転）
   renderer.domElement.style.touchAction = 'none';
+  // 中ボタンを押すと Windows の Chrome は自動スクロールを始める。3D の上では止めて、回転に使う
+  renderer.domElement.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
+  renderer.domElement.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
   const css2d = new CSS2DRenderer();
   css2d.domElement.className = 'ao-css2d';
   app.append(css2d.domElement);
@@ -50,8 +53,9 @@ async function boot() {
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  // 地図と同じ操作: 左ドラッグ／1 本指 = 平行移動（床に沿って）、右ドラッグ = 回転、ホイール／ピンチ = 拡大縮小、矢印キー = 移動
-  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+  // 地図と同じ操作: 左ドラッグ／1 本指 = 平行移動（床に沿って）、中ボタン・右ドラッグ = 見ている点の周りを回る、
+  // ホイール／ピンチ = 拡大縮小、矢印キー = 移動
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.ROTATE };
   controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
   controls.screenSpacePanning = false;
   controls.zoomToCursor = false; // カーソルの位置へ寄せると、パッドのピンチで場所がずれて飛んだ。画面の中心へ寄る
