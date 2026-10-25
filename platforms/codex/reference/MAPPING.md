@@ -6,13 +6,13 @@ Claudeのsettings.jsonやpermissionsの名前をCodexへそのまま移さない
 | 図・役割 | 出力・実行 |
 |---|---|
 | 独立した処理 | `.agents/skills/<name>/SKILL.md`。name/descriptionを持つ |
-| 別担当のagent | `.codex/agents/<name>.toml`。name/description/developer_instructions。モデルは既定を継承 |
+| 別担当のagent | 4条件（①独立検証 ②並列実行 ③大量ノイズ隔離 ④権限のハード制限）を満たす場合のみ `.codex/agents/<name>.toml`。満たさない場合は本体skillの節またはスクリプトに統合する |
 | 人間の承認 | 質問→明示的な回答待ち。未承認状態は工程記録へ保存 |
-| 機械の検査 | Nodeスクリプト＋`.codex/hooks.json`の該当イベント |
+| 機械の検査 | Nodeスクリプト＋`.codex/hooks.json`の該当イベント（成果物検査の第一候補） |
 | 常時必要な案内 | `AGENTS.md`。短い索引。手順全文はスキルへ |
 | 特定ディレクトリだけの指示 | 適切な下位ディレクトリのAGENTS.md、または必要時に読むreference |
 | 外部サービス | 接続済みMCP。呼べるツールを実際に確認する |
-| 成果物/長期状態 | 図のdocument/data storeが指すファイル。保存を機械確認 |
+| 成果物/長期状態 | 図のdocument/data storeが指すファイル。各工程の入力と出力の保存・必須構造を機械確認 |
 | 評価基準 | 所有者が管理する基準。プラグイン基準はインストール先のreferenceを読む |
 | 凍結テスト | `tests/harness/<name>/`。処理の合格条件を改変せず集める |
 

@@ -55,16 +55,17 @@
 | レーン種別 | 判定 | Claude Code |
 |---|---|---|
 | 人間 | 備考 `lane: human`、なければレーン名に「オーナー/人間/承認」等 | 承認ゲート。`AskUserQuestion` で止める（→ 2.1）。機械化できるなら `permissions.ask` |
-| agent | 備考 `lane: agent`、なければレーン名が識別子形式（`article-writer` 等）／「〜エージェント」 | `.claude/agents/<name>.md`（frontmatter: `name` `description` `tools` `disallowedTools` `model`） |
-| システム | 備考 `lane: system`、なければレーン名に「検証/lint/CI」等 | hook（`.claude/settings.json`）または `.claude/hooks/<name>.js` |
+| agent | 備考 `lane: agent`、なければレーン名が識別子形式（`article-writer` 等）／「〜エージェント」 | **まずサブエージェント要否の4条件（→ 3.1節）で判定する。** 4条件（①独立検証 ②並列実行 ③大量ノイズ隔離 ④権限のハード制限）のいずれかに当たる場合のみ `.claude/agents/<name>.md`（frontmatter: `name` `description` `tools` `disallowedTools` `model`）。当たらない場合は別 agent を作らず、本体 skill の節・参照ファイル・またはスクリプト（`system`）に落とす |
+| システム | 備考 `lane: system`、なければレーン名に「検証/lint/CI」等 | hook（`.claude/settings.json`）または `.claude/hooks/<name>.js` ／ 検証スクリプト |
 | **外部サービス** | 備考 `lane: external`、なければレーン名がサービス名（`DrillSpark` 等） | **新しい部品を作らない。** MCP ツール呼び出し（io ノードと同じ）。呼ぶ skill / agent の `allowed-tools` / `tools` に `mcp__<server>__*` を列挙する |
 | **その図を回す本体** | レーン名が**その図に対応する skill 名そのもの**（`harness-implement（エージェント）` 等） | **新しい agent を作らない。** その skill の本文が担当。→ 1節「1プロジェクト（＝1処理）＝入口の skill」 |
 
-> **agent レーンと本体レーンの見分け**: レーン名が identifier 形式でも、
+> **agent レーンと本体レーンの見分け＋サブエージェント要否の4条件**: レーン名が identifier 形式でも、
 > それが**この図自身の skill 名**なら agent ファイルは作らない。作ると
 > 「skill が同名 agent を呼ぶ」入れ子ができ、1処理＝1 skill の対応が壊れる。
-> **別の名前**の identifier レーン（`article-writer` / `harness-design-reviewer` 等）だけが agent。
-> この区別が無いと、対応表の行き先が2通りに読める。
+> また、**別の名前**の identifier レーンであっても、無条件で `.claude/agents/<name>.md` にしない。
+> サブエージェントは「親との伝言ゲームによる文脈喪失」「起動ごとの遅延・トークン倍増」「新規作成時はセッション再起動まで動かない（6.4節）」のコストを持つため、
+> ①生成と検証の独立性（決定論に落ちない検査） ②並列実行 ③大量ノイズの隔離 ④ツール権限のハード制限 の**4条件のいずれかを満たすときだけ agent にし、それ以外は本体 skill の節またはスクリプト（`system`）へ統合する（Single Agent Loop 原則）**。
 
 - 規約はレーン名を「責任を持つ役割・部門・システム」で付けろと定めるだけで（§5, §10）、
   **人間／agent／システム／外部の区別は規約に無い**。だから**各レーンの先頭ノードの備考に
