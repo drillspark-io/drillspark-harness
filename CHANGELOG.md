@@ -5,6 +5,11 @@ carries no version of its own.
 
 ## Unreleased
 
+- Input/output contracts, Single Agent Loop 4-criteria gate, strict flow lint, and deterministic skill evals:
+  - Require both **inputs** and **outputs** per step in `reference/設計.md.template`, `reference/workflow-contract.md`, `reference/harness-design-criteria.md`, `agents/harness-design-reviewer.md`, `agents/harness-evaluator.md`, and `skills/harness-implement/*`, and upgrade step-boundary verification from `test -s` to structural checks (headings, columns, JSON keys) at step entry and exit.
+  - Add `--check-io` to `scripts/process-coverage.js` to mechanically verify that every step in `root` defines inputs/outputs and that any `shape: doc` document node connected in `root` also exists in its child drilldown diagram (`IO_MISMATCH`).
+  - Add the 4 Single Agent Loop subagent necessity criteria (independent verification, parallel execution, noisy intermediate context isolation, strict tool/permission restriction) to `harness-implement`, `MAPPING.md`, `FRONTIER.md`, and `harness-design-criteria.md`; prioritize deterministic scripts/hooks (`system` lane) ahead of LLM evaluators (`agent` lane); and let `process-improve` read `agents/process-expert.md` directly in the main loop when external WebSearch isolation is not needed.
+  - Add `--strict-flow` to `scripts/diagram-lint.js` (`LOOP_NO_LIMIT` and `UNJOINED_BRANCH`) and add `scripts/skill-eval.js` + `evals/skills-eval.json` to deterministically audit all 7 skills and 5 agents.
 - New skill `animal-office-view`: turns a DrillSpark project into a single self-contained 3D page
   (three.js 0.160 and the animal models embedded, no network). Each lane becomes a department with one
   animal (the same lane name keeps the same animal on every floor), tasks become desks, decisions

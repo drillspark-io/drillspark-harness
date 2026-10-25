@@ -1,0 +1,294 @@
+{
+  "version": "1.0.0",
+  "skills": {
+    "harness-implement": {
+      "inputs": [
+        "利用者の目的（誰のため・成果物・成功指標・やらないこと）または 業務改善/AI化依頼書.md",
+        "承認済みの DrillSpark 図（第一階層＝工程、第二階層＝作業、各工程の入出力 document ノード）"
+      ],
+      "outputs": [
+        "docs/harness/<ハーネス名>/設計.md",
+        "docs/harness/<ハーネス名>/処理/<処理名>/図.md（工程の入出力と検査を含む）",
+        "docs/harness/<ハーネス名>/処理/<処理名>/合格条件.md（承認で凍結）",
+        "docs/harness/<ハーネス名>/処理/<処理名>/実装.md（実装前判断8項目の答えを含む）",
+        "処理ごとの skill / agent（4条件を満たす場合のみ） / hook 実体 / スクリプト"
+      ],
+      "expected_files": [
+        "skills/harness-implement/SKILL.md",
+        "skills/harness-implement/MAPPING.md",
+        "skills/harness-implement/FRONTIER.md",
+        "reference/workflow-contract.md",
+        "reference/harness-design-criteria.md",
+        "reference/設計.md.template",
+        "scripts/diagram-lint.js",
+        "scripts/file-saved-lint.js",
+        "scripts/harness-freeze-guard.js"
+      ],
+      "triggers": {
+        "positive": [
+          "新しいハーネスを作りたい。目的はブログ記事を書いて公開する",
+          "harness-implement で 業務改善/AI化依頼書.md の工程を作りたい",
+          "処理1つ分の図を直して設定ファイルに再適用したい"
+        ],
+        "negative": [
+          "全処理の実装が終わったので settings.json と CLAUDE.md を1つにまとめたい",
+          "引き継いだリポジトリの .claude/ を見直して差分を出したい",
+          "処理の図を動物たちの会社の3Dページにしたい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "## 工程の入出力と検査|## 1\\. 実装前判断の答え" },
+        { "type": "regex_match", "pattern": "入出力の確認|入力（document" },
+        { "type": "regex_match", "pattern": "サブエージェントの要否|検査（ノードID" }
+      ],
+      "oracle_output": "# 記事執筆 実装（2026-10-25）\n\n## 1. 実装前判断の答え\n\n| 判断 | 答え |\n|---|---|\n| 置き場 | 手順は skill |\n| お願いの格上げ | 書き出し検査は hook exit 2 |\n| 介入点の割り当て | 承認ゲート2箇所 |\n| ループの止め方と再開点 | 上限3回でオーナー報告 |\n| 検証役の分離 | harness-design-reviewer |\n| 入出力の確認（各工程の入力と出力の構造検証） | 各工程の開始時に入力ファイルの必須見出し、終了時に出力ファイルの必須列を検証 |\n| サブエージェントの要否（4条件による判定） | 構造検査は system レーンのスクリプトに統合し、意味的レビューのみ独立 agent |\n| 削る（足さなかった候補と理由） | 案出し agent は伝言ゲームを防ぐため本体 skill に統合 |\n",
+      "null_output": "# 実装メモ\nとりあえず作りました。確認お願いします。"
+    },
+    "harness-compose": {
+      "inputs": [
+        "docs/harness/<ハーネス名>/設計.md（全処理が「実装済み」状態）",
+        "各処理の 図.md・合格条件.md・実装.md",
+        "既存の .claude/settings.json・.claude/settings.local.json・CLAUDE.md"
+      ],
+      "outputs": [
+        "docs/harness/<ハーネス名>/統合.md（衝突6種の決着・介入点総数）",
+        "統合された .claude/settings.json（hooks・permissions）と CLAUDE.md",
+        ".claude/tests/<ハーネス名>/（凍結した合格条件の集約）"
+      ],
+      "expected_files": [
+        "skills/harness-compose/SKILL.md",
+        "skills/harness-implement/MAPPING.md",
+        "reference/workflow-contract.md",
+        "reference/設計.md.template",
+        "scripts/file-saved-lint.js"
+      ],
+      "triggers": {
+        "positive": [
+          "全処理の実装が終わったので settings.json と CLAUDE.md を1回で統合したい",
+          "harness-compose で別々に作った2つの処理を束ねて衝突を潰したい"
+        ],
+        "negative": [
+          "新しい処理を1つ DrillSpark で作図して実装したい",
+          "私の日常業務を棚卸ししてABC分析したい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "## 1\\. 1つにまとめたもの" },
+        { "type": "regex_match", "pattern": "## 2\\. 衝突と決着" },
+        { "type": "regex_match", "pattern": "人間の介入点の総数" }
+      ],
+      "oracle_output": "# 統合（2026-10-25・`harness-compose`）\n\n## 1. 1つにまとめたもの\n| 何 | どこに書いたか | 元になった処理 |\n|---|---|---|\n| `settings.json` の `hooks` | `.claude/settings.json` | 記事執筆・公開 |\n\n## 2. 衝突と決着\n| 衝突 | どの処理どうし | どう決着したか | 差し戻したか |\n|---|---|---|---|\n| 権限の矛盾 | 記事執筆と公開 | deny を優先 | いいえ |\n\n### 人間の介入点の総数（衝突6種の1つ。ここでしか見えない）\n| 種類 | 件数 | 内訳（処理ごと） |\n|---|---|---|\n| 承認ゲート | 3 | 記事執筆2・公開1 |\n",
+      "null_output": "settings.json を上書きしました。"
+    },
+    "harness-improve": {
+      "inputs": [
+        "見直し対象リポジトリの .claude/ 実ファイル一式（skills, agents, rules, settings.json, CLAUDE.md）",
+        "既存の docs/harness/<ハーネス名>/（存在する場合）"
+      ],
+      "outputs": [
+        "docs/harness/<ハーネス名>/改善/<YYYY-MM-DD>.md（処理一覧・理想図URL・処理ごとの差分・横断差分・保留）",
+        "docs/harness/<ハーネス名>/設計.md（索引の処理一覧と状態列）",
+        "承認済みの理想図（新規作成した DrillSpark プロジェクト）"
+      ],
+      "expected_files": [
+        "skills/harness-improve/SKILL.md",
+        "skills/harness-implement/MAPPING.md",
+        "agents/harness-asis-reviewer.md",
+        "reference/harness-design-criteria.md",
+        "reference/設計.md.template",
+        "scripts/diagram-lint.js",
+        "scripts/file-saved-lint.js"
+      ],
+      "triggers": {
+        "positive": [
+          "引き継いだリポジトリのハーネスを見直して理想図との差分を出したい",
+          "harness-improve で今の .claude/ の設定を棚卸しして重複や帰属不明を洗い出したい"
+        ],
+        "negative": [
+          "差分表に従って .claude/ の実ファイルを書き換えて実装したい",
+          "業務改善の表を1枚のHTMLレポートにしたい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "## 1\\. 処理一覧" },
+        { "type": "regex_match", "pattern": "## 2\\. 差分" },
+        { "type": "regex_match", "pattern": "## 3\\. 横断差分" }
+      ],
+      "oracle_output": "# 改善（2026-10-25）\n\n## 1. 処理一覧（実ファイルから起こしたもの）\n| 処理名 | 起動 | 使っている部品 | 成果物 | 何のために在るか | DrillSpark |\n|---|---|---|---|---|---|\n| 記事作成 | 手動 | skill: article | 記事.md | 広報記事を出す | https://drillspark.io/editor?id=11111111-1111-4111-8111-111111111111 |\n\n## 2. 差分（理想図 ↔ 実ファイル）\n| 差分の種類 | 理想図のノード | いまの実ファイル | implement へ渡す単位 | 優先度 |\n|---|---|---|---|---|\n| 柵の不足 | 2_4 | お願い文のみ | PreToolUse hook 追加 | 高 |\n\n## 3. 横断差分\n| 見るもの | 中身 |\n|---|---|\n| 人間ゲートの総数 | 2回 |\n",
+      "null_output": "不要そうなファイルを削除しました。"
+    },
+    "harness-visualize": {
+      "inputs": [
+        "docs/harness/<ハーネス名>/設計.md と 処理/<処理名>/ 一式（図.md・合格条件.md・実装.md）",
+        "DrillSpark の get_project が返す content.diagrams"
+      ],
+      "outputs": [
+        "docs/harness/<ハーネス名>/可視化/<処理名>-<YYYY-MM-DD>.diagrams.json",
+        "docs/harness/<ハーネス名>/可視化/<処理名>-<YYYY-MM-DD>.map.json",
+        "docs/harness/<ハーネス名>/可視化/<処理名>-<YYYY-MM-DD>.html（scripts/harness-view-build.js で生成）"
+      ],
+      "expected_files": [
+        "skills/harness-visualize/SKILL.md",
+        "scripts/harness-view-build.js",
+        "scripts/harness-view-lint.js",
+        "scripts/harness-view-guard.js"
+      ],
+      "triggers": {
+        "positive": [
+          "harness-visualize で処理1つの図と設計と実装先を重ねた1枚のHTMLにしたい",
+          "この処理の各ノードがどのファイルの何の仕組み（指示・確認・柵・agent）になったか1枚で見たい"
+        ],
+        "negative": [
+          "業務改善の4つの表から改善計画のHTMLを作りたい",
+          "図を動物たちの会社の3Dアニメーションで見たい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "<!-- 直し: [0-2]/2 -->" },
+        { "type": "regex_match", "pattern": "data-section=\"目的\"" },
+        { "type": "regex_not_match", "pattern": "<script\\s+src=\"https?://" }
+      ],
+      "oracle_output": "<!doctype html>\n<!-- 直し: 0/2 -->\n<html lang=\"ja\"><body><section data-section=\"目的\">目的と成功指標</section><section data-section=\"工程\"><tr data-node-id=\"2\"><td>工程</td></tr></section></body></html>",
+      "null_output": "<!doctype html><html><head><script src=\"https://cdn.example.com/app.js\"></script></head><body>可視化</body></html>"
+    },
+    "process-improve": {
+      "inputs": [
+        "利用者の日常業務の聞き取り（または 棚卸しシート.html の Artifact db 入力）",
+        "既存の 業務改善/進行.md・業務一覧.md（再開時）"
+      ],
+      "outputs": [
+        "業務改善/業務一覧.md",
+        "業務改善/改善案.md（成功の形・E→C→R→S・案が出なかった段階とその理由）",
+        "業務改善/AI化依頼書.md（工程単位・H1〜H5・承認3種の判断）",
+        "業務改善/保留.md・業務改善/進行.md",
+        "現状の DrillSpark 図と改善後の DrillSpark 図"
+      ],
+      "expected_files": [
+        "skills/process-improve/SKILL.md",
+        "skills/process-improve/assets/棚卸しシート.html",
+        "reference/business-improvement-criteria.md",
+        "reference/business-improvement-tables.md",
+        "reference/ecrs-proposals.md",
+        "reference/delegation-proposal.md",
+        "agents/process-expert.md",
+        "agents/process-improve-reviewer.md",
+        "scripts/process-table-lint.js",
+        "scripts/process-abc.js",
+        "scripts/process-coverage.js",
+        "scripts/process-write-guard.js"
+      ],
+      "triggers": {
+        "positive": [
+          "私の業務を棚卸しして改善したい",
+          "process-improve で時間のかかっている業務をフロー図にしてAIに任せる工程を整理したい"
+        ],
+        "negative": [
+          "業務改善の表から1枚のHTMLレポート（改善計画）を作りたい",
+          "Claude Code のハーネス設定（settings.json と hook）を作りたい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "外部送信:\\s*(承認あり|承認なし|該当なし)" },
+        { "type": "regex_match", "pattern": "データ更新:\\s*(承認あり|承認なし|該当なし)" },
+        { "type": "regex_match", "pattern": "金銭:\\s*(承認あり|承認なし|該当なし)" }
+      ],
+      "oracle_output": "| 業務名 | 工程 | 任せ方 | 承認が要る操作 | 削減見込み | 備考 |\n|---|---|---|---|---|---|\n| 請求書処理 | 2 請求書データを読み取る | H2 最小限の指示 | 外部送信: 該当なし ／ データ更新: 承認あり ／ 金銭: 該当なし | 1時間/月（未計測） | 読み取り結果を確認 |\n",
+      "null_output": "| 業務名 | 工程 | 任せ方 |\n|---|---|---|\n| 経理 | 全部自動化する | AI化 |\n"
+    },
+    "process-improve-view": {
+      "inputs": [
+        "業務改善/業務一覧.md・改善案.md・AI化依頼書.md・保留.md",
+        "対象業務の現状図と改善後図（DrillSpark）"
+      ],
+      "outputs": [
+        "業務改善/改善計画-<業務名>.html（8ブロック・自己完結HTML・process-plan-lint 合格）"
+      ],
+      "expected_files": [
+        "skills/process-improve-view/SKILL.md",
+        "reference/business-improvement-criteria.md",
+        "reference/business-improvement-tables.md",
+        "scripts/process-plan-lint.js",
+        "scripts/file-saved-lint.js",
+        "scripts/process-write-guard.js"
+      ],
+      "triggers": {
+        "positive": [
+          "process-improve-view で業務改善の計画を社内共有用の1枚のHTMLにしたい",
+          "改善計画-請求書処理.html を出力したい"
+        ],
+        "negative": [
+          "自分の仕事をゼロから棚卸しして業務一覧を作りたい",
+          "ハーネスの実装と図の対応を可視化したい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "data-block=" },
+        { "type": "regex_not_match", "pattern": "<link[^>]+href=\"https?://" }
+      ],
+      "oracle_output": "<!doctype html><html lang=\"ja\"><body><section data-block=\"summary\">改善計画の要約（未計測・一般例の印を保持）</section><section data-block=\"request\">AI化依頼書</section></body></html>",
+      "null_output": "<!doctype html><html><head><link rel=\"stylesheet\" href=\"https://example.com/a.css\"></head><body>計画</body></html>"
+    },
+    "animal-office-view": {
+      "inputs": [
+        "DrillSpark の get_project が返す diagrams JSON（または .diagrams.json ファイル）",
+        "任意の配役・設定ファイル（<名>.office.json）"
+      ],
+      "outputs": [
+        "<名>.office.html（scripts/animal-office-build.js が生成する自己完結3Dページ）"
+      ],
+      "expected_files": [
+        "skills/animal-office-view/SKILL.md",
+        "scripts/animal-office-build.js",
+        "scripts/animal-office-lint.js",
+        "scripts/harness-view-guard.js",
+        "assets/animal-office/runtime.js"
+      ],
+      "triggers": {
+        "positive": [
+          "DrillSpark の図を「動物たちの会社」の 3D ページにしたい",
+          "animal-office-view で部署ごとの動物が書類を回す3Dアニメーションを作りたい"
+        ],
+        "negative": [
+          "ハーネスの工程と実装ファイルの対応表を2DのHTMLにしたい",
+          "業務のABC分析を実行したい"
+        ]
+      },
+      "graders": [
+        { "type": "min_length", "value": 80 },
+        { "type": "regex_match", "pattern": "<!-- 直し: [0-2]/2 -->" },
+        { "type": "regex_match", "pattern": "id=\"office-data\"" },
+        { "type": "regex_not_match", "pattern": "<script\\s+src=\"https?://" }
+      ],
+      "oracle_output": "<!doctype html>\n<!-- 直し: 0/2 -->\n<html lang=\"ja\"><body><script type=\"application/json\" id=\"office-data\">{\"floors\":{\"root\":{}}}</script><script type=\"application/json\" id=\"office-models\">{}</script></body></html>",
+      "null_output": "<!doctype html><html><head><script src=\"https://cdn.example.com/three.js\"></script></head><body>3D</body></html>"
+    }
+  },
+  "agents": {
+    "harness-asis-reviewer": {
+      "subagent_criteria": ["independent_verification", "strict_tool_restriction"],
+      "rationale": "現状図を描いた本人は自分の誤読を疑えないため、書込権限を持たない別コンテキストで実ファイルとの根拠突き合わせを行う"
+    },
+    "harness-design-reviewer": {
+      "subagent_criteria": ["independent_verification", "strict_tool_restriction"],
+      "rationale": "ハーネス生成役から分離された独立レビュー役として、書き換え不能な reference/harness-design-criteria.md に照らして判定する"
+    },
+    "harness-evaluator": {
+      "subagent_criteria": ["independent_verification", "strict_tool_restriction"],
+      "rationale": "統合後のハーネス全体に対し、生成役の自己評価バイアスを排して凍結テスト・実タスク・過不足監査を行う"
+    },
+    "process-expert": {
+      "subagent_criteria": ["noisy_context_isolation", "strict_tool_restriction"],
+      "rationale": "既知の業務では本体が直接定義を参照して案を出し、専門知識が不足して外部 WebSearch/WebFetch の生結果（ノイズ）を隔離する必要があるときだけ限定起動する"
+    },
+    "process-improve-reviewer": {
+      "subagent_criteria": ["independent_verification", "strict_tool_restriction"],
+      "rationale": "process-improve の生成役から分離された独立判定役として、reference/business-improvement-criteria.md に照らして合否を判定する"
+    }
+  }
+}

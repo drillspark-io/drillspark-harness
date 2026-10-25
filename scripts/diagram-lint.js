@@ -37,6 +37,7 @@ const NODE_SHAPES = [
 const EDGE = /^([A-Za-z0-9_]+)\s*(-\.->|-->)\s*(?:\|\s*"?([^|"]*)"?\s*\|\s*)?([A-Za-z0-9_]+)\s*$/;
 const ARROW = /(-\.->|-->)/g;
 const DURATION = /^%%\s*duration\[([A-Za-z0-9_]+)\]\s*:/;
+const NOTE = /^%%\s*note\[([A-Za-z0-9_]+)\]\s*:\s*(.*)$/;
 const SUBGRAPH = /^subgraph\s+([A-Za-z0-9_]+)\s*\[/;
 const SKIP = /^(flowchart|graph|direction|click|classDef|class\s|style\s|linkStyle)/;
 const NUMERIC_ID = /^[0-9]+(_[0-9]+)*$/;
@@ -48,6 +49,7 @@ function parse(src) {
   const nodes = new Map();
   const edges = [];
   const durations = new Set();
+  const notes = new Map();
   const duplicates = [];
   const unparsed = [];
   const laneStack = [];
@@ -66,6 +68,8 @@ function parse(src) {
 
     const dur = line.match(DURATION);
     if (dur) { durations.add(dur[1]); return; }
+    const nt = line.match(NOTE);
+    if (nt) { notes.set(nt[1], nt[2]); return; }
     if (line.startsWith('%%')) return;
 
     const sg = line.match(SUBGRAPH);
@@ -101,10 +105,10 @@ function parse(src) {
     reject(lineNo, line, arrows > 1 ? '連結エッジは1行1エッジに分ける' : (arrows === 1 ? 'エッジの書式が読めない' : 'ラベルは二重引用符で囲む'));
   });
 
-  return { nodes, edges, durations, duplicates, unparsed };
+  return { nodes, edges, durations, notes, duplicates, unparsed };
 }
 
-function lint(src) {
+function lint(src, opts = {}) {
   const findings = [];
   const add = (code, id, message) => findings.push({ code, id, message });
 
@@ -113,7 +117,7 @@ function lint(src) {
     return findings;
   }
 
-  const { nodes, edges, durations, duplicates, unparsed } = parse(src);
+  const { nodes, edges, durations, notes, duplicates, unparsed } = parse(src);
   // 1つも認識できなかった回でも、読めなかった行は先に出す。全行が `1["X"] --> 2["Y"]` の
   // 連結書きだと、ここで止めたときに「二重引用符で囲む」だけが残って直す場所を誤る
   for (const u of unparsed) add('UNPARSED', `${u.line}行目`, `解析できない: ${u.text} — ${u.hint}`);
@@ -228,11 +232,61 @@ function lint(src) {
     }
   }
 
+  // --strict-flow: ループの上限・エスカレーション先記載チェック と 並行経路の未合流チェック
+  if (opts.strictFlow && unparsed.length === 0 && starts.length === 1) {
+    // 1. Start からの BFS 深さで逆流エッジ（後続→先行）を検出し、上限とエスカレーション先があるか検査
+    const dist = new Map([[starts[0].id, 0]]);
+    const q = [starts[0].id];
+    while (q.length) {
+      const cur = q.shift();
+      for (const e of out.get(cur)) {
+        const dst = nodes.get(e.to);
+        if (!dst || DATA_TYPES.has(dst.type)) continue;
+        if (!dist.has(e.to)) {
+          dist.set(e.to, dist.get(cur) + 1);
+          q.push(e.to);
+        }
+      }
+    }
+    for (const e of edges) {
+      const from = nodes.get(e.from);
+      const to = nodes.get(e.to);
+      if (!from || !to || DATA_TYPES.has(from.type) || DATA_TYPES.has(to.type)) continue;
+      if (dist.has(e.from) && dist.has(e.to) && dist.get(e.to) <= dist.get(e.from)) {
+        // 逆流エッジ（ループ）。人間レーンの decision から出る「人間が毎回判断するループ」や件数反復は除外可能だが、
+        // ラベルまたは接続元/接続先の備考に「上限/回/ラウンド/残っている/人間判断」等があるか確認
+        const inLabels = (inbound.get(e.from) || []).map((ie) => ie.label).join(' ');
+        const outLabels = (out.get(e.to) || []).map((oe) => oe.label).join(' ');
+        const combined = `${e.label} ${inLabels} ${outLabels} ${notes.get(e.from) || ''} ${notes.get(e.to) || ''}`;
+        if (!/(上限|[0-9０-９]+回|ラウンド|残っている|人間が毎回|毎回判断)/.test(combined)) {
+          add('LOOP_NO_LIMIT', `${e.from}->${e.to}`, '逆流エッジ（ループ）に上限回数（または件数反復・人間判断の明記）がエッジラベルにも備考にも無い');
+        }
+      }
+    }
+    // 2. End へ複数の非 decision 作業ノードから独立に刺さっている場合（並行経路の合流漏れ）
+    if (ends.length === 1) {
+      const endId = ends[0].id;
+      const inEdges = inbound.get(endId).filter((e) => {
+        const srcNode = nodes.get(e.from);
+        return srcNode && !DATA_TYPES.has(srcNode.type);
+      });
+      const nonDecisionSources = inEdges.filter((e) => {
+        const srcNode = nodes.get(e.from);
+        return srcNode && srcNode.type !== 'decision';
+      });
+      if (inEdges.length >= 2 && nonDecisionSources.length >= 2) {
+        add('UNJOINED_BRANCH', endId, `End に ${nonDecisionSources.length} 本の作業ノード（${nonDecisionSources.map((e) => e.from).join(', ')}）が合流せずに直接入っている（並行経路の合流漏れ、または分岐後の未合流）`);
+      }
+    }
+  }
+
   return findings;
 }
 
 function main() {
-  const arg = process.argv[2];
+  const args = process.argv.slice(2);
+  const strictFlow = args.includes('--strict-flow');
+  const arg = args.find((a) => a !== '--strict-flow');
   let src;
   try {
     src = (!arg || arg === '-') ? fs.readFileSync(0, 'utf8') : fs.readFileSync(arg, 'utf8');
@@ -241,7 +295,7 @@ function main() {
     process.exit(1);
   }
 
-  const findings = lint(src);
+  const findings = lint(src, { strictFlow });
   const where = arg && arg !== '-' ? arg : '(stdin)';
 
   if (findings.length === 0) {

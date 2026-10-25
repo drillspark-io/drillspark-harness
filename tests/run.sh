@@ -431,6 +431,28 @@ out=$(node "$COV" "$DIR/ok-coverage.json" 2>&1); got=$?
 if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q '2/2'; then echo "  PASS ok-coverage.json  (exit 0 / 2/2)"; else echo "  FAIL ok-coverage.json  期待 exit 0・2/2 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
 out=$(node "$COV" - < "$DIR/ng-coverage-missing.json" 2>&1); got=$?
 if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q '描いていない工程: 3, 4' && printf '%s' "$out" | grep -q '作業が1つしか無い工程: 2'; then echo "  PASS ng-coverage-missing.json  (exit 2 / 描いていない工程: 3, 4 / 作業が1つしか無い工程: 2 / 標準入力)"; else echo "  FAIL ng-coverage-missing.json  期待 exit 2・「描いていない工程: 3, 4」・「作業が1つしか無い工程: 2」 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+out=$(node "$COV" --check-io "$DIR/ok-coverage.json" 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q 'IO_MISMATCH'; then echo "  PASS process-coverage --check-io ng: 出力未定義・親子帳票不一致を検出  (exit 2)"; else echo "  FAIL process-coverage --check-io ng  期待 exit 2 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+out=$(node -e '
+  const fs = require("fs");
+  const j = JSON.parse(fs.readFileSync("'"$DIR"'/ok-coverage.json", "utf8"));
+  const d = j.data.content.diagrams;
+  d.root += "    7@{ shape: doc, label: \"検索条件\" }\n    7 --> 2\n    5 --> 3\n    6@{ shape: doc, label: \"送信結果\" }\n    3 --> 6\n";
+  d["2"] += "    2_6@{ shape: doc, label: \"検索条件\" }\n    2_5@{ shape: doc, label: \"営業先一覧\" }\n    2_6 --> 2_2\n    2_3 --> 2_5\n";
+  d["3"] += "    3_5@{ shape: doc, label: \"営業先一覧\" }\n    3_6@{ shape: doc, label: \"送信結果\" }\n    3_5 --> 3_2\n    3_3 --> 3_6\n";
+  process.stdout.write(JSON.stringify(j));
+' | node "$COV" --check-io - 2>&1); got=$?
+if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q 'io=OK'; then echo "  PASS process-coverage --check-io ok: 全工程の入出力と親子帳票が一致  (exit 0 / io=OK)"; else echo "  FAIL process-coverage --check-io ok  期待 exit 0・io=OK / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+
+echo "== フロー構造（--strict-flow） =="
+out=$(sed 's/(上限3回)//' "$DIR/ok-minimal.mmd" | node "$LINT" --strict-flow - 2>&1); got=$?
+if [ "$got" -eq 2 ] && printf '%s' "$out" | grep -q 'LOOP_NO_LIMIT'; then echo "  PASS diagram-lint --strict-flow LOOP_NO_LIMIT  (exit 2)"; else echo "  FAIL diagram-lint --strict-flow LOOP_NO_LIMIT  期待 exit 2 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+out=$(node "$LINT" --strict-flow "$DIR/ok-minimal.mmd" 2>&1); got=$?
+if [ "$got" -eq 0 ]; then echo "  PASS diagram-lint --strict-flow 上限付きループは通過  (exit 0)"; else echo "  FAIL diagram-lint --strict-flow 上限付きループ  期待 exit 0 / 実際 exit $got"; printf '%s\n' "$out" | sed 's/^/        /'; fail=1; fi
+
+echo "== スキル・エージェント評価（skill-eval） =="
+out=$(node scripts/skill-eval.js 2>&1); got=$?
+if [ "$got" -eq 0 ] && printf '%s' "$out" | grep -q 'skills=7 agents=5'; then echo "  PASS skill-eval.js  ($out)"; else echo "  FAIL skill-eval.js  (exit $got) $out"; fail=1; fi
 
 echo "== 入力画面 =="
 # process-improve の棚卸しシート（Artifact の db に保存する1枚）。選択肢の文字列が表の lint と食い違うと、画面で選べた値が
@@ -537,7 +559,7 @@ if command -v claude >/dev/null 2>&1; then
   # Claude ディレクトリは icon を掲載に読む（開発者ポータルが "No icon" を警告し、icon を足すと
   # "the directory reads a few of these (such as icon) for the listing" に変わった。2026-09-26 確認）。
   vout=$(claude plugin validate . 2>&1); vgot=$?
-  others=$(printf '%s\n' "$vout" | grep '❯' | grep -v "plugin.json → icon: Unknown field 'icon'")
+  others=$(printf '%s\n' "$vout" | grep '❯' | grep -v "plugin.json → icon: Unknown field 'icon'" | grep -v "This folder also holds a marketplace manifest.")
   if [ "$vgot" -eq 0 ] && [ -z "$others" ]; then
     echo "  PASS claude plugin validate .  (exit 0 / 警告は icon の1件まで)"
   else
@@ -601,7 +623,9 @@ for p in \
   scripts/process-abc.js \
   scripts/process-coverage.js \
   scripts/process-write-guard.js \
-  scripts/harness-freeze-guard.js
+  scripts/harness-freeze-guard.js \
+  scripts/skill-eval.js \
+  evals/skills-eval.json
 do
   if [ -f "$p" ]; then echo "  PASS $p"; else echo "  FAIL $p が無い"; fail=1; fi
 done

@@ -28,6 +28,8 @@ const SH = [
   [/^([0-9_]+)\{"(.+?)"\}/, 'decision'],
   [/^([0-9_]+)@\{\s*shape:\s*doc,\s*label:\s*"(.+?)"\s*\}/, 'document'],
 ];
+const EDGE_RE = /^([0-9_]+)\s*(?:-\.->|-->)\s*(?:\|\s*"?[^|"]*"?\s*\|\s*)?([0-9_]+)\s*$/;
+const NOTE_RE = /^%%\s*note\[([0-9_]+)\]\s*:\s*(.*)$/;
 
 function nodesOf(src) {
   const out = [];
@@ -42,6 +44,20 @@ function nodesOf(src) {
   return out;
 }
 
+function edgesAndNotesOf(src) {
+  const edges = [];
+  const notes = new Map();
+  for (const raw of String(src).split(/\r?\n/)) {
+    const line = raw.trim();
+    const nm = NOTE_RE.exec(line);
+    if (nm) { notes.set(nm[1], nm[2]); continue; }
+    if (line.startsWith('%%')) continue;
+    const em = EDGE_RE.exec(line);
+    if (em) edges.push({ from: em[1], to: em[2] });
+  }
+  return { edges, notes };
+}
+
 function diagramsOf(json) {
   let d = json;
   if (d && d.data) d = d.data;
@@ -52,8 +68,10 @@ function diagramsOf(json) {
 }
 
 function main() {
-  const arg = process.argv[2];
-  if (!arg) { console.error('使い方: node process-coverage.js <get_project の JSON ファイル | ->'); process.exit(1); }
+  const args = process.argv.slice(2);
+  const checkIo = args.includes('--check-io');
+  const arg = args.find((a) => a !== '--check-io');
+  if (!arg) { console.error('使い方: node process-coverage.js [--check-io] <get_project の JSON ファイル | ->'); process.exit(1); }
   let text;
   try { text = arg === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(arg, 'utf8'); }
   catch (e) { console.error(`読めない: ${e.message}`); process.exit(1); }
@@ -62,15 +80,45 @@ function main() {
   const diagrams = diagramsOf(json);
   if (!diagrams) { console.error('get_project の形ではない（content.diagrams.root が無い）'); process.exit(1); }
 
-  const steps = nodesOf(diagrams.root).filter((n) => n.type === 'process' || n.type === 'subroutine');
+  const rootNodes = nodesOf(diagrams.root);
+  const rootNodeMap = new Map(rootNodes.map((n) => [n.id, n]));
+  const { edges: rootEdges, notes: rootNotes } = edgesAndNotesOf(diagrams.root);
+  const steps = rootNodes.filter((n) => n.type === 'process' || n.type === 'subroutine');
   if (!steps.length) {
     console.log('root に工程（process / subroutine のノード）が1つも無い。§3-1 で工程を並べてから来る');
     process.exit(2);
   }
+  const ioIssues = [];
   const rows = steps.map((n) => {
     const child = typeof diagrams[n.id] === 'string' && /flowchart/.test(diagrams[n.id]) ? diagrams[n.id] : null;
-    const works = child ? nodesOf(child).filter((c) => c.type === 'process' || c.type === 'subroutine' || c.type === 'decision').length : 0;
-    return { id: n.id, label: n.label, has: !!child, works };
+    const childNodes = child ? nodesOf(child) : [];
+    const works = child ? childNodes.filter((c) => c.type === 'process' || c.type === 'subroutine' || c.type === 'decision').length : 0;
+    const inDocs = rootEdges
+      .filter((e) => e.to === n.id && rootNodeMap.get(e.from) && rootNodeMap.get(e.from).type === 'document')
+      .map((e) => rootNodeMap.get(e.from).label);
+    const outDocs = rootEdges
+      .filter((e) => e.from === n.id && rootNodeMap.get(e.to) && rootNodeMap.get(e.to).type === 'document')
+      .map((e) => rootNodeMap.get(e.to).label);
+    const noteText = rootNotes.get(n.id) || '';
+    const hasInNote = /入力\s*[:：]/.test(noteText);
+    const hasOutNote = /出力\s*[:：]/.test(noteText);
+    if (checkIo) {
+      if (inDocs.length === 0 && !hasInNote) {
+        ioIssues.push(`工程 ${n.id}（${n.label}）に入力の書類ノードも備考「入力: …」も無い`);
+      }
+      if (outDocs.length === 0 && !hasOutNote) {
+        ioIssues.push(`工程 ${n.id}（${n.label}）に出力の書類ノードも備考「出力: …」も無い`);
+      }
+      if (child) {
+        const childDocLabels = new Set(childNodes.filter((c) => c.type === 'document').map((c) => c.label));
+        for (const docLabel of [...inDocs, ...outDocs]) {
+          if (!childDocLabels.has(docLabel)) {
+            ioIssues.push(`親子図で書類が不一致: 親の工程 ${n.id}（${n.label}）に繋がる書類「${docLabel}」が子図 ${n.id} に無い`);
+          }
+        }
+      }
+    }
+    return { id: n.id, label: n.label, has: !!child, works, inDocs, outDocs };
   });
   const done = rows.filter((r) => r.has);
   const missing = rows.filter((r) => !r.has);
@@ -85,7 +133,11 @@ function main() {
     console.log(`第二階層: ${done.length}/${rows.length}。描いていない工程: ${missing.map((r) => r.id).join(', ')} → §3-2 に戻る。全部描くまで §4（改善案）に進まない`);
     process.exit(2);
   }
-  console.log(`第二階層: ${rows.length}/${rows.length}。全工程に作業が描かれている → 【止まる③】作業の確認へ`);
+  if (checkIo && ioIssues.length) {
+    for (const msg of ioIssues) console.log(`[IO_MISMATCH] ${msg}`);
+    process.exit(2);
+  }
+  console.log(`第二階層: ${rows.length}/${rows.length}。全工程に作業が描かれている${checkIo ? '（io=OK: 入出力・親子書類一致）' : ''} → 【止まる③】作業の確認へ`);
 }
 
 main();
